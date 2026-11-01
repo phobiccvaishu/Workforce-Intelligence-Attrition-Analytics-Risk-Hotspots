@@ -192,6 +192,13 @@ ALL_NUMERIC_COLUMNS: List[str] = (
 )
 
 # -----------------------------------------------------------------------------
+# Static Audit Rules & Thresholds
+# -----------------------------------------------------------------------------
+SMALL_SAMPLE_THRESHOLD: int = 30
+IQR_MULTIPLIER_OUTLIER: float = 1.5
+IQR_MULTIPLIER_EXTREME: float = 3.0
+
+# -----------------------------------------------------------------------------
 # Report Palette & Styling (Brand-inspired palette only; no corporate logos)
 # -----------------------------------------------------------------------------
 PALETTE = {

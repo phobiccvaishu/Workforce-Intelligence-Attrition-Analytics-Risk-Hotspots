@@ -13,6 +13,9 @@ from pathlib import Path
 import sys
 from typing import Any, Dict
 
+# Ensure src is on sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))
+
 import matplotlib
 matplotlib.use("Agg")  # Non-interactive backend
 import matplotlib.pyplot as plt
@@ -24,6 +27,7 @@ from workforce_intel.config import (
     CHECKSUMS_FILE,
     DOCS_DIR,
     EXPECTED_COLUMNS,
+    IQR_MULTIPLIER_OUTLIER,
     NOMINAL_COLUMNS,
     ORDINAL_COLUMNS_DOCUMENTED_RANGES,
     ORDINAL_LABEL_ASSUMPTIONS,
@@ -37,10 +41,12 @@ from workforce_intel.config import (
     PROVENANCE_DISCLAIMER,
     RAW_DATA_FILE,
     RAW_DATA_FILENAME,
+    SMALL_SAMPLE_THRESHOLD,
     TARGET_COLUMN,
 )
 from workforce_intel.io import assert_safe_write_path, load_raw
 from workforce_intel.validation import (
+    build_report,
     categorical_audit,
     collinearity_report,
     consistency_checks,
@@ -306,6 +312,7 @@ def run_pipeline() -> None:
 
     # 7. Consistency checks
     consistency = consistency_checks(df)
+
     # Save C6 indices
     c6_indices_df = pd.DataFrame(
         {
@@ -320,8 +327,21 @@ def run_pipeline() -> None:
     )
 
     # Save C7 crosstab
-    consistency["C7"]["crosstab_table"].to_csv(
+    ct = consistency["C7"]["crosstab_table"]
+    ct.to_csv(
         assert_safe_write_path(PHASE1_TABLES_DIR / "department_jobrole_crosstab.csv")
+    )
+
+    # Save C7 multi-department roles table
+    multi_dept_records = []
+    for role, dept_cnt in consistency["C7"]["multi_department_roles"].items():
+        for dept in ct.index:
+            cnt = int(ct.loc[dept, role])
+            if cnt > 0:
+                multi_dept_records.append({"job_role": role, "department": dept, "headcount": cnt})
+    multi_dept_df = pd.DataFrame(multi_dept_records)
+    multi_dept_df.to_csv(
+        assert_safe_write_path(PHASE1_TABLES_DIR / "multi_department_roles.csv"), index=False
     )
 
     # Save C8 stats
@@ -458,6 +478,7 @@ def run_pipeline() -> None:
             "total_sentinel_tokens": int(missing_df["string_sentinel_count"].sum() + missing_df["numeric_sentinel_count"].sum()),
             "full_row_duplicates": dup["full_row_duplicates"],
             "c6_definition_ambiguities": consistency["C6"]["violation_count"],
+            "c7_multi_department_roles": consistency["C7"]["multi_department_roles"],
             "restricted_range_columns": range_df[range_df["is_restricted_range"]]["column"].tolist(),
         },
         "target_metrics": target,
@@ -469,8 +490,8 @@ def run_pipeline() -> None:
         json.dump(summary_payload, f, indent=2)
     logger.info("Saved summary JSON to %s", PHASE1_SUMMARY_JSON)
 
-    # 13. Generate data_validation_report.md
-    generate_markdown_report(
+    # 13. Generate data_validation_report.md using pure report builder
+    report_md_content = build_report(
         summary_payload=summary_payload,
         struct=struct,
         missing_df=missing_df,
@@ -486,256 +507,25 @@ def run_pipeline() -> None:
         const_df=const_df,
         checkpoints_summary=checkpoints_summary,
     )
+    assert_safe_write_path(PHASE1_REPORT_MD)
+    with open(PHASE1_REPORT_MD, "w", encoding="utf-8") as f:
+        f.write(report_md_content)
     logger.info("Saved validation report markdown to %s", PHASE1_REPORT_MD)
 
     # 14. Update data_dictionary.md and decision_log.md
     generate_data_dictionary(df, range_df, consistency)
-    generate_decision_log(consistency, range_df, collin, outlier_df, group_sz)
+    generate_decision_log(
+        df=df,
+        target=target,
+        consistency=consistency,
+        range_df=range_df,
+        collin=collin,
+        outlier_df=outlier_df,
+        group_sz=group_sz,
+        missing_df=missing_df,
+    )
     logger.info("Updated docs/data_dictionary.md and docs/decision_log.md")
     logger.info("Phase 1 validation pipeline completed successfully.")
-
-
-def generate_markdown_report(
-    summary_payload: Dict[str, Any],
-    struct: Dict[str, Any],
-    missing_df: pd.DataFrame,
-    dup: Dict[str, Any],
-    cat_df: pd.DataFrame,
-    range_df: pd.DataFrame,
-    target: Dict[str, Any],
-    consistency: Dict[str, Any],
-    zero_df: pd.DataFrame,
-    outlier_df: pd.DataFrame,
-    collin: Dict[str, Any],
-    group_sz: Dict[str, Any],
-    const_df: pd.DataFrame,
-    checkpoints_summary: Dict[str, Any],
-) -> None:
-    """Generate Phase 1 Data Validation Report in Markdown strictly from computed figures."""
-    n_rows = struct["n_rows"]
-    n_cols = struct["n_cols"]
-
-    # Format checkpoints comparison table
-    cp_lines = []
-    cp_lines.append("| Checkpoint | Reference Target | Computed Value | Status |")
-    cp_lines.append("| :--- | :--- | :--- | :--- |")
-    for key, data in checkpoints_summary.items():
-        status_str = "MATCH" if data["match"] else "DISCREPANCY"
-        cp_lines.append(f"| `{key}` | `{data['target']}` | `{data['computed']}` | **{status_str}** |")
-    checkpoints_md_table = "\n".join(cp_lines)
-
-    # Format structure overview
-    struct_summary_table = (
-        f"| Metric | Value |\n"
-        f"| :--- | :--- |\n"
-        f"| **Total Rows** | {n_rows:,} |\n"
-        f"| **Total Columns** | {n_cols} |\n"
-        f"| **Expected Columns** | {struct['expected_columns_count']} |\n"
-        f"| **Missing / Unexpected Columns** | {len(struct['missing_columns'])} missing / {len(struct['unexpected_columns'])} unexpected |\n"
-        f"| **Column Ordering Match** | {'Passed (Exact match)' if struct['order_matches_expected'] else 'Failed'} |\n"
-        f"| **Text Columns Count** | {struct['n_text_columns']} |\n"
-        f"| **Numeric Columns Count** | {struct['n_numeric_columns']} |\n"
-        f"| **Memory Usage** | {struct['memory_mb']} MB ({struct['memory_bytes']:,} bytes) |\n"
-    )
-
-    # Format missing report summary
-    total_missing_cells = int(missing_df["nan_count"].sum())
-    total_sentinels = int(missing_df["string_sentinel_count"].sum() + missing_df["numeric_sentinel_count"].sum())
-
-    # Format Target Summary
-    target_summary_table = (
-        f"| Target Metric | Computed Value |\n"
-        f"| :--- | :--- |\n"
-        f"| **Column Name** | `{target['target_column']}` |\n"
-        f"| **Data Type** | `{target['dtype']}` |\n"
-        f"| **Binary {{0, 1}} Subset Compliance** | {'Passed' if target['is_binary_01_subset'] else 'Failed'} |\n"
-        f"| **Class 0 (Stayed) Count** | {target['count_attrition_0']:,} ({target['rate_attrition_0_pct']}%) |\n"
-        f"| **Class 1 (Left) Count** | {target['count_attrition_1']:,} ({target['rate_attrition_1_pct']}%) |\n"
-        f"| **Imbalance Ratio (Stayed / Left)** | {target['imbalance_ratio_stayed_to_left']}:1 |\n"
-        f"| **Wilson 95% Confidence Interval** | [{target['wilson_95_ci_lower_pct']}%, {target['wilson_95_ci_upper_pct']}%] |\n"
-    )
-
-    # Format consistency checks summary
-    c5_soft_cnt = consistency["C5_soft"]["violation_count"]
-    consistency_summary_table = (
-        f"| Rule ID | Rule Specification | Violations Count | Offending Rows |\n"
-        f"| :--- | :--- | :--- | :--- |\n"
-        f"| **C1** | `YearsAtCompany <= TotalWorkingYears` | {consistency['C1']['violation_count']} | None |\n"
-        f"| **C2** | `YearsInCurrentRole <= YearsAtCompany` | {consistency['C2']['violation_count']} | None |\n"
-        f"| **C3** | `YearsSinceLastPromotion <= YearsAtCompany` | {consistency['C3']['violation_count']} | None |\n"
-        f"| **C4** | `YearsWithCurrManager <= YearsAtCompany` | {consistency['C4']['violation_count']} | None |\n"
-        f"| **C5 (Hard)** | `TotalWorkingYears <= Age - 14` | {consistency['C5_hard']['violation_count']} | None |\n"
-        f"| **C5 (Soft)** | `TotalWorkingYears <= Age - 18` (Career start < 18) | {c5_soft_cnt} | None |\n"
-        f"| **C6** | `NumCompaniesWorked == 0` while `TotalWorkingYears > YearsAtCompany` | {consistency['C6']['violation_count']} | 197 rows (saved to CSV) |\n"
-        f"| **C7** | JobRole mapping to > 1 Department | {len(consistency['C7']['multi_department_roles'])} | Strict 1-to-1 hierarchy (11 of 27 populated) |\n"
-        f"| **C8** | MonthlyIncome range overlaps by JobLevel | Overlaps detected | Levels 1-5 display progressive overlapping intervals |\n"
-        f"| **C9** | Coherence of Rate fields vs HourlyRate*8 | Incoherent | Correlation near zero (|rho| < 0.05); ratio varies widely |\n"
-    )
-
-    # Format restricted range
-    restricted_cols = range_df[range_df["is_restricted_range"]]["column"].tolist()
-
-    # Format high collinearity pairs
-    high_pairs = collin["high_correlation_pairs"]
-    high_corr_lines = ["| Feature 1 | Feature 2 | Spearman Rho (|rho| >= 0.7) |", "| :--- | :--- | :--- |"]
-    if not high_pairs.empty:
-        for _, row in high_pairs.iterrows():
-            high_corr_lines.append(f"| `{row['feature_1']}` | `{row['feature_2']}` | {row['spearman_rho']:.4f} |")
-    else:
-        high_corr_lines.append("| None | None | No pairs >= 0.7 |")
-    high_corr_md = "\n".join(high_corr_lines)
-
-    # Top VIFs
-    vif_top = collin["vif_table"].head(5)
-    vif_lines = ["| Feature | R-Squared | VIF | VIF > 5 | VIF > 10 |", "| :--- | :--- | :--- | :--- | :--- |"]
-    for _, row in vif_top.iterrows():
-        vif_lines.append(f"| `{row['feature']}` | {row['r_squared']:.4f} | {row['vif']:.2f} | {row['vif_gt_5']} | {row['vif_gt_10']} |")
-    vif_md = "\n".join(vif_lines)
-
-    # Outliers summary
-    outlier_top = outlier_df[outlier_df["outliers_count_1_5x"] > 0]
-    outlier_lines = ["| Column | 1.5x IQR Outliers | 1.5x Outlier Share | 3.0x Extreme Outliers | Bounds [1.5x Low, High] | Skewness |", "| :--- | :--- | :--- | :--- | :--- | :--- |"]
-    for _, row in outlier_top.iterrows():
-        outlier_lines.append(
-            f"| `{row['column']}` | {int(row['outliers_count_1_5x']):,} | {row['outliers_pct_1_5x']}% | {int(row['outliers_count_3_0x']):,} | [{row['lower_bound_1_5x']:,}, {row['upper_bound_1_5x']:,}] | {row['skewness']} |"
-        )
-    outlier_md = "\n".join(outlier_lines)
-
-    # Zero audit summary
-    zero_top = zero_df[zero_df["zero_count"] > 0].sort_values(by="zero_count", ascending=False)
-    zero_lines = ["| Column | Zero Count | Zero Share | Candidate Review Classification |", "| :--- | :--- | :--- | :--- |"]
-    for _, row in zero_top.iterrows():
-        zero_lines.append(
-            f"| `{row['column']}` | {int(row['zero_count']):,} | {row['zero_pct']}% | {row['candidate_classification']} |"
-        )
-    zero_md = "\n".join(zero_lines)
-
-    report_content = f"""# Phase 1 Data Validation Report: Workforce Attrition Dataset
-
-- **Execution Timestamp (UTC):** {summary_payload['execution_timestamp']}
-- **Dataset File:** `{RAW_DATA_FILENAME}`
-- **SHA-256 Checksum:** `{summary_payload['sha256']}`
-- **Environment:** Python packages `pandas` {summary_payload['environment']['pandas_version']}, `numpy` {summary_payload['environment']['numpy_version']}, `scipy` {summary_payload['environment']['scipy_version']}
-- **Status:** Complete (Deterministic run)
-
-> [!IMPORTANT]
-> {PROVENANCE_DISCLAIMER}
-
----
-
-## 1. Executive Summary & Section 9 Reference Checkpoints
-
-All statistical findings and structural metrics generated by the Phase 1 validation engine were verified against the reference checkpoints. Every value computed programmatically from the raw dataset matched the reference checkpoints with zero discrepancy.
-
-{checkpoints_md_table}
-
----
-
-## 2. Dataset Architecture & Schema Compliance
-
-The dataset was loaded via `workforce_intel.io.load_raw` with explicit UTF-8 and BOM/CRLF handling. No silent type coercion or custom NA replacements were permitted.
-
-{struct_summary_table}
-
-- **Column Contract:** All {n_cols} columns strictly match `EXPECTED_COLUMNS` in exact name and positional order.
-- **Contract Violation Flag:** `False` (0 missing, 0 unexpected).
-
----
-
-## 3. Data Hygiene: Missingness, Sentinels & Duplicates
-
-- **Missing Values (NaN/null):** Exactly **{total_missing_cells}** missing cells out of {n_rows * n_cols:,} total cells (0.0%).
-- **Empty / Whitespace Strings:** 0 detected across all nominal text fields.
-- **Sentinel Tokens:** 0 detected (searched for `'?'`, `'NA'`, `'N/A'`, `'null'`, `'None'`, `'-'`, `-1`, `999`, `9999`).
-- **Full-Row Duplicates:** Exactly **{dup['full_row_duplicates']}** full-row duplicates across all {n_rows:,} records.
-- **Key Subset Duplicates:** {dup['key_subset_duplicates']:,} records share demographic and role attributes (`Age`, `Gender`, `Department`, `JobRole`, `EducationField`, `TotalWorkingYears`, `YearsAtCompany`).
-- **Uniqueness Assessment:** {dup['uniqueness_note']}
-
----
-
-## 4. Target Variable Audit (`Attrition`)
-
-The target variable `Attrition` represents binary workforce departure.
-
-{target_summary_table}
-
-![Target Distribution](figures/target_distribution.png)
-
-> [!NOTE]
-> The target variable demonstrates a moderate class imbalance of ~5.2:1. In later modeling phases, appropriate weighting, stratified folds, or evaluation metrics (PR-AUC, F1, balanced accuracy) must be used.
-
----
-
-## 5. Domain & Temporal Consistency Checks (C1 – C9)
-
-Tenure and career progression variables were audited for chronological and domain coherence:
-
-{consistency_summary_table}
-
-### Key Consistency Findings:
-1. **Strict Internal Tenures (C1–C5):** Zero chronological violations exist across `YearsAtCompany`, `TotalWorkingYears`, `YearsInCurrentRole`, `YearsSinceLastPromotion`, and `YearsWithCurrManager`.
-2. **C6 Definition Ambiguity (197 Records):** Exactly 197 employees have `NumCompaniesWorked == 0` yet `TotalWorkingYears > YearsAtCompany`. Logically, working for 0 previous employers should imply `TotalWorkingYears == YearsAtCompany`. This represents a semantic ambiguity in public HR benchmark datasets (i.e. whether 0 means "zero previous companies" or "did not report / zero prior external companies"). All 197 row indices are logged in `reports/phase1/tables/consistency_c6_contradictions.csv`.
-3. **C7 Department-Role Hierarchy:** There are 27 possible Cartesian pairings (3 Departments x 9 Job Roles). Exactly 11 pairings are populated. Every JobRole belongs strictly to a single Department.
-4. **C8 Compensation Progression:** MonthlyIncome scales upward across JobLevel 1 through 5, but adjacent levels have overlapping salary bands (e.g. high performers at Level 1 earn more than low earners at Level 2).
-5. **C9 Rate Field Disconnect:** DailyRate, HourlyRate, MonthlyRate, and MonthlyIncome have near-zero correlations with one another (|rho| < 0.05). Furthermore, `DailyRate / (HourlyRate * 8)` exhibits high dispersion (min 0.35, max 4.88, median 1.76). These rate fields show signs of synthetic generation and lack standard accounting coherence.
-
----
-
-## 6. Distribution, Outliers & Zero Value Audits
-
-### 6.1 Zero Values
-{zero_md}
-
-### 6.2 Outliers & Skewness (IQR 1.5x and 3.0x)
-In accordance with Rule 0.4 and Section 5.5(i), outliers are reported only. No values have been modified, winsorized, or removed.
-
-{outlier_md}
-
-![Outlier Boxplots](figures/boxplots_outliers.png)
-![Numeric Distributions](figures/numeric_distributions_grid.png)
-
----
-
-## 7. Scale Boundaries & Collinearity Audits
-
-### 7.1 Ordinal Scale Compliance
-- **Out of Bounds Ordinals:** 0 detected. All ordinal columns fall within their documented ranges.
-- **Restricted Range Column:** `PerformanceRating` only contains values `[3, 4]`. Documented scale indicates levels 1 through 4. Levels 1 ("Low") and 2 ("Good") are entirely absent from the dataset.
-
-### 7.2 High Collinearity Pairs (|rho| >= 0.7)
-{high_corr_md}
-
-### 7.3 Variance Inflation Factors (VIF)
-{vif_md}
-
-![Spearman Correlation Heatmap](figures/spearman_heatmap.png)
-
----
-
-## 8. Small Sample Groups (n < 30)
-
-Levels with small sample sizes risk high variance in subgroup analyses:
-- Nominal levels with n < 30: None. (Smallest nominal category is `Human Resources` department with n = 63, and `HR` education field with n = 27).
-- Department x JobRole cross-cells with n < 30:
-  - `Human Resources` x `Human Resources`: n = 52
-  - `Sales` x `Sales Representative`: n = 83
-  - All populated cross-cells have n >= 30 except `Research & Development` has zero small populated cells. (HR department roles have n=52 in HR, but EducationField `Human Resources` has n=27).
-
----
-
-## 9. Conclusion & Artifact Manifest
-
-The dataset is synthetically clean (zero missing values, zero unparseable strings, zero corrupt timestamps), with verified structural integrity matching the 31-column contract. All detected nuances (C6 tenure ambiguity, C9 rate disconnect, PerformanceRating restricted scale) are documented for Phase 2 handling proposals.
-
-- **CSV Tables:** Located in `reports/phase1/tables/`
-- **Figures:** Located in `reports/phase1/figures/`
-- **Machine-Readable Summary:** `reports/phase1/validation_summary.json`
-- **Pipeline Log:** `reports/phase1/run.log`
-"""
-
-    assert_safe_write_path(PHASE1_REPORT_MD)
-    with open(PHASE1_REPORT_MD, "w", encoding="utf-8") as f:
-        f.write(report_content)
 
 
 def generate_data_dictionary(
@@ -765,27 +555,27 @@ def generate_data_dictionary(
     # Conventional assumed meanings
     assumed_meanings = {
         "Age": "Employee chronological age in years",
-        "Attrition": "Workforce departure status (1 = Left organization, 0 = Retained/Stayed) [ASSUMPTION: confirm with dataset provider]",
+        "Attrition": "Workforce departure status (1 = Left organization, voluntariness unknown, 0 = Retained/Stayed) [APPROVED by project owner]",
         "BusinessTravel": "Frequency of work-related travel (Travel_Rarely, Travel_Frequently, Non-Travel)",
-        "DailyRate": "Daily billing or compensation rate (undocumented currency/period)",
+        "DailyRate": "Daily billing or compensation rate (undocumented currency and pay period)",
         "Department": "Business department / division (Sales, Research & Development, Human Resources)",
         "DistanceFromHome": "Distance from residence to workplace (undocumented unit: miles vs km)",
         "Education": "Formal educational level attained (1 'Below College', 2 'College', 3 'Bachelor', 4 'Master', 5 'Doctor') [ASSUMPTION: confirm with dataset provider]",
         "EducationField": "Undergraduate or primary field of study",
         "EnvironmentSatisfaction": "Workplace environment satisfaction (1 'Low', 2 'Medium', 3 'High', 4 'Very High') [ASSUMPTION: confirm with dataset provider]",
         "Gender": "Reported gender (Female, Male)",
-        "HourlyRate": "Hourly billing or labor rate (undocumented currency/period)",
+        "HourlyRate": "Hourly billing or labor rate (undocumented currency and pay period)",
         "JobInvolvement": "Degree of job engagement/involvement (1 'Low', 2 'Medium', 3 'High', 4 'Very High') [ASSUMPTION: confirm with dataset provider]",
         "JobLevel": "Hierarchy seniority level from 1 (Entry) to 5 (Executive) [ASSUMPTION: confirm with dataset provider]",
         "JobRole": "Specific organizational job title / role",
         "JobSatisfaction": "Job satisfaction rating (1 'Low', 2 'Medium', 3 'High', 4 'Very High') [ASSUMPTION: confirm with dataset provider]",
         "MaritalStatus": "Marital status (Single, Married, Divorced)",
-        "MonthlyIncome": "Monthly compensation/salary in undocumented currency",
-        "MonthlyRate": "Monthly billing or overhead rate (undocumented currency/period)",
+        "MonthlyIncome": "Monthly compensation/salary in undocumented currency units",
+        "MonthlyRate": "Monthly billing or overhead rate (undocumented currency and pay period)",
         "NumCompaniesWorked": "Number of companies previously employed at (meaning of 0 is ambiguous: 0 prior employers or unrecorded) [ASSUMPTION: confirm with dataset provider]",
         "OverTime": "Exempt/non-exempt overtime work requirement (Yes, No)",
         "PercentSalaryHike": "Percentage increase in salary received during last annual review",
-        "PerformanceRating": "Last annual performance appraisal rating (3 'Excellent', 4 'Outstanding'; 1 and 2 unobserved) [ASSUMPTION: confirm with dataset provider]",
+        "PerformanceRating": "Last annual performance appraisal rating: 'Excellent (3)' vs 'Outstanding (4)'; levels 1 and 2 unobserved [ASSUMPTION: confirm with dataset provider]",
         "RelationshipSatisfaction": "Workplace relationship satisfaction rating (1 'Low', 2 'Medium', 3 'High', 4 'Very High') [ASSUMPTION: confirm with dataset provider]",
         "StockOptionLevel": "Company stock option incentive grant tier (0 'None', 1, 2, 3) [ASSUMPTION: confirm with dataset provider]",
         "TotalWorkingYears": "Total cumulative career experience in years",
@@ -799,23 +589,23 @@ def generate_data_dictionary(
 
     confidence_map = {
         "Age": "High",
-        "Attrition": "Medium (Assumed 1=Left; needs owner confirmation)",
+        "Attrition": "High (Approved by project owner: 1=Left, voluntariness unknown)",
         "BusinessTravel": "High",
-        "DailyRate": "Low (Questionable interpretability)",
+        "DailyRate": "Low (Questionable interpretability; undocumented currency/period)",
         "Department": "High",
         "DistanceFromHome": "Medium (Unit undocumented)",
         "Education": "Medium (Ordinal scale assumed)",
         "EducationField": "High",
         "EnvironmentSatisfaction": "Medium (Ordinal scale assumed)",
         "Gender": "High",
-        "HourlyRate": "Low (Questionable interpretability)",
+        "HourlyRate": "Low (Questionable interpretability; undocumented currency/period)",
         "JobInvolvement": "Medium (Ordinal scale assumed)",
         "JobLevel": "High",
         "JobRole": "High",
         "JobSatisfaction": "Medium (Ordinal scale assumed)",
         "MaritalStatus": "High",
-        "MonthlyIncome": "High",
-        "MonthlyRate": "Low (Questionable interpretability)",
+        "MonthlyIncome": "High (Undocumented currency)",
+        "MonthlyRate": "Low (Questionable interpretability; undocumented currency/period)",
         "NumCompaniesWorked": "Medium (Ambiguity at 0)",
         "OverTime": "High",
         "PercentSalaryHike": "High",
@@ -858,6 +648,10 @@ def generate_data_dictionary(
 
     dict_md = "\n".join(table_rows)
 
+    c9_ratio_min = consistency["C9"]["daily_to_8hr_ratio_min"]
+    c9_ratio_median = consistency["C9"]["daily_to_8hr_ratio_median"]
+    c9_ratio_max = consistency["C9"]["daily_to_8hr_ratio_max"]
+
     content = f"""# Workforce Intelligence: Data Dictionary
 
 **Project:** Workforce Attrition Patterns and Risk Hotspot Analysis  
@@ -866,7 +660,7 @@ def generate_data_dictionary(
 
 > [!IMPORTANT]
 > {PROVENANCE_DISCLAIMER}  
-> Ordinal label meanings and target encodings are NOT explicitly defined inside the raw CSV file. The semantic descriptions below reflect conventional interpretations from public HR benchmark datasets. Every assumed scale is tagged: **"ASSUMPTION: confirm with dataset provider"**.
+> Ordinal label meanings and target encodings are NOT explicitly defined inside the raw CSV file. The semantic descriptions below reflect conventional interpretations from public HR benchmark datasets. Every assumed scale is tagged: **"ASSUMPTION: confirm with dataset provider"**. Currency symbols are omitted as currency denominations and pay periods are undocumented.
 
 ---
 
@@ -879,10 +673,10 @@ def generate_data_dictionary(
 ## 2. Undocumented Field Nuances & Assumptions Requiring Confirmation
 
 The following elements lack explicit technical metadata in the source file:
-1. **Target Variable (`Attrition`):** Assumed coding is `1 = Left / Resigned` and `0 = Retained / Stayed`. Awaiting definitive confirmation from project owner.
+1. **Target Variable (`Attrition`):** Confirmed coding is `1 = Left / Resigned (voluntariness unknown)` and `0 = Retained / Stayed`. [APPROVED by project owner].
 2. **Measurement Window:** The duration or observation window over which attrition events were recorded (e.g. past 12 months, annual fiscal cycle) is undocumented.
 3. **Distance Unit (`DistanceFromHome`):** The numerical metric (1 to 29) does not specify units (miles vs kilometers).
-4. **Compensation Currency & Periods (`MonthlyIncome`, `DailyRate`, `HourlyRate`, `MonthlyRate`):** Currency denomination is unstated (assumed USD).
+4. **Compensation Currency & Periods (`MonthlyIncome`, `DailyRate`, `HourlyRate`, `MonthlyRate`):** Currency denomination is unstated; pay periods are unstated.
 5. **Zero Interpretations:**
    - `NumCompaniesWorked = 0`: 197 individuals have `NumCompaniesWorked = 0` yet `TotalWorkingYears > YearsAtCompany`. Unclear whether 0 represents "zero prior companies" or "unreported prior experience".
    - `YearsSinceLastPromotion = 0`: 581 individuals report 0 years, interpreted as promotion within the current calendar year.
@@ -899,7 +693,7 @@ The correlation audit (C9) examined the four compensation rate metrics:
   - Spearman correlation between `DailyRate` and `MonthlyIncome` is **0.0076** (uncorrelated).
   - Spearman correlation between `HourlyRate` and `MonthlyIncome` is **-0.0177** (uncorrelated).
   - Spearman correlation between `MonthlyRate` and `MonthlyIncome` is **0.0347** (uncorrelated).
-  - The ratio `DailyRate / (HourlyRate * 8)` fluctuates between **0.35** and **4.88** (median 1.76).
+  - Over all 1,470 rows without trimming, the ratio `DailyRate / (HourlyRate * 8)` fluctuates between **{c9_ratio_min:.2f}** and **{c9_ratio_max:.2f}** (median {c9_ratio_median:.2f}).
 - **Recommendation for Phase 2+:** Treat `DailyRate`, `HourlyRate`, and `MonthlyRate` with extreme caution. `MonthlyIncome` exhibits strong, logical hierarchy scaling with `JobLevel` (rho = 0.9204) and is the primary trustworthy compensation signal.
 """
 
@@ -909,87 +703,135 @@ The correlation audit (C9) examined the four compensation rate metrics:
 
 
 def generate_decision_log(
+    df: pd.DataFrame,
+    target: Dict[str, Any],
     consistency: Dict[str, Any],
     range_df: pd.DataFrame,
     collin: Dict[str, Any],
     outlier_df: pd.DataFrame,
     group_sz: Dict[str, Any],
+    missing_df: pd.DataFrame,
 ) -> None:
-    """Generate docs/decision_log.md strictly matching Section 5.8 (PROPOSED only)."""
+    """Generate docs/decision_log.md strictly matching Section 5.8."""
     DOCS_DIR.mkdir(parents=True, exist_ok=True)
+
+    count_0 = int(target["count_attrition_0"])
+    count_1 = int(target["count_attrition_1"])
+
+    c6_count = int(consistency["C6"]["violation_count"])
+
+    perf_vc = df["PerformanceRating"].value_counts().to_dict()
+    count_3 = int(perf_vc.get(3, 0))
+    count_4 = int(perf_vc.get(4, 0))
+    perf_levels = sorted(df["PerformanceRating"].unique().tolist())
+    levels_str = " and ".join(str(lvl) for lvl in perf_levels)
+
+    c9_mat = consistency["C9"]["spearman_matrix"]
+    rate_cols = [c for c in ["DailyRate", "HourlyRate", "MonthlyRate", "MonthlyIncome"] if c in c9_mat.columns]
+    off_diag = [
+        abs(float(c9_mat.loc[rate_cols[i], rate_cols[j]]))
+        for i in range(len(rate_cols))
+        for j in range(i + 1, len(rate_cols))
+    ]
+    max_abs_rate_corr = max(off_diag) if off_diag else 0.0
+
+    spearman_mat = collin["spearman_matrix"]
+    rho_income_level = float(spearman_mat.loc["MonthlyIncome", "JobLevel"])
+    rho_role_company = float(spearman_mat.loc["YearsAtCompany", "YearsInCurrentRole"])
+    rho_mgr_company = float(spearman_mat.loc["YearsAtCompany", "YearsWithCurrManager"])
+    zero_company_years = int((df["YearsAtCompany"] == 0).sum())
+
+    income_row = outlier_df[outlier_df["column"] == "MonthlyIncome"].iloc[0]
+    income_outliers_count = int(income_row["outliers_count_1_5x"])
+    income_outlier_threshold = float(income_row["upper_bound_1_5x"])
+
+    hr_edu_count = int((df["EducationField"] == "Human Resources").sum())
+
+    sentinel_rows = df[df["DailyRate"] == 999].index.tolist()
+    sentinel_row_idx = int(sentinel_rows[0]) if sentinel_rows else "N/A"
+    sentinel_val = 999
 
     decisions = [
         {
             "id": "DL-01",
             "issue": "Attrition Target Coding Confirmation",
-            "evidence": "Attrition values are binary {0, 1} (count 0: 1,233; count 1: 237). Table: reports/phase1/tables/target_audit.csv",
-            "proposed_handling": "Confirm that 1 represents employee turnover/departure and 0 represents retention.",
-            "alternatives": "Reverse encoding (if 0 = left); retain as numeric binary 0/1 without string conversion.",
-            "status": "PROPOSED, awaiting owner approval",
-            "phase": "Phase 2 (Data Cleaning & Preparation)",
+            "evidence": f"Attrition values are binary {{0, 1}} (count 0: {count_0:,}; count 1: {count_1:,}). Table: reports/phase1/tables/target_audit.csv",
+            "proposed_handling": "Confirmed: 1 = left (voluntariness unknown), 0 = stayed. Retain as numeric binary 0/1 without conversion.",
+            "alternatives": "Reverse encoding; string labeling ('Stayed'/'Left').",
+            "status": "APPROVED",
+            "phase": "Phase 1 / Phase 2",
         },
         {
             "id": "DL-02",
             "issue": "NumCompaniesWorked == 0 Contradiction (C6)",
-            "evidence": "197 employees report NumCompaniesWorked=0 but have TotalWorkingYears > YearsAtCompany. Table: reports/phase1/tables/consistency_c6_contradictions.csv",
-            "proposed_handling": "Impute NumCompaniesWorked = 1 for employees who have prior experience, or define NumCompaniesWorked as 'prior outside companies'.",
-            "alternatives": "Leave untouched with an explicit data caveat; create a boolean indicator flag `has_prior_company_experience`.",
-            "status": "PROPOSED, awaiting owner approval",
+            "evidence": f"{c6_count} employees report NumCompaniesWorked=0 but have TotalWorkingYears > YearsAtCompany. Table: reports/phase1/tables/consistency_c6_contradictions.csv",
+            "proposed_handling": "keep NumCompaniesWorked unchanged and flagged ambiguous; derive PriorExperienceYears = TotalWorkingYears - YearsAtCompany in Phase 2",
+            "alternatives": "Impute NumCompaniesWorked = 1; leave without derived feature.",
+            "status": "APPROVED",
             "phase": "Phase 2 (Feature Engineering / Cleaning)",
         },
         {
             "id": "DL-03",
             "issue": "PerformanceRating Restricted Scale",
-            "evidence": "PerformanceRating only exhibits values 3 and 4 (count 3: 1,244; count 4: 226). Documented scale is 1 to 4. Table: reports/phase1/tables/range_and_scale_audit.csv",
-            "proposed_handling": "Treat PerformanceRating as binary indicator (3='Excellent', 4='Outstanding') and document that underperforming employees (1-2) are unobserved.",
+            "evidence": f"PerformanceRating only exhibits values {levels_str} (count 3: {count_3:,}; count 4: {count_4:,}). Documented scale is 1 to 4. Table: reports/phase1/tables/range_and_scale_audit.csv",
+            "proposed_handling": "Treat PerformanceRating as binary indicator: 'Excellent (3)' vs 'Outstanding (4)' and document that underperforming employees (1-2) are unobserved.",
             "alternatives": "Re-scale to 0/1 indicator; preserve original integers 3/4.",
-            "status": "PROPOSED, awaiting owner approval",
+            "status": "APPROVED",
             "phase": "Phase 2 (Cleaning & Documentation)",
         },
         {
             "id": "DL-04",
             "issue": "Rate Fields Questionable Interpretability (C9)",
-            "evidence": "DailyRate, HourlyRate, MonthlyRate show near-zero correlation with each other and with MonthlyIncome (|rho| < 0.05). Table: reports/phase1/tables/rate_coherence_spearman.csv",
+            "evidence": f"DailyRate, HourlyRate, MonthlyRate show near-zero correlation with each other and with MonthlyIncome (max abs(rho) = {max_abs_rate_corr:.4f}). Table: reports/phase1/tables/rate_coherence_spearman.csv",
             "proposed_handling": "Exclude DailyRate, HourlyRate, and MonthlyRate from primary attrition drivers and focus on MonthlyIncome.",
             "alternatives": "Retain in exploratory models; normalize rates against benchmark distributions.",
-            "status": "PROPOSED, awaiting owner approval",
+            "status": "APPROVED",
             "phase": "Phase 2 / Phase 3 (Feature Selection & Modeling)",
         },
         {
             "id": "DL-05",
             "issue": "High Collinearity between MonthlyIncome and JobLevel",
-            "evidence": "Spearman correlation between MonthlyIncome and JobLevel is rho = 0.9204. Table: reports/phase1/tables/high_correlation_pairs.csv",
+            "evidence": f"Spearman correlation between MonthlyIncome and JobLevel is rho = {rho_income_level:.4f}. Table: reports/phase1/tables/high_correlation_pairs.csv",
             "proposed_handling": "In multivariable regression / linear models, avoid including both directly without regularization or use residual income / job-level relative income.",
             "alternatives": "Tree-based models (Random Forest, XGBoost) tolerate collinearity; use JobLevel as categorical stratification.",
-            "status": "PROPOSED, awaiting owner approval",
+            "status": "PROPOSED",
             "phase": "Phase 3 (Statistical Modeling)",
         },
         {
             "id": "DL-06",
             "issue": "High Tenure Collinearities (YearsAtCompany, YearsInCurrentRole, YearsWithCurrManager)",
-            "evidence": "YearsAtCompany correlates strongly with YearsInCurrentRole (rho = 0.84) and YearsWithCurrManager (rho = 0.81). Table: reports/phase1/tables/high_correlation_pairs.csv",
-            "proposed_handling": "Engineer ratio features in Phase 2 (e.g. `YearsInCurrentRole / YearsAtCompany`, `YearsSinceLastPromotion / YearsInCurrentRole`).",
+            "evidence": f"YearsAtCompany correlates strongly with YearsInCurrentRole (rho = {rho_role_company:.3f}) and YearsWithCurrManager (rho = {rho_mgr_company:.3f}). {zero_company_years} employees report YearsAtCompany = 0. Table: reports/phase1/tables/high_correlation_pairs.csv",
+            "proposed_handling": "Engineer ratio features in Phase 2 (e.g. `YearsInCurrentRole / YearsAtCompany`, `YearsSinceLastPromotion / YearsInCurrentRole`). Ratio features such as YearsInCurrentRole / YearsAtCompany are undefined when YearsAtCompany = 0; the zero-denominator rule will be defined in Phase 2.",
             "alternatives": "Select only TotalWorkingYears and YearsAtCompany as tenure representatives.",
-            "status": "PROPOSED, awaiting owner approval",
+            "status": "PROPOSED",
             "phase": "Phase 2 (Feature Engineering)",
         },
         {
             "id": "DL-07",
-            "issue": "MonthlyIncome Right-Skewed Outliers (114 records)",
-            "evidence": "114 records exceed 1.5x IQR upper threshold ($16,581). Table: reports/phase1/tables/outlier_audit.csv",
+            "issue": f"MonthlyIncome Right-Skewed Outliers ({income_outliers_count} records)",
+            "evidence": f"{income_outliers_count} records exceed 1.5x IQR upper threshold ({income_outlier_threshold:,.0f} income units). Table: reports/phase1/tables/outlier_audit.csv",
             "proposed_handling": "Do not delete or cap records in Phase 1 or 2; executive roles naturally command high compensation. Apply log transformation `log(MonthlyIncome)` if fitting linear models.",
             "alternatives": "Winsorize at 99th percentile; segment analysis by JobLevel.",
-            "status": "PROPOSED, awaiting owner approval",
+            "status": "APPROVED",
             "phase": "Phase 2 / Phase 3 (Modeling & Transformation)",
         },
         {
             "id": "DL-08",
-            "issue": "Small Sample Size in EducationField 'Human Resources' (n = 27)",
-            "evidence": "EducationField 'Human Resources' has only 27 individuals (n < 30). Table: reports/phase1/tables/small_sample_nominal_levels.csv",
+            "issue": f"Small Sample Size in EducationField 'Human Resources' (n = {hr_edu_count})",
+            "evidence": f"EducationField 'Human Resources' has only {hr_edu_count} individuals (n < {SMALL_SAMPLE_THRESHOLD}). Table: reports/phase1/tables/small_sample_nominal_levels.csv",
             "proposed_handling": "Flag estimates for EducationField='Human Resources' with wider confidence intervals; do not draw definitive standalone subgroup conclusions.",
             "alternatives": "Combine 'Human Resources' and 'Other' into a composite category in segment analysis.",
-            "status": "PROPOSED, awaiting owner approval",
+            "status": "APPROVED",
             "phase": "Phase 2 / Phase 3 (Subgroup Analytics)",
+        },
+        {
+            "id": "DL-09",
+            "issue": f"DailyRate Potential Numeric Sentinel (Value {sentinel_val} at Row {sentinel_row_idx})",
+            "evidence": f"Row {sentinel_row_idx} reports DailyRate = {sentinel_val}, matching the common sentinel check token list. Table: reports/phase1/tables/missing_and_sentinels.csv",
+            "proposed_handling": "Retain value as valid compensation rate since 999 falls naturally within observed continuous range [102, 1499] and all other employee fields are complete and valid.",
+            "alternatives": "Impute with median DailyRate if confirmed as a synthetic missing value flag.",
+            "status": "APPROVED",
+            "phase": "Phase 1 / Phase 2",
         },
     ]
 
@@ -1006,11 +848,11 @@ def generate_decision_log(
 
 **Project:** Workforce Attrition Patterns and Risk Hotspot Analysis  
 **Phase:** Phase 1 – Data Inspection & Validation  
-**Rule Adherence:** No data transformations, removals, or cleanings have been executed in Phase 1. All items below are PROPOSED and awaiting owner confirmation.
+**Rule Adherence:** No data transformations, removals, or cleanings have been executed in Phase 1. All proposed items remain unexecuted until Phase 2.
 
 ---
 
-## Log of Detected Issues and Proposed Handlings
+## Log of Detected Issues and Decisions
 
 {chr(10).join(rows)}
 """

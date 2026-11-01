@@ -1,6 +1,6 @@
 # Phase 1 Data Validation Report: Workforce Attrition Dataset
 
-- **Execution Timestamp (UTC):** 2026-11-01T16:37:31.859349+00:00
+- **Execution Timestamp (UTC):** 2026-11-01T18:09:15.592646+00:00
 - **Dataset File:** `Palo Alto Networks.csv`
 - **SHA-256 Checksum:** `389735e8909136a51fe487040df8f8662c2d222bb3505a83745c5a8c5bf20c7c`
 - **Environment:** Python packages `pandas` 3.0.3, `numpy` 2.4.4, `scipy` 1.17.1
@@ -52,7 +52,7 @@ The dataset was loaded via `workforce_intel.io.load_raw` with explicit UTF-8 and
 | **Column Ordering Match** | Passed (Exact match) |
 | **Text Columns Count** | 7 |
 | **Numeric Columns Count** | 24 |
-| **Memory Usage** | 0.45 MB (471,384 bytes) |
+| **Memory Usage** | 0.85 MB (893,274 bytes) |
 
 
 - **Column Contract:** All 31 columns strictly match `EXPECTED_COLUMNS` in exact name and positional order.
@@ -64,7 +64,7 @@ The dataset was loaded via `workforce_intel.io.load_raw` with explicit UTF-8 and
 
 - **Missing Values (NaN/null):** Exactly **0** missing cells out of 45,570 total cells (0.0%).
 - **Empty / Whitespace Strings:** 0 detected across all nominal text fields.
-- **Sentinel Tokens:** Searched for `'?'`, `'NA'`, `'N/A'`, `'null'`, `'None'`, `'-'`, `-1`, `999`, `9999`. Exactly 1 occurrence of token `999` detected at row 977 in `DailyRate`. Since `DailyRate` spans [102, 1499] continuously and the employee's other attributes are intact, this is classified as a valid continuous value rather than missingness.
+- **Sentinel Tokens:** Searched for `'?'`, `'NA'`, `'N/A'`, `'null'`, `'None'`, `'-'`, `-1`, `999`, `9999`. 1 detected in `DailyRate` (1 token(s)).
 - **Full-Row Duplicates:** Exactly **0** full-row duplicates across all 1,470 records.
 - **Key Subset Duplicates:** 35 records share demographic and role attributes (`Age`, `Gender`, `Department`, `JobRole`, `EducationField`, `TotalWorkingYears`, `YearsAtCompany`).
 - **Uniqueness Assessment:** NOTICE: The dataset lacks a unique employee identifier (e.g. EmployeeID). Uniqueness of distinct individuals cannot be definitively confirmed from data alone.
@@ -97,7 +97,7 @@ The target variable `Attrition` represents binary workforce departure.
 
 Tenure and career progression variables were audited for chronological and domain coherence:
 
-| Rule ID | Rule Specification | Violations Count | Offending Rows |
+| Rule ID | Rule Specification | Violations Count | Offending Rows / Findings |
 | :--- | :--- | :--- | :--- |
 | **C1** | `YearsAtCompany <= TotalWorkingYears` | 0 | None |
 | **C2** | `YearsInCurrentRole <= YearsAtCompany` | 0 | None |
@@ -106,17 +106,17 @@ Tenure and career progression variables were audited for chronological and domai
 | **C5 (Hard)** | `TotalWorkingYears <= Age - 14` | 0 | None |
 | **C5 (Soft)** | `TotalWorkingYears <= Age - 18` (Career start < 18) | 0 | None |
 | **C6** | `NumCompaniesWorked == 0` while `TotalWorkingYears > YearsAtCompany` | 197 | 197 rows (saved to CSV) |
-| **C7** | JobRole mapping to > 1 Department | 1 | Strict 1-to-1 hierarchy (11 of 27 populated) |
-| **C8** | MonthlyIncome range overlaps by JobLevel | Overlaps detected | Levels 1-5 display progressive overlapping intervals |
-| **C9** | Coherence of Rate fields vs HourlyRate*8 | Incoherent | Correlation near zero (|rho| < 0.05); ratio varies widely |
+| **C7** | JobRole mapping to > 1 Department | 1 | 1 multi-department role(s) flagged: `Manager` (3 depts) (11 of 27 cells populated) |
+| **C8** | MonthlyIncome range overlaps by JobLevel | Overlaps audited | JobLevel compensation progression evaluated |
+| **C9** | Coherence of Rate fields vs HourlyRate*8 | Ratio computed | Ratio min 0.15, max 6.21, median 1.50 |
 
 
 ### Key Consistency Findings:
-1. **Strict Internal Tenures (C1–C5):** Zero chronological violations exist across `YearsAtCompany`, `TotalWorkingYears`, `YearsInCurrentRole`, `YearsSinceLastPromotion`, and `YearsWithCurrManager`.
-2. **C6 Definition Ambiguity (197 Records):** Exactly 197 employees have `NumCompaniesWorked == 0` yet `TotalWorkingYears > YearsAtCompany`. Logically, working for 0 previous employers should imply `TotalWorkingYears == YearsAtCompany`. This represents a semantic ambiguity in public HR benchmark datasets (i.e. whether 0 means "zero previous companies" or "did not report / zero prior external companies"). All 197 row indices are logged in `reports/phase1/tables/consistency_c6_contradictions.csv`.
-3. **C7 Department-Role Hierarchy:** There are 27 possible Cartesian pairings (3 Departments x 9 Job Roles). Exactly 11 pairings are populated. Every JobRole belongs strictly to a single Department.
-4. **C8 Compensation Progression:** MonthlyIncome scales upward across JobLevel 1 through 5, but adjacent levels have overlapping salary bands (e.g. high performers at Level 1 earn more than low earners at Level 2).
-5. **C9 Rate Field Disconnect:** DailyRate, HourlyRate, MonthlyRate, and MonthlyIncome have near-zero correlations with one another (|rho| < 0.05). Furthermore, `DailyRate / (HourlyRate * 8)` exhibits high dispersion (min 0.35, max 4.88, median 1.76). These rate fields show signs of synthetic generation and lack standard accounting coherence.
+1. **Strict Internal Tenures (C1–C5):** Chronological violations count: C1 (0), C2 (0), C3 (0), C4 (0), C5 hard (0), C5 soft (0).
+2. **C6 Definition Ambiguity (197 Records):** Exactly 197 employees have `NumCompaniesWorked == 0` yet `TotalWorkingYears > YearsAtCompany`. Logically, working for 0 previous employers should imply `TotalWorkingYears == YearsAtCompany`. All 197 row indices are logged in reports/phase1/tables/consistency_c6_contradictions.csv.
+3. **C7 Department-Role Hierarchy:** There are 27 possible Cartesian pairings (3 Departments x 9 Job Roles), with exactly 11 pairings populated. Rather than a strict 1-to-1 hierarchy across all roles, JobRole **`Manager`** spans 3 departments: Human Resources (11), Research & Development (54), Sales (37). All remaining 8 JobRoles are uniquely confined to a single department (see `reports/phase1/tables/multi_department_roles.csv`).
+4. **C8 Compensation Progression:** MonthlyIncome scales upward across JobLevel, with overlapping salary bands between adjacent levels.
+5. **C9 Rate Field Disconnect:** DailyRate, HourlyRate, MonthlyRate, and MonthlyIncome have near-zero correlations with one another (max abs(rho) = 0.0543). Furthermore, over all 1,470 rows without trimming, the ratio `DailyRate / (HourlyRate * 8)` exhibits high dispersion (min 0.15, max 6.21, median 1.50). These rate fields show signs of synthetic generation and lack standard accounting coherence.
 
 ---
 
@@ -135,7 +135,7 @@ Tenure and career progression variables were audited for chronological and domai
 | `TotalWorkingYears` | 11 | 0.75% | legitimate zero (entry level / first professional year) |
 
 ### 6.2 Outliers & Skewness (IQR 1.5x and 3.0x)
-In accordance with Rule 0.4 and Section 5.5(i), outliers are reported only. No values have been modified, winsorized, or removed.
+In accordance with Rule 0.4 and Section 5.5(i), outliers are reported only. No values have been modified, winsorized, or removed. Currency symbols are omitted as units and currencies are undocumented.
 
 | Column | 1.5x IQR Outliers | 1.5x Outlier Share | 3.0x Extreme Outliers | Bounds [1.5x Low, High] | Skewness |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -159,10 +159,10 @@ In accordance with Rule 0.4 and Section 5.5(i), outliers are reported only. No v
 
 ### 7.1 Ordinal Scale Compliance
 - **Out of Bounds Ordinals:** 0 detected. All ordinal columns fall within their documented ranges.
-- **Restricted Range Column:** `PerformanceRating` only contains values `[3, 4]`. Documented scale indicates levels 1 through 4. Levels 1 ("Low") and 2 ("Good") are entirely absent from the dataset.
+- **Restricted Range Column(s):** `PerformanceRating` only exhibits levels [3, 4] (documented scale [1.0 .. 4.0]).
 
-### 7.2 High Collinearity Pairs (|rho| >= 0.7)
-| Feature 1 | Feature 2 | Spearman Rho (|rho| >= 0.7) |
+### 7.2 High Collinearity Pairs (abs(rho) >= 0.7)
+| Feature 1 | Feature 2 | Spearman Rho (abs(rho) >= 0.7) |
 | :--- | :--- | :--- |
 | `JobLevel` | `MonthlyIncome` | 0.9204 |
 | `YearsAtCompany` | `YearsInCurrentRole` | 0.8540 |
@@ -187,21 +187,18 @@ In accordance with Rule 0.4 and Section 5.5(i), outliers are reported only. No v
 ## 8. Small Sample Groups (n < 30)
 
 Levels with small sample sizes risk high variance in subgroup analyses:
-- Nominal levels with n < 30: None. (Smallest nominal category is `Human Resources` department with n = 63, and `HR` education field with n = 27).
-- Department x JobRole cross-cells with n < 30:
-  - `Human Resources` x `Human Resources`: n = 52
-  - `Sales` x `Sales Representative`: n = 83
-  - All populated cross-cells have n >= 30 except `Research & Development` has zero small populated cells. (HR department roles have n=52 in HR, but EducationField `Human Resources` has n=27).
+- Nominal levels with n < 30: `EducationField`='Human Resources' (n = 27).
+- Department x JobRole cross-cells with n < 30: `Human Resources` x `Manager` (n = 11).
 
 ---
 
 ## 9. Conclusion & Artifact Manifest
 
-The dataset is synthetically clean (zero missing values, zero unparseable strings, zero corrupt timestamps), with verified structural integrity matching the 31-column contract. All detected nuances (C6 tenure ambiguity, C9 rate disconnect, PerformanceRating restricted scale) are documented for Phase 2 handling proposals.
+The dataset is synthetically clean (zero missing values, zero unparseable strings, zero corrupt timestamps), with verified structural integrity matching the 31-column contract.
 
 - **Inspection Notebook Verification:** The thin inspection notebook (`notebooks/01_data_inspection.ipynb`) was verified via execution in a dedicated `.venv` using the `workforce-intel` kernel. It executed all 14 cells with complete outputs and 0 errors, saved at `reports/phase1/01_data_inspection.executed.ipynb`.
-- **Test Suite Verification:** All 21 unit and data contract tests pass with 100% compliance (`python -m pytest -q`).
-- **CSV Tables:** Located in `reports/phase1/tables/` (17 tabular outputs)
+- **Test Suite Verification:** All automated unit, contract, and provenance tests pass with 100% compliance (`python -m pytest -q`).
+- **CSV Tables:** Located in `reports/phase1/tables/`
 - **Figures:** Located in `reports/phase1/figures/`
 - **Machine-Readable Summary:** `reports/phase1/validation_summary.json`
 - **Pipeline Log:** `reports/phase1/run.log`

@@ -208,6 +208,22 @@ def test_consistency_check_c6_contradiction():
     assert results["C6"]["offending_indices"] == [0]
 
 
+def test_consistency_check_c7_multi_department_role():
+    """Verify C7 detects JobRoles spanning more than one Department."""
+    df = pd.DataFrame(
+        {
+            "Department": ["Sales", "Research & Development", "Sales"],
+            "JobRole": ["Manager", "Manager", "Sales Executive"],
+        }
+    )
+    results = consistency_checks(df)
+    assert "Manager" in results["C7"]["multi_department_roles"]
+    assert results["C7"]["multi_department_roles"]["Manager"] == 2
+    assert "Sales Executive" not in results["C7"]["multi_department_roles"]
+    assert results["C7"]["populated_cells"] == 3
+
+
+
 def test_zero_audit():
     df = pd.DataFrame(
         {
@@ -274,3 +290,221 @@ def test_constant_column_check():
     assert rep.loc["near_constant", "is_near_constant"]
     assert not rep.loc["normal_col", "is_constant"]
     assert not rep.loc["normal_col", "is_near_constant"]
+
+
+
+def test_report_provenance_synthetic_dataset():
+    """Verify that build_report formats purely from computed data and has no hardcoded values."""
+    from workforce_intel.validation import build_report
+
+    # Create synthetic dataset with exactly 60 rows
+    n = 60
+    # 15 left (1), 45 stayed (0)
+    attrition = [1] * 15 + [0] * 45
+    # Two synthetic departments
+    depts = ["Engineering"] * 40 + ["Marketing"] * 20
+    roles = ["Software Engineer"] * 30 + ["Lead Engineer"] * 10 + ["Marketing Specialist"] * 20
+
+    df_synth = pd.DataFrame(
+        {
+            "Age": [32] * n,
+            "Attrition": attrition,
+            "BusinessTravel": ["Non-Travel"] * n,
+            "DailyRate": [700] * n,
+            "Department": depts,
+            "DistanceFromHome": [5] * n,
+            "Education": [3] * n,
+            "EducationField": ["Technical"] * n,
+            "EnvironmentSatisfaction": [3] * n,
+            "Gender": ["Female"] * n,
+            "HourlyRate": [70] * n,
+            "JobInvolvement": [3] * n,
+            "JobLevel": [2] * n,
+            "JobRole": roles,
+            "JobSatisfaction": [3] * n,
+            "MaritalStatus": ["Married"] * n,
+            "MonthlyIncome": [5500] * n,
+            "MonthlyRate": [12000] * n,
+            "NumCompaniesWorked": [1] * n,
+            "OverTime": ["No"] * n,
+            "PercentSalaryHike": [14] * n,
+            "PerformanceRating": [3] * n,
+            "RelationshipSatisfaction": [3] * n,
+            "StockOptionLevel": [1] * n,
+            "TotalWorkingYears": [8] * n,
+            "TrainingTimesLastYear": [2] * n,
+            "WorkLifeBalance": [3] * n,
+            "YearsAtCompany": [4] * n,
+            "YearsInCurrentRole": [2] * n,
+            "YearsSinceLastPromotion": [1] * n,
+            "YearsWithCurrManager": [2] * n,
+        }
+    )
+
+    # Compute all audits on synthetic data
+    cols = list(df_synth.columns)
+    struct = structure_report(df_synth, expected_columns=cols)
+    missing_df = missing_report(df_synth)
+    dup = duplicate_report(df_synth)
+    cat_df = categorical_audit(df_synth)
+    range_df = range_audit(df_synth)
+    target = target_audit(df_synth)
+    consistency = consistency_checks(df_synth)
+    zero_df = zero_audit(df_synth)
+    outlier_df = outlier_report(df_synth)
+    collin = collinearity_report(df_synth)
+    group_sz = group_size_report(df_synth)
+    const_df = constant_column_check(df_synth)
+
+    summary_payload = {
+        "dataset_file": "synthetic_dataset.csv",
+        "sha256": "abcdef1234567890",
+        "execution_timestamp": "2026-11-01T00:00:00Z",
+        "environment": {"pandas_version": "test", "numpy_version": "test", "scipy_version": "test"},
+    }
+
+    report = build_report(
+        summary_payload=summary_payload,
+        struct=struct,
+        missing_df=missing_df,
+        dup=dup,
+        cat_df=cat_df,
+        range_df=range_df,
+        target=target,
+        consistency=consistency,
+        zero_df=zero_df,
+        outlier_df=outlier_df,
+        collin=collin,
+        group_sz=group_sz,
+        const_df=const_df,
+        checkpoints_summary=None,
+    )
+
+    # Assert synthetic computed values appear
+    assert "60" in report, "Synthetic total rows 60 must appear in report"
+    assert "15" in report, "Synthetic class 1 count 15 must appear in report"
+    assert "45" in report, "Synthetic class 0 count 45 must appear in report"
+    assert "25.0%" in report, "Synthetic attrition rate 25.0% must appear in report"
+
+    # Assert real-dataset statistics do NOT incorrectly appear in synthetic report
+    forbidden_real_data_strings = [
+        "1,470", "1470", "237", "1,233", "1233",
+        "197", "581", "114", "16581", "16,581", "11 of 27"
+    ]
+    for forbidden in forbidden_real_data_strings:
+        assert forbidden not in report, (
+            f"Hardcoded real-data statistic '{forbidden}' was found in synthetic report!"
+        )
+
+
+def test_all_markdown_tables_column_consistency():
+    """Parse every markdown table in docs/*.md and reports/phase1/*.md.
+    
+    Assert that every row in each table has the exact same number of cells as its header.
+    Catches table breaking bugs such as unescaped pipes (|rho|).
+    """
+    from pathlib import Path
+
+    md_files = list(Path("docs").glob("*.md")) + list(Path("reports/phase1").glob("*.md"))
+    assert len(md_files) > 0, "No markdown files found to validate"
+
+    errors = []
+    for md_file in md_files:
+        lines = md_file.read_text(encoding="utf-8").splitlines()
+        in_table = False
+        header_cols = 0
+
+        for line_num, line in enumerate(lines, start=1):
+            stripped = line.strip()
+            if stripped.startswith("|") and stripped.endswith("|") and len(stripped) > 1:
+                cells = [c.strip() for c in stripped[1:-1].split("|")]
+                if not in_table:
+                    if line_num < len(lines):
+                        next_line = lines[line_num].strip()
+                        if (
+                            next_line.startswith("|")
+                            and next_line.endswith("|")
+                            and set(next_line.replace("|", "").replace(":", "").replace("-", "").strip()) == set()
+                        ):
+                            in_table = True
+                            header_cols = len(cells)
+                            continue
+                else:
+                    if set(stripped.replace("|", "").replace(":", "").replace("-", "").strip()) == set():
+                        if len(cells) != header_cols:
+                            errors.append(f"{md_file}:{line_num} Delimiter cell count {len(cells)} != header {header_cols}")
+                        continue
+                    if len(cells) != header_cols:
+                        errors.append(f"{md_file}:{line_num} Row cell count {len(cells)} != header {header_cols}: '{stripped}'")
+            else:
+                in_table = False
+                header_cols = 0
+
+    assert not errors, "Markdown table column inconsistencies found:\n" + "\n".join(errors)
+
+
+def test_documentation_evidence_matches_validation_summary():
+    """Verify that every count, metric, status, and evidence in docs/ traces to validation outputs."""
+    import json
+    import re
+    from pathlib import Path
+
+    summary_file = Path("reports/phase1/validation_summary.json")
+    if not summary_file.exists():
+        pytest.skip("validation_summary.json not yet generated")
+
+    with open(summary_file, "r", encoding="utf-8") as f:
+        summary = json.load(f)
+
+    # Verify target metrics
+    t_metrics = summary["target_metrics"]
+    assert t_metrics["total_records"] == 1470
+    assert t_metrics["count_attrition_1"] == 237
+    assert t_metrics["count_attrition_0"] == 1233
+    assert t_metrics["rate_attrition_1_pct"] == 16.12
+    assert t_metrics["rate_attrition_0_pct"] == 83.88
+
+    # Verify decision log evidence and statuses
+    decision_log_path = Path("docs/decision_log.md")
+    assert decision_log_path.exists(), "docs/decision_log.md must exist"
+    content = decision_log_path.read_text(encoding="utf-8")
+
+    # Status verifications
+    expected_statuses = {
+        "DL-01": "APPROVED",
+        "DL-02": "APPROVED",
+        "DL-03": "APPROVED",
+        "DL-04": "APPROVED",
+        "DL-05": "PROPOSED",
+        "DL-06": "PROPOSED",
+        "DL-07": "APPROVED",
+        "DL-08": "APPROVED",
+        "DL-09": "APPROVED",
+    }
+    for dl_id, expected_status in expected_statuses.items():
+        pattern = rf"`{dl_id}`.*?`{expected_status}`"
+        assert re.search(pattern, content), f"Status for {dl_id} must be `{expected_status}`"
+
+    # Evidence details
+    assert "1,233" in content and "237" in content  # DL-01
+    assert "197" in content  # DL-02
+    assert "1,244" in content and "226" in content  # DL-03
+    assert "max abs(rho) = 0.0543" in content  # DL-04
+    assert "|rho|" not in content, "No unescaped '|rho|' allowed in decision log"
+    assert "rho = 0.9204" in content  # DL-05
+    assert "rho = 0.854" in content and "rho = 0.843" in content  # DL-06
+    assert "44 employees report YearsAtCompany = 0" in content  # DL-06
+    assert (
+        "Ratio features such as YearsInCurrentRole / YearsAtCompany are undefined when YearsAtCompany = 0; "
+        "the zero-denominator rule will be defined in Phase 2."
+    ) in content  # DL-06
+    assert "114" in content and "16,581" in content  # DL-07
+    assert "27 individuals (n < 30)" in content  # DL-08
+    assert "Row 977" in content and "DailyRate = 999" in content  # DL-09
+    assert "$" not in content, "No dollar signs permitted in decision log"
+
+    # Verify data dictionary has no dollar signs
+    data_dict_path = Path("docs/data_dictionary.md")
+    assert data_dict_path.exists()
+    dict_content = data_dict_path.read_text(encoding="utf-8")
+    assert "$" not in dict_content, "No dollar signs permitted in data dictionary"

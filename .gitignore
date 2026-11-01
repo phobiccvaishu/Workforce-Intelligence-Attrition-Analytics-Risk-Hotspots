@@ -49,3 +49,9 @@ data/processed/*
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Root CSV untracked (raw copy tracked in data/raw/)
+/Palo Alto Networks.csv
+
+# Run logs
+reports/phase1/run.log

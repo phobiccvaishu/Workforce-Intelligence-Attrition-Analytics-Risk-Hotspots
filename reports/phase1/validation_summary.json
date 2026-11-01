@@ -1,5 +1,5 @@
 {
-  "execution_timestamp": "2026-11-01T16:37:31.859349+00:00",
+  "execution_timestamp": "2026-11-01T18:09:15.592646+00:00",
   "dataset_file": "Palo Alto Networks.csv",
   "sha256": "389735e8909136a51fe487040df8f8662c2d222bb3505a83745c5a8c5bf20c7c",
   "environment": {
@@ -10,7 +10,7 @@
   "dimensions": {
     "rows": 1470,
     "cols": 31,
-    "memory_mb": 0.45
+    "memory_mb": 0.85
   },
   "contract_checks": {
     "expected_columns_count": 31,
@@ -24,6 +24,9 @@
     "total_sentinel_tokens": 1,
     "full_row_duplicates": 0,
     "c6_definition_ambiguities": 197,
+    "c7_multi_department_roles": {
+      "Manager": 3
+    },
     "restricted_range_columns": [
       "PerformanceRating"
     ]
