@@ -1,0 +1,29 @@
+column,level,count,share_pct,leading_trailing_whitespace,has_case_variants
+BusinessTravel,Travel_Rarely,1043,70.95,False,False
+BusinessTravel,Travel_Frequently,277,18.84,False,False
+BusinessTravel,Non-Travel,150,10.2,False,False
+Department,Research & Development,961,65.37,False,False
+Department,Sales,446,30.34,False,False
+Department,Human Resources,63,4.29,False,False
+EducationField,Life Sciences,606,41.22,False,False
+EducationField,Medical,464,31.56,False,False
+EducationField,Marketing,159,10.82,False,False
+EducationField,Technical Degree,132,8.98,False,False
+EducationField,Other,82,5.58,False,False
+EducationField,Human Resources,27,1.84,False,False
+Gender,Male,882,60.0,False,False
+Gender,Female,588,40.0,False,False
+JobRole,Sales Executive,326,22.18,False,False
+JobRole,Research Scientist,292,19.86,False,False
+JobRole,Laboratory Technician,259,17.62,False,False
+JobRole,Manufacturing Director,145,9.86,False,False
+JobRole,Healthcare Representative,131,8.91,False,False
+JobRole,Manager,102,6.94,False,False
+JobRole,Sales Representative,83,5.65,False,False
+JobRole,Research Director,80,5.44,False,False
+JobRole,Human Resources,52,3.54,False,False
+MaritalStatus,Married,673,45.78,False,False
+MaritalStatus,Single,470,31.97,False,False
+MaritalStatus,Divorced,327,22.24,False,False
+OverTime,No,1054,71.7,False,False
+OverTime,Yes,416,28.3,False,False

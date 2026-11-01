@@ -1,0 +1,32 @@
+column,unique_values_count,is_constant,dominant_mode_value,dominant_mode_pct,is_near_constant
+Age,43,False,35,5.31,False
+Attrition,2,False,0,83.88,False
+BusinessTravel,3,False,Travel_Rarely,70.95,False
+DailyRate,886,False,691,0.41,False
+Department,3,False,Research & Development,65.37,False
+DistanceFromHome,29,False,2,14.35,False
+Education,5,False,3,38.91,False
+EducationField,6,False,Life Sciences,41.22,False
+EnvironmentSatisfaction,4,False,3,30.82,False
+Gender,2,False,Male,60.0,False
+HourlyRate,71,False,66,1.97,False
+JobInvolvement,4,False,3,59.05,False
+JobLevel,5,False,1,36.94,False
+JobRole,9,False,Sales Executive,22.18,False
+JobSatisfaction,4,False,4,31.22,False
+MaritalStatus,3,False,Married,45.78,False
+MonthlyIncome,1349,False,2342,0.27,False
+MonthlyRate,1427,False,9150,0.2,False
+NumCompaniesWorked,10,False,1,35.44,False
+OverTime,2,False,No,71.7,False
+PercentSalaryHike,15,False,11,14.29,False
+PerformanceRating,2,False,3,84.63,False
+RelationshipSatisfaction,4,False,3,31.22,False
+StockOptionLevel,4,False,0,42.93,False
+TotalWorkingYears,40,False,10,13.74,False
+TrainingTimesLastYear,7,False,2,37.21,False
+WorkLifeBalance,4,False,3,60.75,False
+YearsAtCompany,37,False,5,13.33,False
+YearsInCurrentRole,19,False,2,25.31,False
+YearsSinceLastPromotion,16,False,0,39.52,False
+YearsWithCurrManager,18,False,2,23.4,False

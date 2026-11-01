@@ -1,0 +1,24 @@
+column,is_ordinal,documented_min,documented_max,observed_min,observed_max,observed_unique_count,observed_levels,out_of_bounds,is_restricted_range
+Education,True,1.0,5.0,1.0,5.0,5,"[1, 2, 3, 4, 5]",False,False
+EnvironmentSatisfaction,True,1.0,4.0,1.0,4.0,4,"[1, 2, 3, 4]",False,False
+JobInvolvement,True,1.0,4.0,1.0,4.0,4,"[1, 2, 3, 4]",False,False
+JobLevel,True,1.0,5.0,1.0,5.0,5,"[1, 2, 3, 4, 5]",False,False
+JobSatisfaction,True,1.0,4.0,1.0,4.0,4,"[1, 2, 3, 4]",False,False
+PerformanceRating,True,1.0,4.0,3.0,4.0,2,"[3, 4]",False,True
+RelationshipSatisfaction,True,1.0,4.0,1.0,4.0,4,"[1, 2, 3, 4]",False,False
+StockOptionLevel,True,0.0,3.0,0.0,3.0,4,"[0, 1, 2, 3]",False,False
+WorkLifeBalance,True,1.0,4.0,1.0,4.0,4,"[1, 2, 3, 4]",False,False
+NumCompaniesWorked,False,,,0.0,9.0,10,"[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]",False,False
+TrainingTimesLastYear,False,,,0.0,6.0,7,"[0, 1, 2, 3, 4, 5, 6]",False,False
+YearsAtCompany,False,,,0.0,40.0,37,[0.0 .. 40.0],False,False
+YearsInCurrentRole,False,,,0.0,18.0,19,[0.0 .. 18.0],False,False
+YearsSinceLastPromotion,False,,,0.0,15.0,16,[0.0 .. 15.0],False,False
+YearsWithCurrManager,False,,,0.0,17.0,18,[0.0 .. 17.0],False,False
+TotalWorkingYears,False,,,0.0,40.0,40,[0.0 .. 40.0],False,False
+Age,False,,,18.0,60.0,43,[18.0 .. 60.0],False,False
+DailyRate,False,,,102.0,1499.0,886,[102.0 .. 1499.0],False,False
+DistanceFromHome,False,,,1.0,29.0,29,[1.0 .. 29.0],False,False
+HourlyRate,False,,,30.0,100.0,71,[30.0 .. 100.0],False,False
+MonthlyIncome,False,,,1009.0,19999.0,1349,[1009.0 .. 19999.0],False,False
+MonthlyRate,False,,,2094.0,26999.0,1427,[2094.0 .. 26999.0],False,False
+PercentSalaryHike,False,,,11.0,25.0,15,[11.0 .. 25.0],False,False

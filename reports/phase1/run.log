@@ -1,0 +1,10 @@
+[2026-11-01 22:07:27] [INFO] Starting Phase 1 Data Validation Pipeline...
+[2026-11-01 22:07:27] [INFO] Saved all tabular CSV outputs to C:\Users\Vaishnavi\IdeaProjects\Workforce Intelligence  Attrition Analytics & Risk Hotspots\reports\phase1\tables
+[2026-11-01 22:07:28] [INFO] Saved figure: C:\Users\Vaishnavi\IdeaProjects\Workforce Intelligence  Attrition Analytics & Risk Hotspots\reports\phase1\figures\target_distribution.png
+[2026-11-01 22:07:29] [INFO] Saved figure: C:\Users\Vaishnavi\IdeaProjects\Workforce Intelligence  Attrition Analytics & Risk Hotspots\reports\phase1\figures\numeric_distributions_grid.png
+[2026-11-01 22:07:31] [INFO] Saved figure: C:\Users\Vaishnavi\IdeaProjects\Workforce Intelligence  Attrition Analytics & Risk Hotspots\reports\phase1\figures\boxplots_outliers.png
+[2026-11-01 22:07:31] [INFO] Saved figure: C:\Users\Vaishnavi\IdeaProjects\Workforce Intelligence  Attrition Analytics & Risk Hotspots\reports\phase1\figures\spearman_heatmap.png
+[2026-11-01 22:07:31] [INFO] Saved summary JSON to C:\Users\Vaishnavi\IdeaProjects\Workforce Intelligence  Attrition Analytics & Risk Hotspots\reports\phase1\validation_summary.json
+[2026-11-01 22:07:31] [INFO] Saved validation report markdown to C:\Users\Vaishnavi\IdeaProjects\Workforce Intelligence  Attrition Analytics & Risk Hotspots\reports\phase1\data_validation_report.md
+[2026-11-01 22:07:31] [INFO] Updated docs/data_dictionary.md and docs/decision_log.md
+[2026-11-01 22:07:31] [INFO] Phase 1 validation pipeline completed successfully.

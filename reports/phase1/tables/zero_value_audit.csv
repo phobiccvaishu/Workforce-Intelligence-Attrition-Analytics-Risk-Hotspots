@@ -1,0 +1,24 @@
+column,zero_count,zero_pct,candidate_classification
+Education,0,0.0,legitimate zero
+EnvironmentSatisfaction,0,0.0,legitimate zero
+JobInvolvement,0,0.0,legitimate zero
+JobLevel,0,0.0,legitimate zero
+JobSatisfaction,0,0.0,legitimate zero
+PerformanceRating,0,0.0,legitimate zero
+RelationshipSatisfaction,0,0.0,legitimate zero
+StockOptionLevel,631,42.93,legitimate zero (no stock options granted)
+WorkLifeBalance,0,0.0,legitimate zero
+NumCompaniesWorked,197,13.4,ambiguous (could indicate 0 prior employers or no prior work)
+TrainingTimesLastYear,54,3.67,legitimate zero (no formal training attended)
+YearsAtCompany,44,2.99,legitimate zero (new hire in first year)
+YearsInCurrentRole,244,16.6,legitimate zero (recently transferred / promoted)
+YearsSinceLastPromotion,581,39.52,legitimate zero (promoted within current year)
+YearsWithCurrManager,263,17.89,legitimate zero (new manager assignment)
+TotalWorkingYears,11,0.75,legitimate zero (entry level / first professional year)
+Age,0,0.0,possibly missing (cannot be zero)
+DailyRate,0,0.0,possibly missing (compensation cannot be zero)
+DistanceFromHome,0,0.0,possibly missing / on-site resident
+HourlyRate,0,0.0,possibly missing (compensation cannot be zero)
+MonthlyIncome,0,0.0,possibly missing (compensation cannot be zero)
+MonthlyRate,0,0.0,possibly missing (compensation cannot be zero)
+PercentSalaryHike,0,0.0,possibly missing / zero raise

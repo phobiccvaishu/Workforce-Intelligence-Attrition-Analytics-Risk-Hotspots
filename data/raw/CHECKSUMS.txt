@@ -1,0 +1,7 @@
+# Dataset Checksums and Metadata (Phase 1 Raw Preservation)
+# Generated: 2026-11-01 22:01:51
+filename: Palo Alto Networks.csv
+sha256: 389735e8909136a51fe487040df8f8662c2d222bb3505a83745c5a8c5bf20c7c
+size_bytes: 209376
+row_count: 1470
+column_count: 31

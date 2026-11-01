@@ -1,0 +1,2 @@
+target_column,dtype,total_records,distinct_values,is_binary_01_subset,count_attrition_0,count_attrition_1,rate_attrition_0_pct,rate_attrition_1_pct,imbalance_ratio_stayed_to_left,wilson_95_ci_lower_pct,wilson_95_ci_upper_pct
+Attrition,int64,1470,"[0, 1]",True,1233,237,83.88,16.12,5.2,14.33,18.09

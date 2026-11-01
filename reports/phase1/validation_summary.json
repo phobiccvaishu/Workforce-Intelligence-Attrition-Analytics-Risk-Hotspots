@@ -1,0 +1,151 @@
+{
+  "execution_timestamp": "2026-11-01T16:37:31.859349+00:00",
+  "dataset_file": "Palo Alto Networks.csv",
+  "sha256": "389735e8909136a51fe487040df8f8662c2d222bb3505a83745c5a8c5bf20c7c",
+  "environment": {
+    "pandas_version": "3.0.3",
+    "numpy_version": "2.4.4",
+    "scipy_version": "1.17.1"
+  },
+  "dimensions": {
+    "rows": 1470,
+    "cols": 31,
+    "memory_mb": 0.45
+  },
+  "contract_checks": {
+    "expected_columns_count": 31,
+    "order_matches_expected": true,
+    "contract_violated": false,
+    "missing_columns": [],
+    "unexpected_columns": []
+  },
+  "data_quality_flags": {
+    "total_nan_cells": 0,
+    "total_sentinel_tokens": 1,
+    "full_row_duplicates": 0,
+    "c6_definition_ambiguities": 197,
+    "restricted_range_columns": [
+      "PerformanceRating"
+    ]
+  },
+  "target_metrics": {
+    "target_column": "Attrition",
+    "dtype": "int64",
+    "total_records": 1470,
+    "distinct_values": [
+      0,
+      1
+    ],
+    "is_binary_01_subset": true,
+    "count_attrition_0": 1233,
+    "count_attrition_1": 237,
+    "rate_attrition_0_pct": 83.88,
+    "rate_attrition_1_pct": 16.12,
+    "imbalance_ratio_stayed_to_left": 5.2,
+    "wilson_95_ci_lower_pct": 14.33,
+    "wilson_95_ci_upper_pct": 18.09
+  },
+  "checkpoints_validation": {
+    "rows": {
+      "target": 1470,
+      "computed": 1470,
+      "match": true
+    },
+    "columns": {
+      "target": 31,
+      "computed": 31,
+      "match": true
+    },
+    "text_columns": {
+      "target": 7,
+      "computed": 7,
+      "match": true
+    },
+    "missing_cells": {
+      "target": 0,
+      "computed": 0,
+      "match": true
+    },
+    "full_row_duplicates": {
+      "target": 0,
+      "computed": 0,
+      "match": true
+    },
+    "attrition_1": {
+      "target": 237,
+      "computed": 237,
+      "match": true
+    },
+    "attrition_0": {
+      "target": 1233,
+      "computed": 1233,
+      "match": true
+    },
+    "c1_violations": {
+      "target": 0,
+      "computed": 0,
+      "match": true
+    },
+    "c2_violations": {
+      "target": 0,
+      "computed": 0,
+      "match": true
+    },
+    "c3_violations": {
+      "target": 0,
+      "computed": 0,
+      "match": true
+    },
+    "c4_violations": {
+      "target": 0,
+      "computed": 0,
+      "match": true
+    },
+    "c5_hard_violations": {
+      "target": 0,
+      "computed": 0,
+      "match": true
+    },
+    "c6_contradictions": {
+      "target": 197,
+      "computed": 197,
+      "match": true
+    },
+    "years_since_last_promotion_zero": {
+      "target": 581,
+      "computed": 581,
+      "match": true
+    },
+    "years_at_company_zero": {
+      "target": 44,
+      "computed": 44,
+      "match": true
+    },
+    "total_working_years_zero": {
+      "target": 11,
+      "computed": 11,
+      "match": true
+    },
+    "dept_jobrole_populated_cells": {
+      "target": "11 of 27",
+      "computed": "11 of 27",
+      "match": true
+    },
+    "performance_rating_levels": {
+      "target": [
+        3,
+        4
+      ],
+      "computed": [
+        3,
+        4
+      ],
+      "match": true
+    },
+    "monthly_income_1_5x_outliers": {
+      "target": 114,
+      "computed": 114,
+      "match": true
+    }
+  }
+}

@@ -1,0 +1,7 @@
+feature_1,feature_2,spearman_rho,abs_rho
+JobLevel,MonthlyIncome,0.9204,0.9204
+YearsAtCompany,YearsInCurrentRole,0.854,0.854
+YearsAtCompany,YearsWithCurrManager,0.8428,0.8428
+JobLevel,TotalWorkingYears,0.7347,0.7347
+YearsInCurrentRole,YearsWithCurrManager,0.7248,0.7248
+TotalWorkingYears,MonthlyIncome,0.71,0.71
