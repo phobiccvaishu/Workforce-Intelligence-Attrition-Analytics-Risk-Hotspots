@@ -826,8 +826,8 @@ def generate_decision_log(
         },
         {
             "id": "DL-09",
-            "issue": f"DailyRate Potential Numeric Sentinel (Value {sentinel_val} at Row {sentinel_row_idx})",
-            "evidence": f"Row {sentinel_row_idx} reports DailyRate = {sentinel_val}, matching the common sentinel check token list. Table: reports/phase1/tables/missing_and_sentinels.csv",
+            "issue": f"DailyRate Potential Numeric Sentinel (Value {sentinel_val} at DataFrame index (0-based) {sentinel_row_idx})",
+            "evidence": f"Row at DataFrame index (0-based) {sentinel_row_idx} reports DailyRate = {sentinel_val}, matching the common sentinel check token list. Table: reports/phase1/tables/missing_and_sentinels.csv",
             "proposed_handling": "Retain value as valid compensation rate since 999 falls naturally within observed continuous range [102, 1499] and all other employee fields are complete and valid.",
             "alternatives": "Impute with median DailyRate if confirmed as a synthetic missing value flag.",
             "status": "APPROVED",

@@ -448,6 +448,7 @@ def test_documentation_evidence_matches_validation_summary():
     import json
     import re
     from pathlib import Path
+    import pandas as pd
 
     summary_file = Path("reports/phase1/validation_summary.json")
     if not summary_file.exists():
@@ -500,11 +501,48 @@ def test_documentation_evidence_matches_validation_summary():
     ) in content  # DL-06
     assert "114" in content and "16,581" in content  # DL-07
     assert "27 individuals (n < 30)" in content  # DL-08
-    assert "Row 977" in content and "DailyRate = 999" in content  # DL-09
+    assert "DataFrame index (0-based) 977" in content and "DailyRate = 999" in content  # DL-09
     assert "$" not in content, "No dollar signs permitted in decision log"
 
-    # Verify data dictionary has no dollar signs
+    # Systematic parsing of EVERY numeric token in decision log evidence
+    evidence_tokens = {}
+    for line in content.splitlines():
+        if "DL-" in line:
+            parts = [p.strip() for p in line[1:-1].split("|")]
+            dl_id = parts[0].strip("`")
+            evidence_cell = parts[2]
+            nums = re.findall(r"\d+(?:,\d+)*(?:\.\d+)?", evidence_cell.split("Table:")[0])
+            evidence_tokens[dl_id] = [n.replace(",", "") for n in nums]
+
+    # Validate numeric tokens for each decision against computed sources
+    assert evidence_tokens["DL-01"] == ["0", "1", "0", "1233", "1", "237"]
+    assert "197" in evidence_tokens["DL-02"]
+    assert set(evidence_tokens["DL-03"]) == {"3", "4", "1244", "226", "1", "4"}
+    assert "0.0543" in evidence_tokens["DL-04"]
+    assert "0.9204" in evidence_tokens["DL-05"]
+    assert set(evidence_tokens["DL-06"]) == {"0.854", "0.843", "44", "0"}
+    assert set(evidence_tokens["DL-07"]) == {"114", "1.5", "16581"}
+    assert set(evidence_tokens["DL-08"]) == {"27", "30"}
+    assert set(evidence_tokens["DL-09"]) == {"0", "977", "999"}
+
+    # Verify data dictionary observed-data statements
     data_dict_path = Path("docs/data_dictionary.md")
     assert data_dict_path.exists()
     dict_content = data_dict_path.read_text(encoding="utf-8")
     assert "$" not in dict_content, "No dollar signs permitted in data dictionary"
+
+    range_df = pd.read_csv("reports/phase1/tables/range_and_scale_audit.csv").set_index("column")
+    for line in dict_content.splitlines():
+        if line.startswith("| `") and ("[" in line):
+            parts = [p.strip() for p in line[1:-1].split("|")]
+            col = parts[0].strip("`")
+            obs_range_str = parts[3]
+            if col in range_df.index:
+                obs_min = range_df.loc[col, "observed_min"]
+                obs_max = range_df.loc[col, "observed_max"]
+                m = re.search(r"\[([\d,]+)\s*\.\.\s*([\d,]+)\]", obs_range_str)
+                if m:
+                    val_min = int(m.group(1).replace(",", ""))
+                    val_max = int(m.group(2).replace(",", ""))
+                    assert val_min == int(obs_min), f"{col} min mismatch in data dictionary: {val_min} != {obs_min}"
+                    assert val_max == int(obs_max), f"{col} max mismatch in data dictionary: {val_max} != {obs_max}"

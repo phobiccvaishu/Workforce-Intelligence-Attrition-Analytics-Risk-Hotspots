@@ -47,7 +47,7 @@ This project investigates career stages, departments, roles, compensation struct
 │   └── make_notebook.py            # Generator script for inspection notebook
 ├── reports/
 │   ├── phase1/
-│   │   ├── tables/                 # 17 detailed CSV audit tables
+│   │   ├── tables/                 # Tabular CSV validation audit outputs
 │   │   ├── figures/                # Static 150 DPI figures (target, grid, boxplots, heatmap)
 │   │   ├── data_validation_report.md # Generated validation report
 │   │   ├── validation_summary.json # Machine-readable summary & checkpoint comparisons
@@ -100,7 +100,7 @@ Execute the unit and contract test suites:
 $env:PYTHONPATH = "src"
 python -m pytest -q
 ```
-*Expected result:* 21 passed.
+*Expected result:* All tests should pass.
 
 ### Executing the Inspection Notebook
 The thin inspection notebook imports pure functions from `workforce_intel`:
@@ -140,7 +140,7 @@ All Section 9 reference checkpoints were evaluated against programmatic outputs:
 
 ## 5. Phase Status
 
-- **Phase 1: Project Initialization & Data Validation**: **COMPLETE** (Awaiting owner sign-off on decision log).
-- **Phase 2: Data Cleaning & Stratified EDA**: Pending.
+- **Phase 1: Project Initialization & Data Validation**: **COMPLETE** (Signed off with all decisions documented).
+- **Phase 2: Data Cleaning, Preprocessing & Feature Derivation**: **IN PROGRESS**.
 - **Phase 3: Hotspot Analytics & Predictive Modeling**: Pending.
 - **Phase 4: Streamlit Dashboard & Reporting**: Pending.
