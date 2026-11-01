@@ -1,0 +1,8 @@
+Metric,Value,Expected,Status
+Raw Dataset Rows,1470,1470,PASS
+Processed Dataset Rows,1470,1470,PASS
+Rows Dropped,0,0,PASS
+Original 31 Columns Exact Match,100% Identical,100% Identical,PASS
+RowID Sequence [0 .. n-1],Valid & Continuous,Valid & Continuous,PASS
+Derived Columns Count,15,15,PASS
+Total Processed Columns,47,47,PASS

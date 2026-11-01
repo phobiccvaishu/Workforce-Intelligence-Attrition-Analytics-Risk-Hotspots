@@ -20,6 +20,10 @@ CHECKSUMS_FILE = RAW_DATA_DIR / "CHECKSUMS.txt"
 
 INTERIM_DATA_DIR = DATA_DIR / "interim"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
+PROCESSED_DATA_FILENAME = "workforce_attrition_processed.csv"
+PROCESSED_DATA_FILE = PROCESSED_DATA_DIR / PROCESSED_DATA_FILENAME
+PROCESSED_SCHEMA_FILENAME = "schema.json"
+PROCESSED_SCHEMA_FILE = PROCESSED_DATA_DIR / PROCESSED_SCHEMA_FILENAME
 
 DOCS_DIR = PROJECT_ROOT / "docs"
 DATA_DICTIONARY_FILE = DOCS_DIR / "data_dictionary.md"
@@ -32,6 +36,12 @@ PHASE1_FIGURES_DIR = PHASE1_REPORTS_DIR / "figures"
 PHASE1_REPORT_MD = PHASE1_REPORTS_DIR / "data_validation_report.md"
 PHASE1_SUMMARY_JSON = PHASE1_REPORTS_DIR / "validation_summary.json"
 PHASE1_LOG_FILE = PHASE1_REPORTS_DIR / "run.log"
+
+PHASE2_REPORTS_DIR = REPORTS_DIR / "phase2"
+PHASE2_TABLES_DIR = PHASE2_REPORTS_DIR / "tables"
+PHASE2_REPORT_MD = PHASE2_REPORTS_DIR / "cleaning_report.md"
+PHASE2_SUMMARY_JSON = PHASE2_REPORTS_DIR / "preprocessing_summary.json"
+PHASE2_LOG_FILE = PHASE2_REPORTS_DIR / "run.log"
 
 NOTEBOOKS_DIR = PROJECT_ROOT / "notebooks"
 TESTS_DIR = PROJECT_ROOT / "tests"
@@ -220,3 +230,57 @@ PROVENANCE_DISCLAIMER = (
     "public/synthetic HR dataset. Findings must not be described as real Palo Alto "
     "Networks employment records or personnel data."
 )
+
+# -----------------------------------------------------------------------------
+# Phase 2: Derived Feature Configuration & Cut-Points
+# -----------------------------------------------------------------------------
+SURROGATE_KEY_COLUMN: str = "RowID"
+
+EARLY_TENURE_MAX_YEARS: int = 1
+MIN_TENURE_FOR_PROMOTION_ANALYSIS: int = 5
+MIN_GROUP_SIZE: int = 30
+
+AGE_BINS: List[int] = [17, 25, 35, 45, 60]
+AGE_LABELS: List[str] = ["18-25", "26-35", "36-45", "46-60"]
+
+TENURE_BINS: List[int] = [-1, 1, 3, 5, 10, 100]
+TENURE_LABELS: List[str] = ["0-1", "2-3", "4-5", "6-10", "11+"]
+
+CAREER_STAGE_BINS: List[int] = [-1, 5, 10, 20, 100]
+CAREER_STAGE_LABELS: List[str] = ["0-5", "6-10", "11-20", "21+"]
+
+ROLE_TENURE_BINS: List[int] = [-1, 1, 3, 7, 100]
+ROLE_TENURE_LABELS: List[str] = ["0-1", "2-3", "4-7", "8+"]
+
+MANAGER_TENURE_BINS: List[int] = [-1, 1, 3, 7, 100]
+MANAGER_TENURE_LABELS: List[str] = ["0-1", "2-3", "4-7", "8+"]
+
+PROMOTION_GAP_BINS: List[int] = [-1, 0, 2, 5, 100]
+PROMOTION_GAP_LABELS: List[str] = ["0", "1-2", "3-5", "6+"]
+
+DISTANCE_BINS: List[int] = [0, 5, 10, 20, 29]
+DISTANCE_LABELS: List[str] = ["1-5", "6-10", "11-20", "21-29"]
+
+DERIVED_COLUMNS: List[str] = [
+    "AgeGroup",
+    "TenureBand",
+    "EarlyTenure",
+    "CareerStage",
+    "RoleTenureBand",
+    "ManagerTenureBand",
+    "PromotionGapBand",
+    "DistanceBand",
+    "PriorExperienceYears",
+    "HasPriorExperience",
+    "RoleTenureShare",
+    "PromotionGapShare",
+    "PromotionGapEqualsTenure",
+    "StagnationCohort",
+    "OutstandingRating",
+]
+
+PROCESSED_COLUMNS: List[str] = [SURROGATE_KEY_COLUMN] + EXPECTED_COLUMNS + DERIVED_COLUMNS
+
+PROTECTED_ATTRIBUTE_COLUMNS: List[str] = ["Age", "Gender", "MaritalStatus"]
+NOT_USED_ANALYTICAL_COLUMNS: List[str] = ["DailyRate", "HourlyRate", "MonthlyRate"]
+NULLABLE_DERIVED_COLUMNS: List[str] = ["RoleTenureShare", "PromotionGapShare"]

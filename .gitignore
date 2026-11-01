@@ -40,6 +40,8 @@ data/interim/*
 !data/interim/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+!data/processed/workforce_attrition_processed.csv
+!data/processed/schema.json
 
 # IDEs & OS files
 .idea/
@@ -55,3 +57,4 @@ desktop.ini
 
 # Run logs
 reports/phase1/run.log
+reports/phase2/run.log

@@ -1,0 +1,16 @@
+derived_column,dtype,non_null_count,null_count,domain_summary
+AgeGroup,category,1470,0,"4 categories: ['18-25', '26-35', '36-45', '46-60']"
+TenureBand,category,1470,0,"5 categories: ['0-1', '2-3', '4-5', '6-10', '11+']"
+EarlyTenure,int64,1470,0,Range [0 .. 1]
+CareerStage,category,1470,0,"4 categories: ['0-5', '6-10', '11-20', '21+']"
+RoleTenureBand,category,1470,0,"4 categories: ['0-1', '2-3', '4-7', '8+']"
+ManagerTenureBand,category,1470,0,"4 categories: ['0-1', '2-3', '4-7', '8+']"
+PromotionGapBand,category,1470,0,"4 categories: ['0', '1-2', '3-5', '6+']"
+DistanceBand,category,1470,0,"4 categories: ['1-5', '6-10', '11-20', '21-29']"
+PriorExperienceYears,int64,1470,0,Range [0 .. 33]
+HasPriorExperience,int64,1470,0,Range [0 .. 1]
+RoleTenureShare,float64,1426,44,Range [0.0 .. 1.0]
+PromotionGapShare,float64,1426,44,Range [0.0 .. 1.0]
+PromotionGapEqualsTenure,int64,1470,0,Range [0 .. 1]
+StagnationCohort,int64,1470,0,Range [0 .. 1]
+OutstandingRating,int64,1470,0,Range [0 .. 1]

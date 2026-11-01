@@ -9,13 +9,19 @@ Adheres to Section 5.2 and 5.4:
 """
 
 import csv
+import json
 import logging
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 import pandas as pd
 
-from workforce_intel.config import RAW_DATA_DIR
+from workforce_intel.config import (
+    PROCESSED_COLUMNS,
+    PROCESSED_DATA_FILE,
+    PROCESSED_SCHEMA_FILE,
+    RAW_DATA_DIR,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -125,3 +131,71 @@ def assert_safe_write_path(path: Union[str, Path]) -> Path:
         )
 
     return target
+
+
+def load_processed(
+    csv_path: Optional[Union[str, Path]] = None,
+    schema_path: Optional[Union[str, Path]] = None,
+) -> pd.DataFrame:
+    """Load the Phase 2 processed dataset and restore strict dtypes from schema.json.
+
+    Args:
+        csv_path: Path to processed CSV file (defaults to PROCESSED_DATA_FILE).
+        schema_path: Path to schema JSON file (defaults to PROCESSED_SCHEMA_FILE).
+
+    Returns:
+        DataFrame with exact column contract, types, and ordered categoricals.
+
+    Raises:
+        FileNotFoundError: If the processed CSV or schema file is missing.
+        ValueError: If column contract or schemas do not match.
+    """
+    target_csv = Path(csv_path).resolve() if csv_path else PROCESSED_DATA_FILE.resolve()
+    target_schema = Path(schema_path).resolve() if schema_path else PROCESSED_SCHEMA_FILE.resolve()
+
+    if not target_csv.exists():
+        raise FileNotFoundError(f"Processed dataset not found at '{target_csv}'.")
+
+    if not target_schema.exists():
+        raise FileNotFoundError(f"Processed schema not found at '{target_schema}'.")
+
+    with open(target_schema, "r", encoding="utf-8") as f:
+        schema_data = json.load(f)
+
+    # Read CSV
+    df = pd.read_csv(target_csv, encoding="utf-8")
+
+    # Verify column contract
+    if list(df.columns) != PROCESSED_COLUMNS:
+        raise ValueError(
+            f"Loaded processed dataset columns do not match contract.\n"
+            f"Expected: {PROCESSED_COLUMNS}\n"
+            f"Observed: {list(df.columns)}"
+        )
+
+    # Restore types and ordered categoricals from schema
+    columns_meta = schema_data.get("columns", {})
+    for col_name, meta in columns_meta.items():
+        if col_name not in df.columns:
+            continue
+        dtype_str = meta.get("dtype")
+        categories = meta.get("categories")
+        is_ordered = meta.get("ordered", False)
+
+        if categories is not None and is_ordered:
+            cat_type = pd.CategoricalDtype(categories=categories, ordered=True)
+            df[col_name] = df[col_name].astype(cat_type)
+        elif dtype_str == "int64":
+            df[col_name] = df[col_name].astype("int64")
+        elif dtype_str == "float64":
+            df[col_name] = df[col_name].astype("float64")
+        elif dtype_str in ["object", "str", "string"]:
+            df[col_name] = df[col_name].astype(str)
+
+    logger.info(
+        "Successfully loaded processed dataset from %s (rows: %d, cols: %d)",
+        target_csv,
+        len(df),
+        len(df.columns),
+    )
+    return df
