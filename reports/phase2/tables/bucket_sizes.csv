@@ -34,7 +34,7 @@ HasPriorExperience,1,996,67.76,False
 HasPriorExperience,0,474,32.24,False
 PromotionGapEqualsTenure,0,1335,90.82,False
 PromotionGapEqualsTenure,1,135,9.18,False
-StagnationCohort,1,890,60.54,False
-StagnationCohort,0,580,39.46,False
+PromotionAnalysisCohort,1,890,60.54,False
+PromotionAnalysisCohort,0,580,39.46,False
 OutstandingRating,0,1244,84.63,False
 OutstandingRating,1,226,15.37,False

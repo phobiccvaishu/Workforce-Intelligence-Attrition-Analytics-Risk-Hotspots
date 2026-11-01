@@ -1,11 +1,15 @@
 {
-  "execution_timestamp": "2026-11-01T18:31:05.338257+00:00",
+  "execution_timestamp": "2026-11-01T21:49:48.234079+00:00",
   "dataset_file": "Palo Alto Networks.csv",
   "sha256": "389735e8909136a51fe487040df8f8662c2d222bb3505a83745c5a8c5bf20c7c",
   "environment": {
+    "python_version": "3.14.0",
     "pandas_version": "3.0.3",
     "numpy_version": "2.4.4",
-    "scipy_version": "1.17.1"
+    "scipy_version": "1.17.1",
+    "pyarrow_installed": false,
+    "pyarrow_version": null,
+    "pandas_string_storage": "auto"
   },
   "dimensions": {
     "rows": 1470,

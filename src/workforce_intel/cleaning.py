@@ -34,6 +34,7 @@ from workforce_intel.features import (
     derive_promotion_gap_share,
     derive_role_tenure_band,
     derive_role_tenure_share,
+    derive_promotion_analysis_cohort,
     derive_stagnation_cohort,
     derive_tenure_band,
 )
@@ -127,7 +128,7 @@ def validate_processed_domains(processed_df: pd.DataFrame) -> None:
         "EarlyTenure",
         "HasPriorExperience",
         "PromotionGapEqualsTenure",
-        "StagnationCohort",
+        "PromotionAnalysisCohort",
         "OutstandingRating",
     ]
     for col in bin_cols:
@@ -246,7 +247,9 @@ def build_processed(raw_df: pd.DataFrame) -> pd.DataFrame:
     processed_dict["PromotionGapEqualsTenure"] = derive_promotion_gap_equals_tenure(
         raw_df["YearsAtCompany"], raw_df["YearsSinceLastPromotion"]
     )
-    processed_dict["StagnationCohort"] = derive_stagnation_cohort(raw_df["YearsAtCompany"])
+    processed_dict["PromotionAnalysisCohort"] = derive_promotion_analysis_cohort(
+        raw_df["YearsAtCompany"]
+    )
     processed_dict["OutstandingRating"] = derive_outstanding_rating(raw_df["PerformanceRating"])
 
     processed_df = pd.DataFrame(processed_dict)

@@ -1,9 +1,9 @@
 # Phase 2 Data Cleaning & Preprocessing Report
 ## Workforce Attrition Analytics System
 
-- **Execution Timestamp (UTC):** 2026-11-01T19:00:19.854262+00:00
+- **Execution Timestamp (UTC):** 2026-11-01T21:49:52.877907+00:00
 - **Raw Dataset SHA-256:** `389735e8909136a51fe487040df8f8662c2d222bb3505a83745c5a8c5bf20c7c`
-- **Processed Dataset SHA-256:** `e8ecca3cbdfc45877851d4c6618734cf127dc8efb594580a01bbed544c4236ed`
+- **Processed Dataset SHA-256:** `48553275587384b98f091dacfd4466cadb9bddda131fe32bbd586e0b15bacb2d`
 - **Environment:** pandas 3.0.3, numpy 2.4.4
 
 > [!IMPORTANT]
@@ -48,7 +48,7 @@ Exactly 15 features were derived using pure functions. All cut-points are right-
 | `RoleTenureShare` | `float64` | 1,426 | 44 | Range [0.0 .. 1.0] |
 | `PromotionGapShare` | `float64` | 1,426 | 44 | Range [0.0 .. 1.0] |
 | `PromotionGapEqualsTenure` | `int64` | 1,470 | 0 | Range [0 .. 1] |
-| `StagnationCohort` | `int64` | 1,470 | 0 | Range [0 .. 1] |
+| `PromotionAnalysisCohort` | `int64` | 1,470 | 0 | Range [0 .. 1] |
 | `OutstandingRating` | `int64` | 1,470 | 0 | Range [0 .. 1] |
 
 ---

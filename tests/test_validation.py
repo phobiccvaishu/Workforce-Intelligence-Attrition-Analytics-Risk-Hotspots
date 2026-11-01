@@ -10,9 +10,30 @@ Covers all functions in src/workforce_intel/validation.py across required edge c
 - C6 contradictions (NumCompaniesWorked == 0 while TotalWorkingYears > YearsAtCompany)
 """
 
+import json
+from pathlib import Path
+import re
+from typing import Any, Dict, List
 import numpy as np
 import pandas as pd
 import pytest
+
+from workforce_intel.config import (
+    AGE_LABELS,
+    CAREER_STAGE_LABELS,
+    DERIVED_COLUMNS,
+    DISTANCE_LABELS,
+    EXPECTED_COLUMNS,
+    IQR_MULTIPLIER_OUTLIER,
+    MANAGER_TENURE_LABELS,
+    MIN_TENURE_FOR_PROMOTION_ANALYSIS,
+    PROMOTION_GAP_LABELS,
+    RAW_DATA_FILE,
+    ROLE_TENURE_LABELS,
+    SMALL_SAMPLE_THRESHOLD,
+    TENURE_LABELS,
+)
+from workforce_intel.io import load_raw
 
 from workforce_intel.validation import (
     categorical_audit,
@@ -295,7 +316,7 @@ def test_constant_column_check():
 
 def test_report_provenance_synthetic_dataset():
     """Verify that build_report formats purely from computed data and has no hardcoded values."""
-    from workforce_intel.validation import build_report
+    from workforce_intel.reporting import build_report
 
     # Create synthetic dataset with exactly 60 rows
     n = 60
@@ -443,13 +464,107 @@ def test_all_markdown_tables_column_consistency():
     assert not errors, "Markdown table column inconsistencies found:\n" + "\n".join(errors)
 
 
+def _build_expected_decision_log_tokens() -> Dict[str, List[str]]:
+    """Dynamically build expected numeric token sequence for every DL row from computed artifacts."""
+    with open("reports/phase1/validation_summary.json", encoding="utf-8") as f:
+        s1 = json.load(f)
+
+    raw_df, _ = load_raw(RAW_DATA_FILE)
+
+    c6_table = pd.read_csv("reports/phase1/tables/consistency_c6_contradictions.csv")
+    range_table = pd.read_csv("reports/phase1/tables/range_and_scale_audit.csv").set_index("column")
+    rate_matrix = pd.read_csv("reports/phase1/tables/rate_coherence_spearman.csv", index_col=0)
+    high_corr_table = pd.read_csv("reports/phase1/tables/high_correlation_pairs.csv")
+    outlier_table = pd.read_csv("reports/phase1/tables/outlier_audit.csv").set_index("column")
+    small_table = pd.read_csv("reports/phase1/tables/small_sample_nominal_levels.csv")
+    zero_table = pd.read_csv("reports/phase1/tables/zero_value_audit.csv").set_index("column")
+
+    reconcil_table = pd.read_csv("reports/phase2/tables/reconciliation.csv").set_index("Metric")
+    bucket_table = pd.read_csv("reports/phase2/tables/bucket_sizes.csv").set_index(["column", "level"])
+    feat_table = pd.read_csv("reports/phase2/tables/derived_feature_audit.csv").set_index("derived_column")
+    nan_table = pd.read_csv("reports/phase2/tables/nan_audit.csv").set_index("column")
+
+    t_metrics = s1["target_metrics"]
+    total_rows = str(reconcil_table.loc["Processed Dataset Rows", "Value"])
+
+    def get_spearman(col_a: str, col_b: str) -> float:
+        row = high_corr_table[
+            ((high_corr_table["feature_1"] == col_a) & (high_corr_table["feature_2"] == col_b)) |
+            ((high_corr_table["feature_1"] == col_b) & (high_corr_table["feature_2"] == col_a))
+        ]
+        return float(row["spearman_rho"].iloc[0])
+
+    rho_income_level = f"{get_spearman('MonthlyIncome', 'JobLevel'):.4f}"
+    rho_role = f"{get_spearman('YearsAtCompany', 'YearsInCurrentRole'):.3f}"
+    rho_mgr = f"{get_spearman('YearsAtCompany', 'YearsWithCurrManager'):.3f}"
+
+    off_diag = rate_matrix.values[~np.eye(rate_matrix.shape[0], dtype=bool)]
+    max_abs_rho = f"{np.max(np.abs(off_diag)):.4f}"
+
+    sentinel_matches = raw_df[raw_df["DailyRate"].isin({-1, 999, 9999})]["DailyRate"]
+    sentinel_idx = str(sentinel_matches.index[0])
+    sentinel_val = str(sentinel_matches.iloc[0])
+
+    prior_max = re.search(r"\.\.\s*(\d+)", feat_table.loc["PriorExperienceYears", "domain_summary"]).group(1)
+
+    count_rating_3 = str(bucket_table.loc[("OutstandingRating", "0"), "count"])
+    count_rating_4 = str(bucket_table.loc[("OutstandingRating", "1"), "count"])
+
+    return {
+        "DL-01": [str(x) for x in t_metrics["distinct_values"]] + ["0", str(t_metrics["count_attrition_0"]), "1", str(t_metrics["count_attrition_1"])],
+        "DL-02": [str(len(c6_table)), "0"],
+        "DL-03": [str(x) for x in s1["checkpoints_validation"]["performance_rating_levels"]["computed"]] + ["3", count_rating_3, "4", count_rating_4, str(int(range_table.loc["PerformanceRating", "documented_min"])), str(int(range_table.loc["PerformanceRating", "documented_max"]))],
+        "DL-04": [max_abs_rho],
+        "DL-05": [rho_income_level],
+        "DL-06": [rho_role, rho_mgr, str(s1["checkpoints_validation"]["years_at_company_zero"]["computed"]), "0"],
+        "DL-07": [str(int(outlier_table.loc["MonthlyIncome", "outliers_count_1_5x"])), str(IQR_MULTIPLIER_OUTLIER), str(int(outlier_table.loc["MonthlyIncome", "upper_bound_1_5x"]))],
+        "DL-08": [str(small_table[small_table["level"] == "Human Resources"]["count"].iloc[0]), str(SMALL_SAMPLE_THRESHOLD)],
+        "DL-09": ["0", sentinel_idx, sentinel_val],
+        "DL-10": [total_rows, "0", str(int(total_rows) - 1), "1"],
+        "DL-11": [str(len(EXPECTED_COLUMNS)), "0", "0", total_rows],
+        "DL-12": ["17", "25", "25", "35", "35", "45", "45", "60"] + [str(bucket_table.loc[("AgeGroup", l), "count"]) for l in AGE_LABELS] + [total_rows],
+        "DL-13": ["1", "1", "1", "3", "3", "5", "5", "10", "10", "100"] + [str(bucket_table.loc[("TenureBand", l), "count"]) for l in TENURE_LABELS],
+        "DL-14": ["1", "2", str(bucket_table.loc[("EarlyTenure", "1"), "count"]), f"{bucket_table.loc[('EarlyTenure', '1'), 'percentage']:.2f}"],
+        "DL-15": [str(bucket_table.loc[("CareerStage", l), "count"]) for l in CAREER_STAGE_LABELS],
+        "DL-16": [str(bucket_table.loc[("RoleTenureBand", l), "count"]) for l in ROLE_TENURE_LABELS],
+        "DL-17": [str(bucket_table.loc[("ManagerTenureBand", l), "count"]) for l in MANAGER_TENURE_LABELS],
+        "DL-18": [str(bucket_table.loc[("PromotionGapBand", l), "count"]) for l in PROMOTION_GAP_LABELS],
+        "DL-19": [str(bucket_table.loc[("DistanceBand", l), "count"]) for l in DISTANCE_LABELS],
+        "DL-20": ["0", prior_max, str(bucket_table.loc[("HasPriorExperience", "0"), "count"])],
+        "DL-21": ["0", str(bucket_table.loc[("HasPriorExperience", "1"), "count"]), f"{bucket_table.loc[('HasPriorExperience', '1'), 'percentage']:.2f}"],
+        "DL-22": [str(nan_table.loc["RoleTenureShare", "nan_count"]), "0", str(nan_table.loc["RoleTenureShare", "nan_count"])],
+        "DL-23": ["0", str(bucket_table.loc[("PromotionGapEqualsTenure", "1"), "count"]), f"{bucket_table.loc[('PromotionGapEqualsTenure', '1'), 'percentage']:.2f}"],
+        "DL-24": [str(MIN_TENURE_FOR_PROMOTION_ANALYSIS), str(bucket_table.loc[("PromotionAnalysisCohort", "1"), "count"]), f"{bucket_table.loc[('PromotionAnalysisCohort', '1'), 'percentage']:.2f}"],
+        "DL-25": [str(max(s1["checkpoints_validation"]["performance_rating_levels"]["computed"])), str(bucket_table.loc[("OutstandingRating", "1"), "count"]), f"{bucket_table.loc[('OutstandingRating', '1'), 'percentage']:.2f}"],
+        "DL-26": ["0", str(zero_table.loc["YearsInCurrentRole", "zero_count"])],
+    }
+
+
+def _check_decision_log_tokens(content: str) -> None:
+    """Parse numeric tokens from decision log and assert exact equality with generated evidence."""
+    actual_tokens = {}
+    for line in content.splitlines():
+        if "DL-" in line:
+            parts = [p.strip() for p in line[1:-1].split("|")]
+            dl_id = parts[0].strip("`")
+            evidence_cell = parts[2]
+            nums = re.findall(r"\d+(?:,\d+)*(?:\.\d+)?", evidence_cell.split("Table:")[0])
+            actual_tokens[dl_id] = [n.replace(",", "") for n in nums]
+
+    expected_tokens = _build_expected_decision_log_tokens()
+
+    assert len(actual_tokens) == len(expected_tokens), (
+        f"Row count mismatch: {len(actual_tokens)} rows in log vs {len(expected_tokens)} expected"
+    )
+
+    for dl_id, exp in expected_tokens.items():
+        assert dl_id in actual_tokens, f"Decision row {dl_id} missing from decision log"
+        act = actual_tokens[dl_id]
+        assert act == exp, f"Evidence tokens mismatch for {dl_id}: actual={act} vs expected={exp}"
+
+
 def test_documentation_evidence_matches_validation_summary():
     """Verify that every count, metric, status, and evidence in docs/ traces to validation outputs."""
-    import json
-    import re
-    from pathlib import Path
-    import pandas as pd
-
     summary_file = Path("reports/phase1/validation_summary.json")
     if not summary_file.exists():
         pytest.skip("validation_summary.json not yet generated")
@@ -470,7 +585,7 @@ def test_documentation_evidence_matches_validation_summary():
     assert decision_log_path.exists(), "docs/decision_log.md must exist"
     content = decision_log_path.read_text(encoding="utf-8")
 
-    # Status verifications
+    # Status verifications for ALL DL rows (DL-01 to DL-26)
     expected_statuses = {
         "DL-01": "APPROVED",
         "DL-02": "APPROVED",
@@ -481,49 +596,33 @@ def test_documentation_evidence_matches_validation_summary():
         "DL-07": "APPROVED",
         "DL-08": "APPROVED",
         "DL-09": "APPROVED",
+        "DL-10": "APPROVED",
+        "DL-11": "APPROVED",
+        "DL-12": "APPROVED",
+        "DL-13": "APPROVED",
+        "DL-14": "APPROVED",
+        "DL-15": "APPROVED",
+        "DL-16": "APPROVED",
+        "DL-17": "APPROVED",
+        "DL-18": "APPROVED",
+        "DL-19": "APPROVED",
+        "DL-20": "APPROVED",
+        "DL-21": "APPROVED",
+        "DL-22": "APPROVED",
+        "DL-23": "APPROVED",
+        "DL-24": "APPROVED",
+        "DL-25": "APPROVED",
+        "DL-26": "DEFERRED",
     }
     for dl_id, expected_status in expected_statuses.items():
         pattern = rf"`{dl_id}`.*?`{expected_status}`"
         assert re.search(pattern, content), f"Status for {dl_id} must be `{expected_status}`"
 
-    # Evidence details
-    assert "1,233" in content and "237" in content  # DL-01
-    assert "197" in content  # DL-02
-    assert "1,244" in content and "226" in content  # DL-03
-    assert "max abs(rho) = 0.0543" in content  # DL-04
-    assert "|rho|" not in content, "No unescaped '|rho|' allowed in decision log"
-    assert "rho = 0.9204" in content  # DL-05
-    assert "rho = 0.854" in content and "rho = 0.843" in content  # DL-06
-    assert "44 employees report YearsAtCompany = 0" in content  # DL-06
-    assert (
-        "Ratio features such as YearsInCurrentRole / YearsAtCompany are undefined when YearsAtCompany = 0; "
-        "the zero-denominator rule will be defined in Phase 2."
-    ) in content  # DL-06
-    assert "114" in content and "16,581" in content  # DL-07
-    assert "27 individuals (n < 30)" in content  # DL-08
-    assert "DataFrame index (0-based) 977" in content and "DailyRate = 999" in content  # DL-09
     assert "$" not in content, "No dollar signs permitted in decision log"
+    assert "|rho|" not in content, "No unescaped '|rho|' allowed in decision log"
 
-    # Systematic parsing of EVERY numeric token in decision log evidence
-    evidence_tokens = {}
-    for line in content.splitlines():
-        if "DL-" in line:
-            parts = [p.strip() for p in line[1:-1].split("|")]
-            dl_id = parts[0].strip("`")
-            evidence_cell = parts[2]
-            nums = re.findall(r"\d+(?:,\d+)*(?:\.\d+)?", evidence_cell.split("Table:")[0])
-            evidence_tokens[dl_id] = [n.replace(",", "") for n in nums]
-
-    # Validate numeric tokens for each decision against computed sources
-    assert evidence_tokens["DL-01"] == ["0", "1", "0", "1233", "1", "237"]
-    assert "197" in evidence_tokens["DL-02"]
-    assert set(evidence_tokens["DL-03"]) == {"3", "4", "1244", "226", "1", "4"}
-    assert "0.0543" in evidence_tokens["DL-04"]
-    assert "0.9204" in evidence_tokens["DL-05"]
-    assert set(evidence_tokens["DL-06"]) == {"0.854", "0.843", "44", "0"}
-    assert set(evidence_tokens["DL-07"]) == {"114", "1.5", "16581"}
-    assert set(evidence_tokens["DL-08"]) == {"27", "30"}
-    assert set(evidence_tokens["DL-09"]) == {"0", "977", "999"}
+    # Exact token equality verification across EVERY DL row (DL-01 to DL-26)
+    _check_decision_log_tokens(content)
 
     # Verify data dictionary observed-data statements
     data_dict_path = Path("docs/data_dictionary.md")
@@ -546,3 +645,21 @@ def test_documentation_evidence_matches_validation_summary():
                     val_max = int(m.group(2).replace(",", ""))
                     assert val_min == int(obs_min), f"{col} min mismatch in data dictionary: {val_min} != {obs_min}"
                     assert val_max == int(obs_max), f"{col} max mismatch in data dictionary: {val_max} != {obs_max}"
+
+
+def test_decision_log_evidence_mutation_raises():
+    """Mutation test: changing any evidence number in the decision log must raise an AssertionError."""
+    decision_log_path = Path("docs/decision_log.md")
+    content = decision_log_path.read_text(encoding="utf-8")
+
+    # Mutation 1: Change count 237 to 238 in DL-01
+    assert "count 1: 237" in content
+    mutated_content_1 = content.replace("count 1: 237", "count 1: 238", 1)
+    with pytest.raises(AssertionError, match="Evidence tokens mismatch for DL-01"):
+        _check_decision_log_tokens(mutated_content_1)
+
+    # Mutation 2: Change promotion gap count in DL-23
+    assert "matches 135 employees" in content
+    mutated_content_2 = content.replace("matches 135 employees", "matches 136 employees", 1)
+    with pytest.raises(AssertionError, match="Evidence tokens mismatch for DL-23"):
+        _check_decision_log_tokens(mutated_content_2)

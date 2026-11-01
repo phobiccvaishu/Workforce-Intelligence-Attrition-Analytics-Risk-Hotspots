@@ -21,6 +21,7 @@ from workforce_intel.features import (
     derive_manager_tenure_band,
     derive_outstanding_rating,
     derive_prior_experience_years,
+    derive_promotion_analysis_cohort,
     derive_promotion_gap_band,
     derive_promotion_gap_equals_tenure,
     derive_promotion_gap_share,
@@ -187,9 +188,9 @@ def test_promotion_gap_equals_tenure():
     assert res.dtype == "int64"
 
 
-def test_stagnation_cohort():
+def test_promotion_analysis_cohort():
     yac = pd.Series([0, 4, 5, 10], index=range(4))
-    res = derive_stagnation_cohort(yac, min_tenure=5)
+    res = derive_promotion_analysis_cohort(yac, min_tenure=5)
     assert res.tolist() == [0, 0, 1, 1]
     assert res.dtype == "int64"
 

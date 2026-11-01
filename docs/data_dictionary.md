@@ -74,7 +74,6 @@ The correlation audit (C9) examined the four compensation rate metrics:
   - Over all 1,470 rows without trimming, the ratio `DailyRate / (HourlyRate * 8)` fluctuates between **0.15** and **6.21** (median 1.50).
 - **Recommendation for Phase 2+:** Treat `DailyRate`, `HourlyRate`, and `MonthlyRate` with extreme caution. `MonthlyIncome` exhibits strong, logical hierarchy scaling with `JobLevel` (rho = 0.9204) and is the primary trustworthy compensation signal.
 
-
 ## 4. Phase 2 Derived Features Specification
 
 The following 15 features (plus surrogate index `RowID`) were derived in Phase 2 in strict accordance with the Section 5.4 contract. No rows were dropped, original values were untouched, and all cut-points represent documented design proposals.
@@ -95,5 +94,5 @@ The following 15 features (plus surrogate index `RowID`) were derived in Phase 2
 | `RoleTenureShare` | Ratio Feature | `float64` | [0.0 .. 1.0] (44 NaNs) | YearsInCurrentRole / YearsAtCompany (NaN when YearsAtCompany == 0; zero-denominator rule) | `True` | `True` |
 | `PromotionGapShare` | Ratio Feature | `float64` | [0.0 .. 1.0] (44 NaNs) | YearsSinceLastPromotion / YearsAtCompany (NaN when YearsAtCompany == 0; zero-denominator rule) | `True` | `True` |
 | `PromotionGapEqualsTenure` | Binary Flag | `int64` | {0, 1} | Descriptive flag: YearsAtCompany > 0 & YearsSinceLastPromotion == YearsAtCompany | `False` | `True` |
-| `StagnationCohort` | Binary Flag | `int64` | {0, 1} | Cohort flag: YearsAtCompany >= 5 (minimum tenure for promotion gap evaluation) | `False` | `True` |
+| `PromotionAnalysisCohort` | Binary Flag | `int64` | {0, 1} | Cohort flag: YearsAtCompany >= 5 (minimum tenure for promotion analysis) | `False` | `True` |
 | `OutstandingRating` | Binary Flag | `int64` | {0, 1} | Binary indicator: PerformanceRating == 4 ('Outstanding') | `False` | `True` |

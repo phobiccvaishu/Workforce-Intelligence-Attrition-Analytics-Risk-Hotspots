@@ -29,10 +29,12 @@ from workforce_intel.config import (
     DOCS_DIR,
     EXPECTED_COLUMNS,
     MANAGER_TENURE_LABELS,
+    MIN_TENURE_FOR_PROMOTION_ANALYSIS,
     NOMINAL_COLUMNS,
     NOT_USED_ANALYTICAL_COLUMNS,
     NULLABLE_DERIVED_COLUMNS,
     ORDINAL_COLUMNS_DOCUMENTED_RANGES,
+    PHASE1_TABLES_DIR,
     PHASE2_LOG_FILE,
     PHASE2_REPORT_MD,
     PHASE2_REPORTS_DIR,
@@ -50,9 +52,11 @@ from workforce_intel.config import (
     SURROGATE_KEY_COLUMN,
     TARGET_COLUMN,
     TENURE_LABELS,
+    get_environment_metadata,
 )
 from workforce_intel.io import assert_safe_write_path, load_raw
-from workforce_intel.validation import build_phase2_report, reconciliation_audit
+from workforce_intel.reporting import build_phase2_report
+from workforce_intel.validation import reconciliation_audit
 
 
 def setup_logger() -> logging.Logger:
@@ -137,7 +141,7 @@ def build_schema_json(df: pd.DataFrame) -> Dict[str, Any]:
                 "RoleTenureShare": "YearsInCurrentRole / YearsAtCompany (NaN when YearsAtCompany == 0; zero-denominator rule)",
                 "PromotionGapShare": "YearsSinceLastPromotion / YearsAtCompany (NaN when YearsAtCompany == 0; zero-denominator rule)",
                 "PromotionGapEqualsTenure": "Descriptive flag: YearsAtCompany > 0 & YearsSinceLastPromotion == YearsAtCompany",
-                "StagnationCohort": "Cohort flag: YearsAtCompany >= 5 (minimum tenure for promotion gap evaluation)",
+                "PromotionAnalysisCohort": "Cohort flag: YearsAtCompany >= 5 (minimum tenure for promotion analysis)",
                 "OutstandingRating": "Binary indicator: PerformanceRating == 4 ('Outstanding')",
             }
             derivation = derivations_map.get(col, "Phase 2 derived feature")
@@ -214,7 +218,7 @@ The following 15 features (plus surrogate index `RowID`) were derived in Phase 2
 
 
 def update_decision_log_phase2(reconciliation: Dict[str, Any]) -> None:
-    """Append DL-10 through DL-24 to docs/decision_log.md."""
+    """Append DL-10 through DL-26 to docs/decision_log.md."""
     dl_path = DOCS_DIR / "decision_log.md"
     content = dl_path.read_text(encoding="utf-8").replace("\r\n", "\n")
 
@@ -223,6 +227,8 @@ def update_decision_log_phase2(reconciliation: Dict[str, Any]) -> None:
         content = content[: content.find(marker)].strip() + "\n"
 
     bucket_df = reconciliation["bucket_sizes_table"].set_index(["column", "level"])
+    zero_df = pd.read_csv(PHASE1_TABLES_DIR / "zero_value_audit.csv").set_index("column")
+    feat_df = reconciliation["derived_feature_audit"].set_index("derived_column")
 
     # Computed counts for evidence
     age_counts = "-".join(str(bucket_df.loc[("AgeGroup", l), "count"]) for l in AGE_LABELS)
@@ -234,10 +240,24 @@ def update_decision_log_phase2(reconciliation: Dict[str, Any]) -> None:
     dist_counts = "-".join(str(bucket_df.loc[("DistanceBand", l), "count"]) for l in DISTANCE_LABELS)
 
     early_tenure_1 = int(bucket_df.loc[("EarlyTenure", "1"), "count"])
+    early_tenure_pct = f"{bucket_df.loc[('EarlyTenure', '1'), 'percentage']:.2f}"
+
+    prior_zeros = int(bucket_df.loc[("HasPriorExperience", "0"), "count"])
     prior_exp_1 = int(bucket_df.loc[("HasPriorExperience", "1"), "count"])
+    prior_exp_pct = f"{bucket_df.loc[('HasPriorExperience', '1'), 'percentage']:.2f}"
+
     prom_eq_1 = int(bucket_df.loc[("PromotionGapEqualsTenure", "1"), "count"])
-    stagnation_1 = int(bucket_df.loc[("StagnationCohort", "1"), "count"])
+    prom_eq_pct = f"{bucket_df.loc[('PromotionGapEqualsTenure', '1'), 'percentage']:.2f}"
+
+    cohort_1 = int(bucket_df.loc[("PromotionAnalysisCohort", "1"), "count"])
+    cohort_pct = f"{bucket_df.loc[('PromotionAnalysisCohort', '1'), 'percentage']:.2f}"
+
     outstanding_1 = int(bucket_df.loc[("OutstandingRating", "1"), "count"])
+    outstanding_pct = f"{bucket_df.loc[('OutstandingRating', '1'), 'percentage']:.2f}"
+
+    role_zero_count = int(zero_df.loc["YearsInCurrentRole", "zero_count"])
+    nan_table = reconciliation["nan_audit_table"].set_index("column")
+    nan_count = int(nan_table.loc["RoleTenureShare", "nan_count"])
 
     new_decisions = [
         {
@@ -246,134 +266,152 @@ def update_decision_log_phase2(reconciliation: Dict[str, Any]) -> None:
             "evidence": "Dataset lacks employee ID. 1,470 continuous surrogate integers [0 .. 1469] injected matching Phase 1 table row indices. Table: reports/phase2/tables/reconciliation.csv",
             "proposed_handling": "Add RowID as first column. Document that CSV line number equals RowID + 2.",
             "alternatives": "Use default pandas index; omit surrogate identifier.",
-            "status": "PROPOSED, awaiting owner approval",
+            "status": "APPROVED",
             "phase": "Phase 2",
         },
         {
             "id": "DL-11",
+            "issue": "Raw Columns Pass-Through Integrity",
+            "evidence": "All 31 original raw columns preserved byte-for-byte with 0 missing and 0 unexpected columns across all 1,470 records. Table: reports/phase2/tables/reconciliation.csv",
+            "proposed_handling": "Pass through all 31 original columns untouched without imputation, clipping, or transformations.",
+            "alternatives": "Drop uninformative or redundant raw columns in preprocessing.",
+            "status": "APPROVED",
+            "phase": "Phase 2",
+        },
+        {
+            "id": "DL-12",
             "issue": "AgeGroup Right-Inclusive Cut Bins",
             "evidence": f"Right-inclusive bins (17, 25], (25, 35], (35, 45], (45, 60] yield distribution {age_counts} across all 1,470 records. Table: reports/phase2/tables/bucket_sizes.csv",
             "proposed_handling": "Establish standard 4-tier demographic age bands. State that Phase 3 must evaluate sensitivity to alternate cut-points.",
             "alternatives": "Decade bins (20s, 30s, etc.); continuous age only.",
-            "status": "PROPOSED, awaiting owner approval",
-            "phase": "Phase 2 / Phase 3",
-        },
-        {
-            "id": "DL-12",
-            "issue": "TenureBand Right-Inclusive Cut Bins",
-            "evidence": f"Right-inclusive bins [-1, 1], (1, 3], (3, 5], (5, 10], (10, 100] yield distribution {tenure_counts}. Table: reports/phase2/tables/bucket_sizes.csv",
-            "proposed_handling": "Adopt standard 5-band enterprise tenure progression. State that Phase 3 must evaluate sensitivity to alternate cut-points.",
-            "alternatives": "Equal-frequency quantiles; 3-tier band.",
-            "status": "PROPOSED, awaiting owner approval",
+            "status": "APPROVED",
             "phase": "Phase 2 / Phase 3",
         },
         {
             "id": "DL-13",
-            "issue": "EarlyTenure Indicator Definition",
-            "evidence": f"YearsAtCompany <= 1 captures exactly {early_tenure_1} employees (14.63% of enterprise). Table: reports/phase2/tables/bucket_sizes.csv",
-            "proposed_handling": "Define EarlyTenure as YearsAtCompany <= 1 (fewer than 2 completed years) to isolate onboarding/retention risk.",
-            "alternatives": "Tenure < 1 year (excludes 1-year employees); Tenure <= 2 years.",
-            "status": "PROPOSED, awaiting owner approval",
+            "issue": "TenureBand Right-Inclusive Cut Bins",
+            "evidence": f"Right-inclusive bins [-1, 1], (1, 3], (3, 5], (5, 10], (10, 100] yield distribution {tenure_counts}. Table: reports/phase2/tables/bucket_sizes.csv",
+            "proposed_handling": "Adopt standard 5-band enterprise tenure progression. State that Phase 3 must evaluate sensitivity to alternate cut-points.",
+            "alternatives": "Equal-frequency quantiles; 3-tier band.",
+            "status": "APPROVED",
             "phase": "Phase 2 / Phase 3",
         },
         {
             "id": "DL-14",
-            "issue": "CareerStage Experience Bands",
-            "evidence": f"TotalWorkingYears right-inclusive bins yield distribution {career_counts}. Table: reports/phase2/tables/bucket_sizes.csv",
-            "proposed_handling": "Categorize career experience into 0-5, 6-10, 11-20, 21+ years. State that Phase 3 must evaluate sensitivity.",
-            "alternatives": "Continuous years only; 3-stage progression (Early, Mid, Late).",
-            "status": "PROPOSED, awaiting owner approval",
+            "issue": "EarlyTenure Indicator Definition",
+            "evidence": f"YearsAtCompany <= 1 (fewer than 2 completed years) captures exactly {early_tenure_1} employees ({early_tenure_pct}% of enterprise). Table: reports/phase2/tables/bucket_sizes.csv",
+            "proposed_handling": "Define EarlyTenure as YearsAtCompany <= 1 (fewer than 2 completed years) to isolate onboarding/retention risk.",
+            "alternatives": "Tenure < 1 year (excludes 1-year employees); Tenure <= 2 years.",
+            "status": "APPROVED",
             "phase": "Phase 2 / Phase 3",
         },
         {
             "id": "DL-15",
-            "issue": "RoleTenureBand Right-Inclusive Bins",
-            "evidence": f"YearsInCurrentRole right-inclusive cuts yield distribution {role_counts}. Table: reports/phase2/tables/bucket_sizes.csv",
-            "proposed_handling": "Adopt 0-1, 2-3, 4-7, 8+ role tenure bands. State that Phase 3 must evaluate sensitivity.",
-            "alternatives": "Continuous role tenure only.",
-            "status": "PROPOSED, awaiting owner approval",
+            "issue": "CareerStage Experience Bands",
+            "evidence": f"TotalWorkingYears right-inclusive bins yield distribution {career_counts}. Table: reports/phase2/tables/bucket_sizes.csv",
+            "proposed_handling": "Categorize career experience into 0-5, 6-10, 11-20, 21+ years. State that Phase 3 must evaluate sensitivity.",
+            "alternatives": "Continuous years only; 3-stage progression (Early, Mid, Late).",
+            "status": "APPROVED",
             "phase": "Phase 2 / Phase 3",
         },
         {
             "id": "DL-16",
-            "issue": "ManagerTenureBand Right-Inclusive Bins",
-            "evidence": f"YearsWithCurrManager right-inclusive cuts yield distribution {mgr_counts}. Table: reports/phase2/tables/bucket_sizes.csv",
-            "proposed_handling": "Adopt 0-1, 2-3, 4-7, 8+ manager tenure bands. State that Phase 3 must evaluate sensitivity.",
-            "alternatives": "Continuous manager tenure only.",
-            "status": "PROPOSED, awaiting owner approval",
+            "issue": "RoleTenureBand Right-Inclusive Bins",
+            "evidence": f"YearsInCurrentRole right-inclusive cuts yield distribution {role_counts}. Table: reports/phase2/tables/bucket_sizes.csv",
+            "proposed_handling": "Adopt 0-1, 2-3, 4-7, 8+ role tenure bands. State that Phase 3 must evaluate sensitivity.",
+            "alternatives": "Continuous role tenure only.",
+            "status": "APPROVED",
             "phase": "Phase 2 / Phase 3",
         },
         {
             "id": "DL-17",
-            "issue": "PromotionGapBand Right-Inclusive Bins",
-            "evidence": f"YearsSinceLastPromotion cuts yield distribution {prom_counts}. Table: reports/phase2/tables/bucket_sizes.csv",
-            "proposed_handling": "Adopt 0, 1-2, 3-5, 6+ bands to capture promotion velocity. State that Phase 3 must evaluate sensitivity.",
-            "alternatives": "Binary promoted-recently flag; continuous gap years.",
-            "status": "PROPOSED, awaiting owner approval",
+            "issue": "ManagerTenureBand Right-Inclusive Bins",
+            "evidence": f"YearsWithCurrManager right-inclusive cuts yield distribution {mgr_counts}. Table: reports/phase2/tables/bucket_sizes.csv",
+            "proposed_handling": "Adopt 0-1, 2-3, 4-7, 8+ manager tenure bands. State that Phase 3 must evaluate sensitivity.",
+            "alternatives": "Continuous manager tenure only.",
+            "status": "APPROVED",
             "phase": "Phase 2 / Phase 3",
         },
         {
             "id": "DL-18",
-            "issue": "DistanceBand Right-Inclusive Bins",
-            "evidence": f"DistanceFromHome right-inclusive cuts yield distribution {dist_counts}. Physical distance unit is undocumented. Table: reports/phase2/tables/bucket_sizes.csv",
-            "proposed_handling": "Adopt 1-5, 6-10, 11-20, 21-29 bands; document unit ambiguity in schema and reports.",
-            "alternatives": "Continuous distance; binary close vs far indicator.",
-            "status": "PROPOSED, awaiting owner approval",
+            "issue": "PromotionGapBand Right-Inclusive Bins",
+            "evidence": f"YearsSinceLastPromotion cuts yield distribution {prom_counts}. Table: reports/phase2/tables/bucket_sizes.csv",
+            "proposed_handling": "Adopt 0, 1-2, 3-5, 6+ bands to capture promotion velocity. State that Phase 3 must evaluate sensitivity.",
+            "alternatives": "Binary promoted-recently flag; continuous gap years.",
+            "status": "APPROVED",
             "phase": "Phase 2 / Phase 3",
         },
         {
             "id": "DL-19",
-            "issue": "PriorExperienceYears Derivation",
-            "evidence": f"Derived as TotalWorkingYears - YearsAtCompany. Min 0, max 33, exactly 474 zero values. Table: reports/phase2/tables/derived_feature_audit.csv",
-            "proposed_handling": "Derive PriorExperienceYears directly from consistent tenure fields to circumvent NumCompaniesWorked ambiguity.",
-            "alternatives": "Use NumCompaniesWorked directly.",
-            "status": "PROPOSED, awaiting owner approval",
-            "phase": "Phase 2",
+            "issue": "DistanceBand Right-Inclusive Bins",
+            "evidence": f"DistanceFromHome right-inclusive cuts yield distribution {dist_counts}. Physical distance unit is undocumented. Table: reports/phase2/tables/bucket_sizes.csv",
+            "proposed_handling": "Adopt 1-5, 6-10, 11-20, 21-29 bands; document unit ambiguity in schema and reports.",
+            "alternatives": "Continuous distance; binary close vs far indicator.",
+            "status": "APPROVED",
+            "phase": "Phase 2 / Phase 3",
         },
         {
             "id": "DL-20",
-            "issue": "HasPriorExperience Binary Flag",
-            "evidence": f"PriorExperienceYears > 0 flags {prior_exp_1} employees (67.76%) with pre-company experience. Table: reports/phase2/tables/bucket_sizes.csv",
-            "proposed_handling": "Create clean binary indicator from PriorExperienceYears.",
-            "alternatives": "NumCompaniesWorked > 0 indicator.",
-            "status": "PROPOSED, awaiting owner approval",
+            "issue": "PriorExperienceYears Derivation",
+            "evidence": f"Derived as TotalWorkingYears - YearsAtCompany. Min 0, max 33, exactly {prior_zeros} zero values. Table: reports/phase2/tables/derived_feature_audit.csv",
+            "proposed_handling": "Derive PriorExperienceYears directly from consistent tenure fields to circumvent NumCompaniesWorked ambiguity.",
+            "alternatives": "Use NumCompaniesWorked directly.",
+            "status": "APPROVED",
             "phase": "Phase 2",
         },
         {
             "id": "DL-21",
-            "issue": "Zero-Denominator Rule for Tenure Shares",
-            "evidence": "44 employees have YearsAtCompany == 0. RoleTenureShare and PromotionGapShare evaluate strictly to NaN for these 44 records. Table: reports/phase2/tables/nan_audit.csv",
-            "proposed_handling": "Leave zero-tenure rows as explicit NaN in ratio features. Never impute with 0 or mean in preprocessing.",
-            "alternatives": "Impute 0.0 or 1.0; add epsilon offset (YearsAtCompany + 1).",
-            "status": "PROPOSED, awaiting owner approval",
+            "issue": "HasPriorExperience Binary Flag",
+            "evidence": f"PriorExperienceYears > 0 flags {prior_exp_1} employees ({prior_exp_pct}%) with pre-company experience. Table: reports/phase2/tables/bucket_sizes.csv",
+            "proposed_handling": "Create clean binary indicator from PriorExperienceYears.",
+            "alternatives": "NumCompaniesWorked > 0 indicator.",
+            "status": "APPROVED",
             "phase": "Phase 2",
         },
         {
             "id": "DL-22",
-            "issue": "PromotionGapEqualsTenure Descriptive Flag",
-            "evidence": f"YearsAtCompany > 0 & YearsSinceLastPromotion == YearsAtCompany matches {prom_eq_1} employees (9.18%). Table: reports/phase2/tables/bucket_sizes.csv",
-            "proposed_handling": "Provide descriptive flag only; strictly do NOT label as 'never promoted' due to external tenure nuances.",
-            "alternatives": "Label as 'Unpromoted Enterprise Tenure'.",
-            "status": "PROPOSED, awaiting owner approval",
-            "phase": "Phase 2 / Phase 3",
+            "issue": "Zero-Denominator Rule for Tenure Shares",
+            "evidence": f"{nan_count} employees have YearsAtCompany == 0. RoleTenureShare and PromotionGapShare evaluate strictly to NaN for these {nan_count} records. Table: reports/phase2/tables/nan_audit.csv",
+            "proposed_handling": "Leave zero-tenure rows as explicit NaN in ratio features. Never impute with 0 or mean in preprocessing.",
+            "alternatives": "Impute 0.0 or 1.0; add epsilon offset (YearsAtCompany + 1).",
+            "status": "APPROVED",
+            "phase": "Phase 2",
         },
         {
             "id": "DL-23",
-            "issue": "StagnationCohort Threshold",
-            "evidence": f"YearsAtCompany >= 5 identifies {stagnation_1} employees (60.54%) eligible for career stagnation analysis. Table: reports/phase2/tables/bucket_sizes.csv",
-            "proposed_handling": "Require minimum 5 years company tenure before evaluating career stagnation risk.",
-            "alternatives": "Tenure >= 3 years; tenure >= 7 years.",
-            "status": "PROPOSED, awaiting owner approval",
+            "issue": "PromotionGapEqualsTenure: descriptive flag (YearsAtCompany > 0 and YearsSinceLastPromotion == YearsAtCompany)",
+            "evidence": f"YearsAtCompany > 0 & YearsSinceLastPromotion == YearsAtCompany matches {prom_eq_1} employees ({prom_eq_pct}%). Table: reports/phase2/tables/bucket_sizes.csv",
+            "proposed_handling": "Provide descriptive flag only; captures cohort where time since last promotion equals entire organizational tenure.",
+            "alternatives": "Compute continuous tenure ratio; omit indicator.",
+            "status": "APPROVED",
             "phase": "Phase 2 / Phase 3",
         },
         {
             "id": "DL-24",
+            "issue": "Promotion-Analysis Cohort (YearsAtCompany >= MIN_TENURE_FOR_PROMOTION_ANALYSIS)",
+            "evidence": f"YearsAtCompany >= {MIN_TENURE_FOR_PROMOTION_ANALYSIS} identifies {cohort_1} employees ({cohort_pct}%) in eligible cohort for promotion analysis. Table: reports/phase2/tables/bucket_sizes.csv",
+            "proposed_handling": f"Require minimum {MIN_TENURE_FOR_PROMOTION_ANALYSIS} years company tenure before evaluating career progression velocity in subgroup analytics.",
+            "alternatives": "Tenure >= 3 years; tenure >= 7 years.",
+            "status": "APPROVED",
+            "phase": "Phase 2 / Phase 3",
+        },
+        {
+            "id": "DL-25",
             "issue": "OutstandingRating Binary Flag",
-            "evidence": f"PerformanceRating == 4 isolates exactly {outstanding_1} individuals (15.37%) at top performance tier. Table: reports/phase2/tables/bucket_sizes.csv",
+            "evidence": f"PerformanceRating == 4 isolates exactly {outstanding_1} individuals ({outstanding_pct}%) at top performance tier. Table: reports/phase2/tables/bucket_sizes.csv",
             "proposed_handling": "Treat top rating as binary flag isolating 'Outstanding' performers given lack of 1-2 ratings.",
             "alternatives": "Preserve 3/4 integer scale.",
-            "status": "PROPOSED, awaiting owner approval",
+            "status": "APPROVED",
             "phase": "Phase 2 / Phase 3",
+        },
+        {
+            "id": "DL-26",
+            "issue": "YearsSinceLastPromotion / YearsInCurrentRole Ratio (DEFERRED)",
+            "evidence": f"Ratio feature YearsSinceLastPromotion / YearsInCurrentRole is undefined when YearsInCurrentRole == 0 ({role_zero_count} employees). Table: reports/phase1/tables/zero_value_audit.csv",
+            "proposed_handling": "Deferred: ratio not implemented in Phase 2 because denominator can be zero and ratio is unbounded without established capping rules.",
+            "alternatives": "Add epsilon offset to denominator; impute zero; segment by role tenure.",
+            "status": "DEFERRED",
+            "phase": "Phase 3 (Exploratory Data Analysis & Modeling)",
         },
     ]
 
@@ -473,6 +511,7 @@ def run_pipeline() -> None:
         "raw_sha256": raw_hash,
         "processed_file": PROCESSED_DATA_FILE.name,
         "processed_sha256": proc_hash,
+        "environment": get_environment_metadata(),
         "dimensions": {
             "raw_rows": len(raw_df),
             "processed_rows": len(processed_df),

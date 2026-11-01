@@ -333,7 +333,8 @@ def derive_promotion_gap_equals_tenure(
 ) -> pd.Series:
     """Derive descriptive flag: YearsAtCompany > 0 AND YearsSinceLastPromotion == YearsAtCompany.
 
-    Descriptive flag only; strictly NOT labeled as 'never promoted'.
+    Descriptive flag identifying employees whose tenure since last promotion matches
+    their entire company tenure.
 
     Args:
         years_at_company: Company tenure.
@@ -346,13 +347,13 @@ def derive_promotion_gap_equals_tenure(
     return condition.astype("int64")
 
 
-def derive_stagnation_cohort(
+def derive_promotion_analysis_cohort(
     years_at_company: pd.Series,
     min_tenure: int = MIN_TENURE_FOR_PROMOTION_ANALYSIS,
 ) -> pd.Series:
-    """Derive StagnationCohort flag (1 = YearsAtCompany >= min_tenure, 0 otherwise).
+    """Derive PromotionAnalysisCohort flag (1 = YearsAtCompany >= min_tenure, 0 otherwise).
 
-    Establishes cohort with sufficient tenure (>= 5 years) for promotion-gap analysis.
+    Establishes eligible cohort with sufficient tenure (>= 5 years) for promotion-gap analysis.
 
     Args:
         years_at_company: Company tenure.
@@ -362,6 +363,10 @@ def derive_stagnation_cohort(
         int64 Series in {0, 1}.
     """
     return (years_at_company >= min_tenure).astype("int64")
+
+
+# Backward compatibility alias
+derive_stagnation_cohort = derive_promotion_analysis_cohort
 
 
 def derive_outstanding_rating(performance_rating: pd.Series) -> pd.Series:

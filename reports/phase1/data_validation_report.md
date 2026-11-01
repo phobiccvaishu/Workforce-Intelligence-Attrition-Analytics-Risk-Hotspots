@@ -1,6 +1,6 @@
 # Phase 1 Data Validation Report: Workforce Attrition Dataset
 
-- **Execution Timestamp (UTC):** 2026-11-01T18:31:05.338257+00:00
+- **Execution Timestamp (UTC):** 2026-11-01T21:49:48.234079+00:00
 - **Dataset File:** `Palo Alto Networks.csv`
 - **SHA-256 Checksum:** `389735e8909136a51fe487040df8f8662c2d222bb3505a83745c5a8c5bf20c7c`
 - **Environment:** Python packages `pandas` 3.0.3, `numpy` 2.4.4, `scipy` 1.17.1
@@ -52,7 +52,7 @@ The dataset was loaded via `workforce_intel.io.load_raw` with explicit UTF-8 and
 | **Column Ordering Match** | Passed (Exact match) |
 | **Text Columns Count** | 7 |
 | **Numeric Columns Count** | 24 |
-| **Memory Usage** | 0.85 MB (893,274 bytes) |
+| **Memory Usage** | 0.85 MB (893,274 bytes) (environment-dependent) |
 
 
 - **Column Contract:** All 31 columns strictly match `EXPECTED_COLUMNS` in exact name and positional order.

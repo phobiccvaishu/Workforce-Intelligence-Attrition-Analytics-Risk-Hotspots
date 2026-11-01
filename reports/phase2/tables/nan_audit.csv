@@ -44,5 +44,5 @@ HasPriorExperience,0,0.0,0,PASS
 RoleTenureShare,44,2.99,44,PASS
 PromotionGapShare,44,2.99,44,PASS
 PromotionGapEqualsTenure,0,0.0,0,PASS
-StagnationCohort,0,0.0,0,PASS
+PromotionAnalysisCohort,0,0.0,0,PASS
 OutstandingRating,0,0.0,0,PASS

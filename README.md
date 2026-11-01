@@ -69,6 +69,10 @@ This project investigates career stages, departments, roles, compensation struct
 ### Prerequisites
 - Python >= 3.10 (Tested on Python 3.14.0)
 
+### Environment & Dependency Note
+- `pyarrow` is **not** required for this project.
+- Only the reported memory-usage figure in data validation reports depends on whether `pyarrow` is installed (as Pandas utilizes PyArrow-backed string arrays when available and standard Python heap objects otherwise). All analytical transformations, feature derivations, and modeling outputs are 100% invariant to `pyarrow`.
+
 ### Setup Virtual Environment
 ```bash
 # Create virtual environment

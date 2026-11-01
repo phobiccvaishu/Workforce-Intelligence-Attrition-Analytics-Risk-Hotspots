@@ -26,7 +26,8 @@ from workforce_intel.config import (
     SURROGATE_KEY_COLUMN,
 )
 from workforce_intel.io import load_processed, load_raw
-from workforce_intel.validation import build_phase2_report, reconciliation_audit
+from workforce_intel.reporting import build_phase2_report
+from workforce_intel.validation import reconciliation_audit
 
 
 def test_processed_contract_real_dataset():
@@ -136,7 +137,7 @@ def test_section_8_reference_checkpoints():
     assert int(processed_df["RoleTenureShare"].isna().sum()) == 44
     assert int(processed_df["PromotionGapShare"].isna().sum()) == 44
     assert int((processed_df["PromotionGapEqualsTenure"] == 1).sum()) == 135
-    assert int((processed_df["StagnationCohort"] == 1).sum()) == 890
+    assert int((processed_df["PromotionAnalysisCohort"] == 1).sum()) == 890
     assert int((processed_df["OutstandingRating"] == 1).sum()) == 226
 
 

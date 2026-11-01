@@ -2,7 +2,7 @@
   "dataset_name": "workforce_attrition_processed.csv",
   "total_columns": 47,
   "total_rows": 1470,
-  "generated_timestamp": "2026-11-01T19:00:19.796029+00:00",
+  "generated_timestamp": "2026-11-01T21:49:52.835539+00:00",
   "columns": {
     "RowID": {
       "name": "RowID",
@@ -615,12 +615,12 @@
       "protected_attribute": false,
       "nullable": false
     },
-    "StagnationCohort": {
-      "name": "StagnationCohort",
+    "PromotionAnalysisCohort": {
+      "name": "PromotionAnalysisCohort",
       "dtype": "int64",
       "source": "derived",
       "role": "Binary Flag",
-      "derivation": "Cohort flag: YearsAtCompany >= 5 (minimum tenure for promotion gap evaluation)",
+      "derivation": "Cohort flag: YearsAtCompany >= 5 (minimum tenure for promotion analysis)",
       "categories": null,
       "ordered": false,
       "analytical_use": true,
@@ -640,6 +640,6 @@
       "nullable": false
     }
   },
-  "processed_sha256": "e8ecca3cbdfc45877851d4c6618734cf127dc8efb594580a01bbed544c4236ed",
+  "processed_sha256": "48553275587384b98f091dacfd4466cadb9bddda131fe32bbd586e0b15bacb2d",
   "raw_sha256": "389735e8909136a51fe487040df8f8662c2d222bb3505a83745c5a8c5bf20c7c"
 }

@@ -275,7 +275,7 @@ DERIVED_COLUMNS: List[str] = [
     "RoleTenureShare",
     "PromotionGapShare",
     "PromotionGapEqualsTenure",
-    "StagnationCohort",
+    "PromotionAnalysisCohort",
     "OutstandingRating",
 ]
 
@@ -284,3 +284,29 @@ PROCESSED_COLUMNS: List[str] = [SURROGATE_KEY_COLUMN] + EXPECTED_COLUMNS + DERIV
 PROTECTED_ATTRIBUTE_COLUMNS: List[str] = ["Age", "Gender", "MaritalStatus"]
 NOT_USED_ANALYTICAL_COLUMNS: List[str] = ["DailyRate", "HourlyRate", "MonthlyRate"]
 NULLABLE_DERIVED_COLUMNS: List[str] = ["RoleTenureShare", "PromotionGapShare"]
+
+
+def get_environment_metadata() -> Dict[str, Any]:
+    """Return runtime environment metadata for audit and reproducibility tracking."""
+    import platform
+    import numpy as np
+    import pandas as pd
+    import scipy
+
+    try:
+        import pyarrow
+        pyarrow_installed = True
+        pyarrow_version = pyarrow.__version__
+    except ImportError:
+        pyarrow_installed = False
+        pyarrow_version = None
+
+    return {
+        "python_version": platform.python_version(),
+        "pandas_version": pd.__version__,
+        "numpy_version": np.__version__,
+        "scipy_version": scipy.__version__,
+        "pyarrow_installed": pyarrow_installed,
+        "pyarrow_version": pyarrow_version,
+        "pandas_string_storage": getattr(pd.options.mode, "string_storage", "default"),
+    }

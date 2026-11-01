@@ -43,10 +43,11 @@ from workforce_intel.config import (
     RAW_DATA_FILENAME,
     SMALL_SAMPLE_THRESHOLD,
     TARGET_COLUMN,
+    get_environment_metadata,
 )
 from workforce_intel.io import assert_safe_write_path, load_raw
+from workforce_intel.reporting import build_report
 from workforce_intel.validation import (
-    build_report,
     categorical_audit,
     collinearity_report,
     consistency_checks,
@@ -456,11 +457,7 @@ def run_pipeline() -> None:
         "execution_timestamp": datetime.now(timezone.utc).isoformat(),
         "dataset_file": RAW_DATA_FILENAME,
         "sha256": sha256_hash,
-        "environment": {
-            "pandas_version": pd.__version__,
-            "numpy_version": np.__version__,
-            "scipy_version": scipy.__version__,
-        },
+        "environment": get_environment_metadata(),
         "dimensions": {
             "rows": n_rows,
             "cols": n_cols,
