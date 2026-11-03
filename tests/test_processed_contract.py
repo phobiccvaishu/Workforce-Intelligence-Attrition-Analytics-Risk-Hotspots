@@ -17,13 +17,18 @@ import pytest
 
 from workforce_intel.cleaning import build_processed
 from workforce_intel.config import (
+    CONTINUOUS_COLUMNS,
     DERIVED_COLUMNS,
+    DISCRETE_COUNT_COLUMNS,
     EXPECTED_COLUMNS,
+    NOMINAL_COLUMNS,
+    ORDINAL_COLUMNS_DOCUMENTED_RANGES,
     PROCESSED_COLUMNS,
     PROCESSED_DATA_FILE,
     PROCESSED_SCHEMA_FILE,
     RAW_DATA_FILE,
     SURROGATE_KEY_COLUMN,
+    TARGET_COLUMN,
 )
 from workforce_intel.io import load_processed, load_raw
 from workforce_intel.reporting import build_phase2_report
@@ -111,34 +116,27 @@ def test_processed_csv_byte_identical_reproducibility():
     )
 
 
-def test_section_8_reference_checkpoints():
-    """Assert all Section 8 reference checkpoints match exactly."""
-    processed_df = load_processed(PROCESSED_DATA_FILE, PROCESSED_SCHEMA_FILE)
+def test_schema_roles_match_config_groups():
+    """Assert that schema.json role matches config.py classification for all 31 original columns."""
+    assert PROCESSED_SCHEMA_FILE.exists()
+    with open(PROCESSED_SCHEMA_FILE, "r", encoding="utf-8") as f:
+        schema = json.load(f)
 
-    # 1. Total shape
-    assert len(processed_df) == 1470
-    assert len(processed_df.columns) == 47
+    cols_meta = schema["columns"]
 
-    # 2. Bands
-    assert processed_df["AgeGroup"].value_counts()[["18-25", "26-35", "36-45", "46-60"]].tolist() == [123, 606, 468, 273]
-    assert processed_df["TenureBand"].value_counts()[["0-1", "2-3", "4-5", "6-10", "11+"]].tolist() == [215, 255, 306, 448, 246]
-    assert processed_df["CareerStage"].value_counts()[["0-5", "6-10", "11-20", "21+"]].tolist() == [316, 607, 340, 207]
-    assert processed_df["RoleTenureBand"].value_counts()[["0-1", "2-3", "4-7", "8+"]].tolist() == [301, 507, 399, 263]
-    assert processed_df["ManagerTenureBand"].value_counts()[["0-1", "2-3", "4-7", "8+"]].tolist() == [339, 486, 374, 271]
-    assert processed_df["PromotionGapBand"].value_counts()[["0", "1-2", "3-5", "6+"]].tolist() == [581, 516, 158, 215]
-    assert processed_df["DistanceBand"].value_counts()[["1-5", "6-10", "11-20", "21-29"]].tolist() == [632, 394, 240, 204]
+    for col in CONTINUOUS_COLUMNS:
+        assert cols_meta[col]["role"] == "Continuous", f"{col} role must be 'Continuous' (got {cols_meta[col]['role']})"
 
-    # 3. Indicators & Derived metrics
-    assert int((processed_df["EarlyTenure"] == 1).sum()) == 215
-    assert processed_df["PriorExperienceYears"].min() == 0
-    assert processed_df["PriorExperienceYears"].max() == 33
-    assert int((processed_df["PriorExperienceYears"] == 0).sum()) == 474
-    assert int((processed_df["HasPriorExperience"] == 1).sum()) == 996
-    assert int(processed_df["RoleTenureShare"].isna().sum()) == 44
-    assert int(processed_df["PromotionGapShare"].isna().sum()) == 44
-    assert int((processed_df["PromotionGapEqualsTenure"] == 1).sum()) == 135
-    assert int((processed_df["PromotionAnalysisCohort"] == 1).sum()) == 890
-    assert int((processed_df["OutstandingRating"] == 1).sum()) == 226
+    for col in DISCRETE_COUNT_COLUMNS:
+        assert cols_meta[col]["role"] == "Discrete Count", f"{col} role must be 'Discrete Count' (got {cols_meta[col]['role']})"
+
+    for col in NOMINAL_COLUMNS:
+        assert cols_meta[col]["role"] == "Nominal", f"{col} role must be 'Nominal' (got {cols_meta[col]['role']})"
+
+    for col in ORDINAL_COLUMNS_DOCUMENTED_RANGES:
+        assert cols_meta[col]["role"] == "Ordinal", f"{col} role must be 'Ordinal' (got {cols_meta[col]['role']})"
+
+    assert cols_meta[TARGET_COLUMN]["role"] == "Target"
 
 
 def test_phase2_report_provenance_synthetic_dataset():

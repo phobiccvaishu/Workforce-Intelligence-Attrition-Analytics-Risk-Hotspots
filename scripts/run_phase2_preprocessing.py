@@ -24,7 +24,9 @@ from workforce_intel.config import (
     AGE_LABELS,
     CAREER_STAGE_LABELS,
     CHECKSUMS_FILE,
+    CONTINUOUS_COLUMNS,
     DERIVED_COLUMNS,
+    DISCRETE_COUNT_COLUMNS,
     DISTANCE_LABELS,
     DOCS_DIR,
     EXPECTED_COLUMNS,
@@ -145,6 +147,16 @@ def build_schema_json(df: pd.DataFrame) -> Dict[str, Any]:
                 "OutstandingRating": "Binary indicator: PerformanceRating == 4 ('Outstanding')",
             }
             derivation = derivations_map.get(col, "Phase 2 derived feature")
+        elif col in CONTINUOUS_COLUMNS:
+            role = "Continuous"
+            derivation = "Preserved from source dataset"
+            categories = None
+            is_ordered = False
+        elif col in DISCRETE_COUNT_COLUMNS:
+            role = "Discrete Count"
+            derivation = "Preserved from source dataset"
+            categories = None
+            is_ordered = False
         else:
             role = "Discrete Count" if dtype_str.startswith("int") else "Continuous"
             derivation = "Preserved from source dataset"

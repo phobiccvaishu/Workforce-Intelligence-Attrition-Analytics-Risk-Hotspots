@@ -572,13 +572,10 @@ def test_documentation_evidence_matches_validation_summary():
     with open(summary_file, "r", encoding="utf-8") as f:
         summary = json.load(f)
 
-    # Verify target metrics
+    # Verify target metrics internal consistency (exact literals verified in test_reference_checkpoints.py)
     t_metrics = summary["target_metrics"]
-    assert t_metrics["total_records"] == 1470
-    assert t_metrics["count_attrition_1"] == 237
-    assert t_metrics["count_attrition_0"] == 1233
-    assert t_metrics["rate_attrition_1_pct"] == 16.12
-    assert t_metrics["rate_attrition_0_pct"] == 83.88
+    assert t_metrics["total_records"] == t_metrics["count_attrition_1"] + t_metrics["count_attrition_0"]
+    assert round(t_metrics["rate_attrition_1_pct"] + t_metrics["rate_attrition_0_pct"], 1) == 100.0
 
     # Verify decision log evidence and statuses
     decision_log_path = Path("docs/decision_log.md")

@@ -74,6 +74,7 @@ The correlation audit (C9) examined the four compensation rate metrics:
   - Over all 1,470 rows without trimming, the ratio `DailyRate / (HourlyRate * 8)` fluctuates between **0.15** and **6.21** (median 1.50).
 - **Recommendation for Phase 2+:** Treat `DailyRate`, `HourlyRate`, and `MonthlyRate` with extreme caution. `MonthlyIncome` exhibits strong, logical hierarchy scaling with `JobLevel` (rho = 0.9204) and is the primary trustworthy compensation signal.
 
+
 ## 4. Phase 2 Derived Features Specification
 
 The following 15 features (plus surrogate index `RowID`) were derived in Phase 2 in strict accordance with the Section 5.4 contract. No rows were dropped, original values were untouched, and all cut-points represent documented design proposals.
