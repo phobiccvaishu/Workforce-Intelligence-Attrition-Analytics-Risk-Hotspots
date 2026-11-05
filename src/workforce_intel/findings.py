@@ -231,25 +231,50 @@ def build_findings(
                     if tw_jl is None:
                         tw_jl = tables.get("two_way_overtime_x_joblevel")
                     if tw_jl is not None and "JobLevel" in tw_jl.columns:
-                        higher_levels = []
+                        separated_levels = []
+                        overlap_levels = []
+                        low_n_levels = []
                         for jl_val in sorted(tw_jl["JobLevel"].unique()):
                             sub_yes = tw_jl[(tw_jl["JobLevel"] == jl_val) & (tw_jl["OverTime"] == "Yes")]
                             sub_no = tw_jl[(tw_jl["JobLevel"] == jl_val) & (tw_jl["OverTime"] == "No")]
                             if len(sub_yes) > 0 and len(sub_no) > 0:
                                 n_yes = int(sub_yes["n"].iloc[0])
                                 n_no = int(sub_no["n"].iloc[0])
+                                ci_low_yes = float(sub_yes["ci95_low_pct"].iloc[0])
+                                ci_high_yes = float(sub_yes["ci95_high_pct"].iloc[0])
+                                ci_low_no = float(sub_no["ci95_low_pct"].iloc[0])
+                                ci_high_no = float(sub_no["ci95_high_pct"].iloc[0])
                                 rate_yes = float(sub_yes["attrition_rate_pct"].iloc[0])
                                 rate_no = float(sub_no["attrition_rate_pct"].iloc[0])
-                                if n_yes >= min_n and n_no >= min_n and rate_yes > rate_no:
-                                    higher_levels.append(str(int(jl_val)))
-                        if higher_levels:
-                            levels_str = ", ".join(higher_levels)
-                            if seg_val == "Yes":
-                                confounding = f"OverTime rate exceeds non-overtime rate at job levels {levels_str} (both n >= {min_n})."
-                            elif seg_val == "No":
-                                confounding = f"Non-overtime rate is lower than overtime rate at job levels {levels_str} (both n >= {min_n})."
-                            else:
-                                confounding = f"Rate differs between overtime and non-overtime across job levels {levels_str} (both n >= {min_n})."
+                                if n_yes < min_n or n_no < min_n:
+                                    low_n_levels.append(str(int(jl_val)))
+                                elif ci_low_yes > ci_high_no:
+                                    separated_levels.append(str(int(jl_val)))
+                                elif rate_yes > rate_no:
+                                    overlap_levels.append(str(int(jl_val)))
+
+                        sep_str = ", ".join(separated_levels)
+                        ov_str = ", ".join(overlap_levels)
+                        low_str = ", ".join(low_n_levels)
+
+                        if seg_val == "Yes":
+                            parts = []
+                            if separated_levels:
+                                parts.append(f"intervals separate above non-overtime at job levels {sep_str}")
+                            if overlap_levels:
+                                parts.append(f"higher point estimate, intervals overlap at levels {ov_str}")
+                            if low_n_levels:
+                                parts.append(f"not assessed (n<30) at level {low_str}")
+                            confounding = "; ".join(parts) + "."
+                        elif seg_val == "No":
+                            parts = []
+                            if separated_levels:
+                                parts.append(f"intervals separate below overtime at job levels {sep_str}")
+                            if overlap_levels:
+                                parts.append(f"lower point estimate, intervals overlap at levels {ov_str}")
+                            if low_n_levels:
+                                parts.append(f"not assessed (n<30) at level {low_str}")
+                            confounding = "; ".join(parts) + "."
                         else:
                             confounding = "Workload interaction caveat: stratified by JobLevel in two-way evaluation (FIG-10)."
                     else:

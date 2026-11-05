@@ -84,8 +84,8 @@ Across 58 scanned two-way interaction cells, exactly 16 subgroups met the pre-sp
 | `FIND-37` | HasPriorExperience | None (all segments within baseline interval) | 1470 | 237 | - | - | 16.1% | `no separation` | not assessed | `FIG-14` | None |
 | `FIND-38` | NumCompaniesWorked | 3 | 159 | 16 | 10.1% | [6.3%, 15.7%] | 16.1% | `below baseline` | not assessed | `FIG-06` | None |
 | `FIND-39` | NumCompaniesWorked | 5 | 63 | 16 | 25.4% | [16.3%, 37.3%] | 16.1% | `above baseline` | not assessed | `FIG-06` | None |
-| `FIND-40` | OverTime | No | 1054 | 110 | 10.4% | [8.7%, 12.4%] | 16.1% | `below baseline` | not assessed | `FIG-08` | Non-overtime rate is lower than overtime rate at job levels 1, 2, 3, 4 (both n >= 30). |
-| `FIND-41` | OverTime | Yes | 416 | 127 | 30.5% | [26.3%, 35.1%] | 16.1% | `above baseline` | not assessed | `FIG-08` | OverTime rate exceeds non-overtime rate at job levels 1, 2, 3, 4 (both n >= 30). |
+| `FIND-40` | OverTime | No | 1054 | 110 | 10.4% | [8.7%, 12.4%] | 16.1% | `below baseline` | not assessed | `FIG-08` | intervals separate below overtime at job levels 1, 2; lower point estimate, intervals overlap at levels 3, 4; not assessed (n<30) at level 5. |
+| `FIND-41` | OverTime | Yes | 416 | 127 | 30.5% | [26.3%, 35.1%] | 16.1% | `above baseline` | not assessed | `FIG-08` | intervals separate above non-overtime at job levels 1, 2; higher point estimate, intervals overlap at levels 3, 4; not assessed (n<30) at level 5. |
 | `FIND-42` | BusinessTravel | Non-Travel | 150 | 12 | 8.0% | [4.6%, 13.5%] | 16.1% | `below baseline` | not assessed | `FIG-08` | None |
 | `FIND-43` | BusinessTravel | Travel_Frequently | 277 | 69 | 24.9% | [20.2%, 30.3%] | 16.1% | `above baseline` | not assessed | `FIG-08` | None |
 | `FIND-44` | DistanceBand | 21-29 | 204 | 45 | 22.1% | [16.9%, 28.2%] | 16.1% | `above baseline` | same across cut points | `FIG-08` | None |

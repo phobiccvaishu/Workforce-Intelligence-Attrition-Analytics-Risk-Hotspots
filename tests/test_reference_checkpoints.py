@@ -306,6 +306,29 @@ def test_phase3b_section_6_checkpoints():
     assert above_flags["OverTime"] == ["Yes"]
     assert below_flags["OverTime"] == ["No"]
 
+    # OverTime x JobLevel independent checkpoints: separated = levels 1 and 2; overlapping = levels 3 and 4; not assessed = level 5
+    ot_jl_sep = []
+    ot_jl_ovp = []
+    ot_jl_low = []
+    for jl_val in [1, 2, 3, 4, 5]:
+        s_yes = df[(df["JobLevel"] == jl_val) & (df["OverTime"] == "Yes")]
+        s_no = df[(df["JobLevel"] == jl_val) & (df["OverTime"] == "No")]
+        n_y, l_y = len(s_yes), int(s_yes["Attrition"].sum())
+        n_n, l_n = len(s_no), int(s_no["Attrition"].sum())
+        if n_y < 30 or n_n < 30:
+            ot_jl_low.append(jl_val)
+        else:
+            lb_y, ub_y = wilson_ci(l_y, n_y)
+            lb_n, ub_n = wilson_ci(l_n, n_n)
+            if lb_y > ub_n:
+                ot_jl_sep.append(jl_val)
+            elif (l_y / n_y) > (l_n / n_n):
+                ot_jl_ovp.append(jl_val)
+
+    assert ot_jl_sep == [1, 2], f"Expected separated levels [1, 2], got {ot_jl_sep}"
+    assert ot_jl_ovp == [3, 4], f"Expected overlapping levels [3, 4], got {ot_jl_ovp}"
+    assert ot_jl_low == [5], f"Expected not assessed levels [5], got {ot_jl_low}"
+
     assert above_flags["BusinessTravel"] == ["Travel_Frequently"]
     assert below_flags["BusinessTravel"] == ["Non-Travel"]
 

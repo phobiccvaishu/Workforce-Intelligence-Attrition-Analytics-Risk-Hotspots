@@ -265,8 +265,10 @@ def test_findings_provenance_synthetic_data():
     # (c) Sentence-level non-numeric finding phrase cross-check
     # Real finding-specific phrases describing real segments or rate comparisons must not appear in synthetic render
     real_finding_phrases = [
-        "OverTime rate exceeds non-overtime rate at job levels 1, 2, 3, 4",
-        "Non-overtime rate is lower than overtime rate at job levels 1, 2, 3, 4",
+        "intervals separate above non-overtime at job levels 1, 2",
+        "intervals separate below overtime at job levels 1, 2",
+        "higher point estimate, intervals overlap at levels 3, 4",
+        "lower point estimate, intervals overlap at levels 3, 4",
         "| MaritalStatus | Single |",
         "| EducationField | Technical Degree |",
         "| JobRole | Sales Representative |",

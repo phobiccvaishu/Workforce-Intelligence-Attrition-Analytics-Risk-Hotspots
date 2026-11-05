@@ -77,5 +77,7 @@ def test_language_hygiene_mutation_fails(tmp_path):
     mutated_file.write_text(mutated_content, encoding="utf-8")
 
     violations = check_files_for_forbidden_words([mutated_file])
+    for v in violations:
+        print(f"Captured mutation violation: {v}")
     assert len(violations) > 0, "Mutated file with forbidden word must trigger a violation."
     assert any("causes" in v for v in violations)
