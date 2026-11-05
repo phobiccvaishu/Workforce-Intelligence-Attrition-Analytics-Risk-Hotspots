@@ -217,3 +217,163 @@ def test_phase3a_section_7_checkpoints():
     ot_mask = df["OverTime"] == "Yes"
     assert round(float(y[ot_mask].sum() / y.sum()) * 100, 1) == 53.6
     assert round(float(ot_mask.mean()) * 100, 1) == 28.3
+
+def test_phase3b_section_6_checkpoints():
+    """Verify Section 6 reference checkpoints computed directly from processed data."""
+    df = load_processed(PROCESSED_DATA_FILE, PROCESSED_SCHEMA_FILE)
+    n_tot = len(df)
+    leavers_tot = int(df["Attrition"].sum())
+    overall_rate = (leavers_tot / n_tot) * 100.0
+
+    # Wilson score interval calculation directly in pandas
+    from scipy.stats import norm
+    z = norm.ppf(0.975)
+
+    def wilson_ci(k, n):
+        p = k / n
+        denom = 1 + (z**2) / n
+        center = (p + (z**2) / (2 * n)) / denom
+        delta = (z * ((p * (1 - p) / n + (z**2) / (4 * (n**2))) ** 0.5)) / denom
+        return (center - delta) * 100.0, (center + delta) * 100.0
+
+    dims = [
+        "Department", "JobRole", "JobLevel", "AgeGroup", "Gender", "MaritalStatus",
+        "Education", "EducationField", "TenureBand", "EarlyTenure", "CareerStage",
+        "RoleTenureBand", "ManagerTenureBand", "PromotionGapBand", "PromotionGapEqualsTenure",
+        "HasPriorExperience", "NumCompaniesWorked", "OverTime", "BusinessTravel",
+        "DistanceBand", "WorkLifeBalance", "JobSatisfaction", "EnvironmentSatisfaction",
+        "RelationshipSatisfaction", "JobInvolvement", "StockOptionLevel",
+        "TrainingTimesLastYear", "PerformanceRating",
+    ]
+
+    above_flags = {}
+    below_flags = {}
+    no_sep_dims = []
+
+    for dim in dims:
+        grp = df.groupby(dim)["Attrition"].agg(["count", "sum"])
+        dim_above = []
+        dim_below = []
+        for val, (cnt, lvs) in grp.iterrows():
+            if cnt < 30:
+                continue
+            lb, ub = wilson_ci(lvs, cnt)
+            if lb > overall_rate:
+                dim_above.append(str(val))
+            elif ub < overall_rate:
+                dim_below.append(str(val))
+        if dim_above:
+            above_flags[dim] = dim_above
+        if dim_below:
+            below_flags[dim] = dim_below
+        if not dim_above and not dim_below:
+            no_sep_dims.append(dim)
+
+    # Check 1: Flag counts
+    total_above = sum(len(v) for v in above_flags.values())
+    total_below = sum(len(v) for v in below_flags.values())
+    assert total_above == 26, f"Expected 26 above, got {total_above}: {above_flags}"
+    assert total_below == 26, f"Expected 26 below, got {total_below}: {below_flags}"
+    assert sorted(no_sep_dims) == ["Education", "Gender", "HasPriorExperience", "PerformanceRating"]
+
+    # Check 2: Specific flagged segments
+    assert above_flags["Department"] == ["Sales"]
+    assert "Department" not in below_flags
+
+    assert sorted(above_flags["JobRole"]) == ["Laboratory Technician", "Sales Representative"]
+    assert sorted(below_flags["JobRole"]) == ["Healthcare Representative", "Manager", "Manufacturing Director", "Research Director"]
+
+    assert above_flags["JobLevel"] == ["1"]
+    assert sorted(below_flags["JobLevel"]) == ["2", "4", "5"]
+
+    assert sorted(above_flags["AgeGroup"]) == ["18-25", "26-35"]
+    assert below_flags["AgeGroup"] == ["36-45"]
+
+    assert above_flags["MaritalStatus"] == ["Single"]
+    assert sorted(below_flags["MaritalStatus"]) == ["Divorced", "Married"]
+
+    assert sorted(above_flags["EducationField"]) == ["Marketing", "Technical Degree"]
+
+    assert above_flags["OverTime"] == ["Yes"]
+    assert below_flags["OverTime"] == ["No"]
+
+    assert above_flags["BusinessTravel"] == ["Travel_Frequently"]
+    assert below_flags["BusinessTravel"] == ["Non-Travel"]
+
+    assert above_flags["DistanceBand"] == ["21-29"]
+    assert "DistanceBand" not in below_flags
+
+    assert "PromotionGapBand" not in above_flags
+    assert below_flags["PromotionGapBand"] == ["3-5"]
+
+    assert above_flags["WorkLifeBalance"] == ["1"]
+    assert int(df[df["WorkLifeBalance"] == 1]["Attrition"].count()) == 80
+
+    assert above_flags["StockOptionLevel"] == ["0"]
+    assert sorted(below_flags["StockOptionLevel"]) == ["1", "2"]
+
+    assert above_flags["TrainingTimesLastYear"] == ["0"]
+    assert int(df[df["TrainingTimesLastYear"] == 0]["Attrition"].count()) == 54
+
+    assert above_flags["EarlyTenure"] == ["1"]
+    early_t_cnt = int(df[df["EarlyTenure"] == 1]["Attrition"].count())
+    early_t_lvs = int(df[df["EarlyTenure"] == 1]["Attrition"].sum())
+    assert early_t_cnt == 215
+    assert round((early_t_lvs / early_t_cnt) * 100, 1) == 34.9
+
+    # Check 3: Cohort promotion gap baseline (96 / 890 = 10.79%)
+    cohort_df = df[df["PromotionAnalysisCohort"] == 1]
+    cohort_n = len(cohort_df)
+    cohort_lvs = int(cohort_df["Attrition"].sum())
+    assert cohort_n == 890
+    assert cohort_lvs == 96
+    cohort_rate = (cohort_lvs / cohort_n) * 100.0
+    assert round(cohort_rate, 1) == 10.8
+
+    c_grp = cohort_df.groupby("PromotionGapBand")["Attrition"].agg(["count", "sum"])
+    for val, (cnt, lvs) in c_grp.iterrows():
+        lb, ub = wilson_ci(lvs, cnt)
+        if val == "6+":
+            assert lb > cohort_rate, f"Cohort 6+ lower bound {lb} must exceed cohort rate {cohort_rate}"
+            assert round((lvs / cnt) * 100, 1) == 16.3
+            assert round(lb, 1) == 11.9
+            assert round(ub, 1) == 21.8
+        else:
+            assert lb <= cohort_rate <= ub, f"Cohort band {val} should not separate from cohort rate"
+
+    # Check 4: Hotspot candidate union
+    # 16 candidate cells cover 599 employees (40.7%) and 171 leavers (72.2%), union rate 28.5%
+    # Outside: 871 employees, 66 leavers, 7.6%
+    hotspots = pd.read_csv("reports/phase3/tables/hotspot_candidates.csv")
+    assert len(hotspots) == 16
+
+    union_mask = pd.Series(False, index=df.index)
+    for _, row in hotspots.iterrows():
+        d1, d2 = row["interaction"].split(" x ")
+        subgroup = row["subgroup"]
+        p1, p2 = subgroup.split(f" & {d2}=")
+        v1 = p1.replace(f"{d1}=", "")
+        v2 = p2
+        c_mask = pd.Series(True, index=df.index)
+        for c, v in [(d1, v1), (d2, v2)]:
+            if c in ["JobLevel", "Education", "JobInvolvement", "JobSatisfaction", "EnvironmentSatisfaction", "RelationshipSatisfaction", "WorkLifeBalance", "PerformanceRating", "StockOptionLevel"]:
+                c_mask = c_mask & (df[c] == int(v))
+            else:
+                c_mask = c_mask & (df[c].astype(str) == v)
+        union_mask = union_mask | c_mask
+
+    u_n = int(union_mask.sum())
+    u_lvs = int(df.loc[union_mask, "Attrition"].sum())
+    assert u_n == 599
+    assert u_lvs == 171
+    assert round((u_n / n_tot) * 100, 1) == 40.7
+    assert round((u_lvs / leavers_tot) * 100, 1) == 72.2
+    assert round((u_lvs / u_n) * 100, 1) == 28.5
+
+    out_mask = ~union_mask
+    out_n = int(out_mask.sum())
+    out_lvs = int(df.loc[out_mask, "Attrition"].sum())
+    assert out_n == 871
+    assert out_lvs == 66
+    assert round((out_lvs / out_n) * 100, 1) == 7.6
+

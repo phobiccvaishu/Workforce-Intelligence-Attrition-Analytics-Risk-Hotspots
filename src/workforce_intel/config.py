@@ -764,3 +764,199 @@ ANALYSIS_REGISTRY: List[Dict[str, Any]] = [
         "table_name": "sensitivity_analysis.csv",
     },
 ]
+
+# -----------------------------------------------------------------------------
+# Phase 3B: Visualization & Findings Configuration
+# -----------------------------------------------------------------------------
+
+PHASE3_FIGURES_DIR: Path = PHASE3_REPORTS_DIR / "figures"
+PHASE3_MANIFEST_CSV: Path = PHASE3_REPORTS_DIR / "figure_manifest.csv"
+FINDINGS_REGISTER_MD: Path = DOCS_DIR / "findings_register.md"
+FINDINGS_SUMMARY_JSON: Path = PHASE3_REPORTS_DIR / "findings_summary.json"
+NOTEBOOK_FIGURES_IPYNB: Path = NOTEBOOKS_DIR / "03_eda_figures.ipynb"
+EXECUTED_FIGURES_IPYNB: Path = PHASE3_REPORTS_DIR / "03_eda_figures.executed.ipynb"
+
+FIGURE_DPI = 150
+FIGURE_PALETTE = {
+    "primary": "#1E3A8A",      # Navy for neutral/standard
+    "highlight": "#EA580C",    # Orange for flagged/highlight
+    "muted": "#9CA3AF",        # Muted grey for low sample size (n < 30)
+    "neutral": "#1E3A8A",
+    "low_n": "#9CA3AF",
+    "baseline": "#DC2626",     # Red dashed line for baseline
+    "secondary": "#2563EB",    # Royal blue
+    "stayed": "#1E3A8A",
+    "left": "#EA580C",
+}
+
+FIGURE_FOOTNOTE_STANDARD = "Public/synthetic HR dataset (provenance unverified). Associations, not causes."
+FIGURE_FOOTNOTE_ORDINAL = "Public/synthetic HR dataset (provenance unverified). Associations, not causes. Ordinal labels are assumptions."
+FIGURE_FOOTNOTE_PROTECTED = "Public/synthetic HR dataset (provenance unverified). Associations, not causes. Descriptive only; not for individual scoring."
+
+FIGURE_SPECS = {
+    "FIG-01": {
+        "figure_id": "FIG-01",
+        "file": "fig01_department_overview.png",
+        "title": "Attrition Rate and Representation by Department",
+        "subtitle": "n = 1,470; whiskers are 95% Wilson intervals",
+        "source_tables": ["department_attrition.csv", "overall_baseline.csv"],
+        "footnote": FIGURE_FOOTNOTE_STANDARD,
+        "alt_text": "Two-panel chart showing attrition rate with 95% Wilson CI by department, and comparison of workforce share vs leaver share.",
+    },
+    "FIG-02": {
+        "figure_id": "FIG-02",
+        "file": "fig02_jobrole_attrition.png",
+        "title": "Attrition Rate by Job Role (Ranked)",
+        "subtitle": "n = 1,470; whiskers are 95% Wilson intervals",
+        "source_tables": ["jobrole_attrition.csv", "overall_baseline.csv"],
+        "footnote": FIGURE_FOOTNOTE_STANDARD,
+        "alt_text": "Horizontal bar chart of attrition rates across 9 job roles ranked from highest to lowest.",
+    },
+    "FIG-03": {
+        "figure_id": "FIG-03",
+        "file": "fig03_funnel_plot.png",
+        "title": "Exact Binomial Funnel Plot for Job Roles",
+        "subtitle": "n = 1,470; 95% and 99.8% exact binomial control limits around baseline 16.1%",
+        "source_tables": ["funnel_limits.csv", "overall_baseline.csv"],
+        "footnote": FIGURE_FOOTNOTE_STANDARD,
+        "alt_text": "Funnel plot showing job role attrition rates plotted against headcount with 95% and 99.8% binomial limits.",
+    },
+    "FIG-04": {
+        "figure_id": "FIG-04",
+        "file": "fig04_leaver_concentration.png",
+        "title": "Cumulative Leaver Concentration Pareto by Job Role",
+        "subtitle": "Total leavers = 237; cumulative percentage of departures across job roles",
+        "source_tables": ["leaver_concentration.csv"],
+        "footnote": FIGURE_FOOTNOTE_STANDARD,
+        "alt_text": "Pareto chart illustrating cumulative headcount and leaver concentration across job roles.",
+    },
+    "FIG-05": {
+        "figure_id": "FIG-05",
+        "file": "fig05_age_sensitivity.png",
+        "title": "Attrition Rate by Age Cohort across Alternative Bins",
+        "subtitle": "n = 1,470; whiskers are 95% Wilson intervals",
+        "source_tables": ["agegroup_attrition.csv", "sensitivity_analysis.csv", "overall_baseline.csv"],
+        "footnote": FIGURE_FOOTNOTE_PROTECTED,
+        "alt_text": "Three-panel comparison of age band attrition rates under 4-band, 5-band, and 3-band specifications.",
+    },
+    "FIG-06": {
+        "figure_id": "FIG-06",
+        "file": "fig06_tenure_sensitivity.png",
+        "title": "Attrition Rate by Tenure Band and Early Tenure Thresholds",
+        "subtitle": "n = 1,470; whiskers are 95% Wilson intervals",
+        "source_tables": ["tenureband_attrition.csv", "sensitivity_analysis.csv", "overall_baseline.csv"],
+        "footnote": FIGURE_FOOTNOTE_STANDARD,
+        "alt_text": "Two-panel chart showing tenure band attrition rates and sensitivity across early tenure thresholds.",
+    },
+    "FIG-07": {
+        "figure_id": "FIG-07",
+        "file": "fig07_promotion_gap_cohort.png",
+        "title": "Promotion Gap Attrition: Pooled vs PromotionAnalysisCohort",
+        "subtitle": "Whiskers are 95% Wilson intervals; cohort baseline 10.8% (n = 890)",
+        "source_tables": ["promotiongap_side_by_side.csv", "sensitivity_analysis.csv", "overall_baseline.csv"],
+        "footnote": FIGURE_FOOTNOTE_STANDARD,
+        "alt_text": "Three-panel chart displaying promotion gap attrition rates pooled across all employees, within the cohort, and across alternative bins.",
+    },
+    "FIG-08": {
+        "figure_id": "FIG-08",
+        "file": "fig08_workload_mobility.png",
+        "title": "Attrition Rate by OverTime, Business Travel, and Distance to Office",
+        "subtitle": "n = 1,470; whiskers are 95% Wilson intervals",
+        "source_tables": ["overtime_attrition.csv", "businesstravel_attrition.csv", "distanceband_attrition.csv", "sensitivity_analysis.csv", "overall_baseline.csv"],
+        "footnote": FIGURE_FOOTNOTE_STANDARD,
+        "alt_text": "Multi-panel chart showing attrition rates across overtime status, business travel frequency, and commute distance bands.",
+    },
+    "FIG-09": {
+        "figure_id": "FIG-09",
+        "file": "fig09_satisfaction_small_multiples.png",
+        "title": "Attrition Rate across Employee Survey & Sentiment Dimensions",
+        "subtitle": "n = 1,470; whiskers are 95% Wilson intervals; 4-point rating scales (1=Low, 4=High)",
+        "source_tables": ["worklifebalance_attrition.csv", "jobsatisfaction_attrition.csv", "environmentsatisfaction_attrition.csv", "relationshipsatisfaction_attrition.csv", "jobinvolvement_attrition.csv", "overall_baseline.csv"],
+        "footnote": FIGURE_FOOTNOTE_ORDINAL,
+        "alt_text": "Small multiples showing attrition rates across 5 survey metrics: Work-Life Balance, Job Satisfaction, Environment Satisfaction, Relationship Satisfaction, and Job Involvement.",
+    },
+    "FIG-10": {
+        "figure_id": "FIG-10",
+        "file": "fig10_overtime_interactions.png",
+        "title": "OverTime Attrition Interactions with Career & Demographic Segments",
+        "subtitle": "n annotated per cell; cells with n < 30 greyed out",
+        "source_tables": ["two_way_overtime_x_joblevel.csv", "two_way_overtime_x_agegroup.csv", "two_way_overtime_x_tenureband.csv", "overall_baseline.csv"],
+        "footnote": FIGURE_FOOTNOTE_PROTECTED,
+        "alt_text": "Three heatmap panels displaying attrition rates for OverTime crossed with JobLevel, AgeGroup, and TenureBand.",
+    },
+    "FIG-11": {
+        "figure_id": "FIG-11",
+        "file": "fig11_hotspot_candidates.png",
+        "title": "Pre-Specified Risk Hotspot Candidates (Ranked Dot Plot)",
+        "subtitle": "16 candidate subgroups; overlapping candidates; not independent; whiskers are 95% Wilson intervals",
+        "source_tables": ["hotspot_candidates.csv", "overall_baseline.csv"],
+        "footnote": FIGURE_FOOTNOTE_STANDARD,
+        "alt_text": "Dot plot of 16 qualified hotspot candidate subgroups with 95% Wilson intervals and sample sizes.",
+    },
+    "FIG-12": {
+        "figure_id": "FIG-12",
+        "file": "fig12_hotspot_overlap.png",
+        "title": "Hotspot Candidate Pairwise Overlap and Workforce Union Summary",
+        "subtitle": "16 candidate subgroups; 599 distinct employees in union (40.7% of workforce, 72.2% of leavers)",
+        "source_tables": ["hotspot_overlap.csv", "hotspot_candidates.csv", "overall_baseline.csv"],
+        "footnote": FIGURE_FOOTNOTE_STANDARD,
+        "alt_text": "Pairwise overlap matrix heatmap and summary bars showing headcount and leavers inside vs outside candidate union.",
+    },
+    "FIG-13": {
+        "figure_id": "FIG-13",
+        "file": "fig13_numeric_distributions.png",
+        "title": "Continuous Metric Distributions by Outcome (Median and Interquartile Range)",
+        "subtitle": "n = 1,470 (Stayed: 1,233, Left: 237); points show medians, bars show IQR (25th to 75th percentiles)",
+        "source_tables": ["numeric_distributions_by_outcome.csv"],
+        "footnote": FIGURE_FOOTNOTE_PROTECTED,
+        "alt_text": "Distributional comparison showing median and IQR for continuous features stratified by retention outcome.",
+    },
+    "FIG-14": {
+        "figure_id": "FIG-14",
+        "file": "fig14_demographics_background.png",
+        "title": "Attrition Rate across Demographic and Professional Background Dimensions",
+        "subtitle": "n = 1,470; whiskers are 95% Wilson intervals; highlighted bars separate from baseline",
+        "source_tables": ["gender_attrition.csv", "maritalstatus_attrition.csv", "education_attrition.csv", "educationfield_attrition.csv", "prior_experience_attrition.csv", "performancerating_attrition.csv", "overall_baseline.csv"],
+        "footnote": FIGURE_FOOTNOTE_PROTECTED,
+        "alt_text": "Six-panel display of attrition rates across Gender, MaritalStatus, Education, EducationField, HasPriorExperience, and PerformanceRating.",
+    },
+}
+
+FINDINGS_RULE = {
+    "min_n": 30,
+    "alpha": 0.05,
+    "baseline_table": "overall_baseline.csv",
+    "cohort_baseline_table": "promotiongap_cohort_attrition.csv",
+}
+
+ANALYSIS_DIMENSIONS = [
+    {"dimension": "Department", "table": "department_attrition.csv", "protected": False},
+    {"dimension": "JobRole", "table": "jobrole_attrition.csv", "protected": False},
+    {"dimension": "JobLevel", "table": "joblevel_attrition.csv", "protected": False},
+    {"dimension": "AgeGroup", "table": "agegroup_attrition.csv", "protected": True},
+    {"dimension": "Gender", "table": "gender_attrition.csv", "protected": True},
+    {"dimension": "MaritalStatus", "table": "maritalstatus_attrition.csv", "protected": True},
+    {"dimension": "Education", "table": "education_attrition.csv", "protected": False},
+    {"dimension": "EducationField", "table": "educationfield_attrition.csv", "protected": False},
+    {"dimension": "TenureBand", "table": "tenureband_attrition.csv", "protected": False},
+    {"dimension": "EarlyTenure", "table": "earlytenure_attrition.csv", "protected": False},
+    {"dimension": "CareerStage", "table": "careerstage_attrition.csv", "protected": False},
+    {"dimension": "RoleTenureBand", "table": "roletenureband_attrition.csv", "protected": False},
+    {"dimension": "ManagerTenureBand", "table": "managertenureband_attrition.csv", "protected": False},
+    {"dimension": "PromotionGapBand", "table": "promotiongap_pooled_attrition.csv", "protected": False},
+    {"dimension": "PromotionGapEqualsTenure", "table": "promotiongap_equals_tenure.csv", "protected": False},
+    {"dimension": "HasPriorExperience", "table": "prior_experience_attrition.csv", "protected": False},
+    {"dimension": "NumCompaniesWorked", "table": "numcompanies_attrition.csv", "protected": False},
+    {"dimension": "OverTime", "table": "overtime_attrition.csv", "protected": False},
+    {"dimension": "BusinessTravel", "table": "businesstravel_attrition.csv", "protected": False},
+    {"dimension": "DistanceBand", "table": "distanceband_attrition.csv", "protected": False},
+    {"dimension": "WorkLifeBalance", "table": "worklifebalance_attrition.csv", "protected": False},
+    {"dimension": "JobSatisfaction", "table": "jobsatisfaction_attrition.csv", "protected": False},
+    {"dimension": "EnvironmentSatisfaction", "table": "environmentsatisfaction_attrition.csv", "protected": False},
+    {"dimension": "RelationshipSatisfaction", "table": "relationshipsatisfaction_attrition.csv", "protected": False},
+    {"dimension": "JobInvolvement", "table": "jobinvolvement_attrition.csv", "protected": False},
+    {"dimension": "StockOptionLevel", "table": "stockoption_attrition.csv", "protected": False},
+    {"dimension": "TrainingTimesLastYear", "table": "trainingtimes_attrition.csv", "protected": False},
+    {"dimension": "PerformanceRating", "table": "performancerating_attrition.csv", "protected": False},
+]
+

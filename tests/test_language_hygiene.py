@@ -29,10 +29,14 @@ def test_language_hygiene_phase3_reports():
     files_to_check = [
         Path("docs/analysis_plan.md"),
         Path("docs/decision_log.md"),
+        Path("docs/findings_register.md"),
         Path("reports/phase3/eda_tables_report.md"),
         Path("src/workforce_intel/eda.py"),
         Path("src/workforce_intel/reporting.py"),
+        Path("src/workforce_intel/findings.py"),
+        Path("src/workforce_intel/viz.py"),
         Path("scripts/run_phase3a_eda.py"),
+        Path("scripts/run_phase3b_figures.py"),
     ]
 
     violations = []

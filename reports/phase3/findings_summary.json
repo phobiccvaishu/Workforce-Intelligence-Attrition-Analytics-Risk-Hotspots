@@ -1,0 +1,27 @@
+{
+  "workforce_baseline_pct": 16.1224,
+  "cohort_baseline_pct": 10.7865,
+  "cohort_headcount": 890,
+  "cohort_leavers": 96,
+  "dimensions_evaluated": 28,
+  "segments_evaluated_min_n": 115,
+  "segments_flagged_above": 26,
+  "segments_flagged_below": 26,
+  "dimensions_no_separation_count": 4,
+  "dimensions_no_separation": [
+    "Gender",
+    "Education",
+    "HasPriorExperience",
+    "PerformanceRating"
+  ],
+  "expected_chance_flags": 5.8,
+  "hotspot_candidate_cells": 16,
+  "hotspot_union_headcount": 599,
+  "hotspot_union_leavers": 171,
+  "hotspot_union_rate_pct": 28.5476,
+  "hotspot_union_workforce_share_pct": 40.7483,
+  "hotspot_union_leaver_share_pct": 72.1519,
+  "hotspot_outside_headcount": 871,
+  "hotspot_outside_leavers": 66,
+  "hotspot_outside_rate_pct": 7.5775
+}
