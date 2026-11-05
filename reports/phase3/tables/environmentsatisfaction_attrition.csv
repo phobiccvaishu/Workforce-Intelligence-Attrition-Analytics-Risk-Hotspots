@@ -1,0 +1,5 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+EnvironmentSatisfaction,1,284,72,212,25.3521,20.6447,30.7174,19.3197,30.3797,9.2297,1.5725,False
+EnvironmentSatisfaction,2,287,43,244,14.9826,11.3174,19.5728,19.5238,18.1435,-1.1399,0.9293,False
+EnvironmentSatisfaction,3,453,62,391,13.6865,10.8254,17.1584,30.8163,26.1603,-2.4359,0.8489,False
+EnvironmentSatisfaction,4,446,60,386,13.4529,10.5964,16.9336,30.3401,25.3165,-2.6695,0.8344,False

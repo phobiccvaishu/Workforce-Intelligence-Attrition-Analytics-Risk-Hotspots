@@ -1,0 +1,5 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+RelationshipSatisfaction,1,276,57,219,20.6522,16.2951,25.8150,18.7755,24.0506,4.5297,1.2810,False
+RelationshipSatisfaction,2,303,45,258,14.8515,11.2883,19.2947,20.6122,18.9873,-1.2710,0.9212,False
+RelationshipSatisfaction,3,459,71,388,15.4684,12.4483,19.0618,31.2245,29.9578,-0.6540,0.9594,False
+RelationshipSatisfaction,4,432,64,368,14.8148,11.7754,18.4745,29.3878,27.0042,-1.3076,0.9189,False

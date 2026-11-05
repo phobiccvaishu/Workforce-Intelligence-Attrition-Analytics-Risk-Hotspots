@@ -426,7 +426,7 @@ def test_all_markdown_tables_column_consistency():
     """
     from pathlib import Path
 
-    md_files = list(Path("docs").glob("*.md")) + list(Path("reports/phase1").glob("*.md"))
+    md_files = list(Path("docs").glob("*.md")) + list(Path("reports/phase1").glob("*.md")) + list(Path("reports/phase2").glob("*.md")) + list(Path("reports/phase3").glob("*.md"))
     assert len(md_files) > 0, "No markdown files found to validate"
 
     errors = []
@@ -537,6 +537,11 @@ def _build_expected_decision_log_tokens() -> Dict[str, List[str]]:
         "DL-24": [str(MIN_TENURE_FOR_PROMOTION_ANALYSIS), str(bucket_table.loc[("PromotionAnalysisCohort", "1"), "count"]), f"{bucket_table.loc[('PromotionAnalysisCohort', '1'), 'percentage']:.2f}"],
         "DL-25": [str(max(s1["checkpoints_validation"]["performance_rating_levels"]["computed"])), str(bucket_table.loc[("OutstandingRating", "1"), "count"]), f"{bucket_table.loc[('OutstandingRating', '1'), 'percentage']:.2f}"],
         "DL-26": ["0", str(zero_table.loc["YearsInCurrentRole", "zero_count"])],
+        "DL-27": [total_rows, "9"],
+        "DL-28": [f"{t_metrics['rate_attrition_1_pct']:.2f}", "95", f"{t_metrics['wilson_95_ci_lower_pct']:.2f}", f"{t_metrics['wilson_95_ci_upper_pct']:.2f}"],
+        "DL-29": ["12", f"{t_metrics['rate_attrition_1_pct']:.2f}", "3", "9"],
+        "DL-30": ["15", "58", "30"],
+        "DL-31": [str(bucket_table.loc[("PromotionAnalysisCohort", "1"), "count"]), total_rows, "4"],
     }
 
 
@@ -610,6 +615,11 @@ def test_documentation_evidence_matches_validation_summary():
         "DL-24": "APPROVED",
         "DL-25": "APPROVED",
         "DL-26": "DEFERRED",
+        "DL-27": "PROPOSED",
+        "DL-28": "PROPOSED",
+        "DL-29": "PROPOSED",
+        "DL-30": "PROPOSED",
+        "DL-31": "PROPOSED",
     }
     for dl_id, expected_status in expected_statuses.items():
         pattern = rf"`{dl_id}`.*?`{expected_status}`"

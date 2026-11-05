@@ -1,0 +1,16 @@
+interaction,subgroup,n,leavers,attrition_rate_pct,ci95_low_pct,ci95_high_pct,diff_vs_overall_pp,ratio_vs_overall
+OverTime x AgeGroup,OverTime=Yes & AgeGroup=18-25,39,25,64.1026,48.4181,77.2579,47.9801,3.9760
+OverTime x TenureBand,OverTime=Yes & TenureBand=0-1,69,38,55.0725,43.3788,66.2311,38.9500,3.4159
+OverTime x JobLevel,OverTime=Yes & JobLevel=1,156,82,52.5641,44.7612,60.2438,36.4417,3.2603
+OverTime x JobRole,OverTime=Yes & JobRole=Laboratory Technician,62,31,50.0000,37.9227,62.0773,33.8776,3.1013
+OverTime x BusinessTravel,OverTime=Yes & BusinessTravel=Travel_Frequently,86,36,41.8605,32.0015,52.4155,25.7380,2.5964
+OverTime x AgeGroup,OverTime=Yes & AgeGroup=26-35,159,62,38.9937,31.7577,46.7490,22.8713,2.4186
+OverTime x TenureBand,OverTime=Yes & TenureBand=2-3,75,29,38.6667,28.4552,49.9825,22.5442,2.3983
+OverTime x Department,OverTime=Yes & Department=Sales,128,48,37.5000,29.5924,46.1360,21.3776,2.3259
+OverTime x JobRole,OverTime=Yes & JobRole=Research Scientist,97,33,34.0206,25.3623,43.8964,17.8982,2.1101
+OverTime x JobRole,OverTime=Yes & JobRole=Sales Executive,94,31,32.9787,24.3075,42.9865,16.8563,2.0455
+OverTime x JobRole,OverTime=No & JobRole=Sales Representative,59,17,28.8136,18.8365,41.3808,12.6911,1.7872
+OverTime x BusinessTravel,OverTime=Yes & BusinessTravel=Travel_Rarely,295,84,28.4746,23.6271,33.8754,12.3521,1.7661
+OverTime x Department,OverTime=Yes & Department=Research & Development,271,74,27.3063,22.3466,32.9003,11.1838,1.6937
+OverTime x TenureBand,OverTime=Yes & TenureBand=6-10,120,31,25.8333,18.8374,34.3285,9.7109,1.6023
+OverTime x TenureBand,OverTime=No & TenureBand=0-1,146,37,25.3425,18.9814,32.9678,9.2200,1.5719

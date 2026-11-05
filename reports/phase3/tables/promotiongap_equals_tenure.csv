@@ -1,0 +1,3 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+PromotionGapEqualsTenure,0,1335,204,1131,15.2809,13.4506,17.3104,90.8163,86.0759,-0.8416,0.9478,False
+PromotionGapEqualsTenure,1,135,33,102,24.4444,17.9682,32.3348,9.1837,13.9241,8.3220,1.5162,False

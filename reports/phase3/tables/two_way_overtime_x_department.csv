@@ -1,0 +1,7 @@
+OverTime,Department,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+No,Human Resources,46,7,39,15.2174,7.5723,28.2241,3.1293,2.9536,-0.9051,0.9439,False
+No,Research & Development,690,59,631,8.5507,6.6869,10.8735,46.9388,24.8945,-7.5717,0.5304,False
+No,Sales,318,44,274,13.8365,10.4712,18.0650,21.6327,18.5654,-2.2860,0.8582,False
+Yes,Human Resources,17,5,12,29.4118,13.2800,53.1331,1.1565,2.1097,13.2893,1.8243,True
+Yes,Research & Development,271,74,197,27.3063,22.3466,32.9003,18.4354,31.2236,11.1838,1.6937,False
+Yes,Sales,128,48,80,37.5000,29.5924,46.1360,8.7075,20.2532,21.3776,2.3259,False

@@ -1,0 +1,5 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+PromotionGapBand,0,266,23,243,8.6466,5.8307,12.6400,29.8876,23.9583,-2.1399,0.8016,False
+PromotionGapBand,1-2,257,23,234,8.9494,6.0375,13.0705,28.8764,23.9583,-1.8371,0.8297,False
+PromotionGapBand,3-5,152,15,137,9.8684,6.0719,15.6434,17.0787,15.6250,-0.9181,0.9149,False
+PromotionGapBand,6+,215,35,180,16.2791,11.9441,21.7979,24.1573,36.4583,5.4926,1.5092,False

@@ -1,0 +1,5 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+CareerStage,0-5,316,91,225,28.7975,24.0830,34.0212,21.4966,38.3966,12.6750,1.7862,False
+CareerStage,6-10,607,91,516,14.9918,12.3724,18.0515,41.2925,38.3966,-1.1307,0.9299,False
+CareerStage,11-20,340,39,301,11.4706,8.5054,15.2967,23.1293,16.4557,-4.6519,0.7115,False
+CareerStage,21+,207,16,191,7.7295,4.8135,12.1857,14.0816,6.7511,-8.3930,0.4794,False

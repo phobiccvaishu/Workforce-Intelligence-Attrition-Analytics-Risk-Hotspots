@@ -1,0 +1,212 @@
+{
+  "execution_timestamp": "2026-11-05T19:37:31.471774+00:00",
+  "dataset_file": "workforce_attrition_processed.csv",
+  "dataset_sha256": "48553275587384b98f091dacfd4466cadb9bddda131fe32bbd586e0b15bacb2d",
+  "environment": {
+    "python_version": "3.14.0",
+    "pandas_version": "3.0.3",
+    "numpy_version": "2.4.4",
+    "scipy_version": "1.17.1",
+    "pyarrow_installed": false,
+    "pyarrow_version": null,
+    "pandas_string_storage": "auto"
+  },
+  "dimensions": {
+    "rows": 1470,
+    "columns": 47
+  },
+  "overall_metrics": {
+    "total_employees": 1470,
+    "leavers": 237,
+    "retained": 1233,
+    "attrition_rate_pct": 16.1224,
+    "ci95_low_pct": 14.3313,
+    "ci95_high_pct": 18.0902,
+    "imbalance_ratio": 5.2025
+  },
+  "hotspot_candidates_scan": {
+    "total_cells_scanned": 58,
+    "min_n_threshold": 30,
+    "candidate_count": 15,
+    "candidates": [
+      {
+        "interaction": "OverTime x AgeGroup",
+        "subgroup": "OverTime=Yes & AgeGroup=18-25",
+        "n": 39,
+        "leavers": 25,
+        "attrition_rate_pct": 64.1026,
+        "ci95_low_pct": 48.4181,
+        "ci95_high_pct": 77.2579,
+        "diff_vs_overall_pp": 47.9801,
+        "ratio_vs_overall": 3.976
+      },
+      {
+        "interaction": "OverTime x TenureBand",
+        "subgroup": "OverTime=Yes & TenureBand=0-1",
+        "n": 69,
+        "leavers": 38,
+        "attrition_rate_pct": 55.0725,
+        "ci95_low_pct": 43.3788,
+        "ci95_high_pct": 66.2311,
+        "diff_vs_overall_pp": 38.95,
+        "ratio_vs_overall": 3.4159
+      },
+      {
+        "interaction": "OverTime x JobLevel",
+        "subgroup": "OverTime=Yes & JobLevel=1",
+        "n": 156,
+        "leavers": 82,
+        "attrition_rate_pct": 52.5641,
+        "ci95_low_pct": 44.7612,
+        "ci95_high_pct": 60.2438,
+        "diff_vs_overall_pp": 36.4417,
+        "ratio_vs_overall": 3.2603
+      },
+      {
+        "interaction": "OverTime x JobRole",
+        "subgroup": "OverTime=Yes & JobRole=Laboratory Technician",
+        "n": 62,
+        "leavers": 31,
+        "attrition_rate_pct": 50.0,
+        "ci95_low_pct": 37.9227,
+        "ci95_high_pct": 62.0773,
+        "diff_vs_overall_pp": 33.8776,
+        "ratio_vs_overall": 3.1013
+      },
+      {
+        "interaction": "OverTime x BusinessTravel",
+        "subgroup": "OverTime=Yes & BusinessTravel=Travel_Frequently",
+        "n": 86,
+        "leavers": 36,
+        "attrition_rate_pct": 41.8605,
+        "ci95_low_pct": 32.0015,
+        "ci95_high_pct": 52.4155,
+        "diff_vs_overall_pp": 25.738,
+        "ratio_vs_overall": 2.5964
+      },
+      {
+        "interaction": "OverTime x AgeGroup",
+        "subgroup": "OverTime=Yes & AgeGroup=26-35",
+        "n": 159,
+        "leavers": 62,
+        "attrition_rate_pct": 38.9937,
+        "ci95_low_pct": 31.7577,
+        "ci95_high_pct": 46.749,
+        "diff_vs_overall_pp": 22.8713,
+        "ratio_vs_overall": 2.4186
+      },
+      {
+        "interaction": "OverTime x TenureBand",
+        "subgroup": "OverTime=Yes & TenureBand=2-3",
+        "n": 75,
+        "leavers": 29,
+        "attrition_rate_pct": 38.6667,
+        "ci95_low_pct": 28.4552,
+        "ci95_high_pct": 49.9825,
+        "diff_vs_overall_pp": 22.5442,
+        "ratio_vs_overall": 2.3983
+      },
+      {
+        "interaction": "OverTime x Department",
+        "subgroup": "OverTime=Yes & Department=Sales",
+        "n": 128,
+        "leavers": 48,
+        "attrition_rate_pct": 37.5,
+        "ci95_low_pct": 29.5924,
+        "ci95_high_pct": 46.136,
+        "diff_vs_overall_pp": 21.3776,
+        "ratio_vs_overall": 2.3259
+      },
+      {
+        "interaction": "OverTime x JobRole",
+        "subgroup": "OverTime=Yes & JobRole=Research Scientist",
+        "n": 97,
+        "leavers": 33,
+        "attrition_rate_pct": 34.0206,
+        "ci95_low_pct": 25.3623,
+        "ci95_high_pct": 43.8964,
+        "diff_vs_overall_pp": 17.8982,
+        "ratio_vs_overall": 2.1101
+      },
+      {
+        "interaction": "OverTime x JobRole",
+        "subgroup": "OverTime=Yes & JobRole=Sales Executive",
+        "n": 94,
+        "leavers": 31,
+        "attrition_rate_pct": 32.9787,
+        "ci95_low_pct": 24.3075,
+        "ci95_high_pct": 42.9865,
+        "diff_vs_overall_pp": 16.8563,
+        "ratio_vs_overall": 2.0455
+      },
+      {
+        "interaction": "OverTime x JobRole",
+        "subgroup": "OverTime=No & JobRole=Sales Representative",
+        "n": 59,
+        "leavers": 17,
+        "attrition_rate_pct": 28.8136,
+        "ci95_low_pct": 18.8365,
+        "ci95_high_pct": 41.3808,
+        "diff_vs_overall_pp": 12.6911,
+        "ratio_vs_overall": 1.7872
+      },
+      {
+        "interaction": "OverTime x BusinessTravel",
+        "subgroup": "OverTime=Yes & BusinessTravel=Travel_Rarely",
+        "n": 295,
+        "leavers": 84,
+        "attrition_rate_pct": 28.4746,
+        "ci95_low_pct": 23.6271,
+        "ci95_high_pct": 33.8754,
+        "diff_vs_overall_pp": 12.3521,
+        "ratio_vs_overall": 1.7661
+      },
+      {
+        "interaction": "OverTime x Department",
+        "subgroup": "OverTime=Yes & Department=Research & Development",
+        "n": 271,
+        "leavers": 74,
+        "attrition_rate_pct": 27.3063,
+        "ci95_low_pct": 22.3466,
+        "ci95_high_pct": 32.9003,
+        "diff_vs_overall_pp": 11.1838,
+        "ratio_vs_overall": 1.6937
+      },
+      {
+        "interaction": "OverTime x TenureBand",
+        "subgroup": "OverTime=Yes & TenureBand=6-10",
+        "n": 120,
+        "leavers": 31,
+        "attrition_rate_pct": 25.8333,
+        "ci95_low_pct": 18.8374,
+        "ci95_high_pct": 34.3285,
+        "diff_vs_overall_pp": 9.7109,
+        "ratio_vs_overall": 1.6023
+      },
+      {
+        "interaction": "OverTime x TenureBand",
+        "subgroup": "OverTime=No & TenureBand=0-1",
+        "n": 146,
+        "leavers": 37,
+        "attrition_rate_pct": 25.3425,
+        "ci95_low_pct": 18.9814,
+        "ci95_high_pct": 32.9678,
+        "diff_vs_overall_pp": 9.22,
+        "ratio_vs_overall": 1.5719
+      }
+    ]
+  },
+  "funnel_summary": {
+    "status_95": {
+      "Inside": 5,
+      "Below": 4,
+      "Above": 3
+    },
+    "status_998": {
+      "Inside": 6,
+      "Below": 4,
+      "Above": 2
+    }
+  },
+  "table_count": 45
+}

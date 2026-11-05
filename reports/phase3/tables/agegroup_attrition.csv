@@ -1,0 +1,5 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+AgeGroup,18-25,123,44,79,35.7724,27.8505,44.5560,8.3673,18.5654,19.6499,2.2188,False
+AgeGroup,26-35,606,116,490,19.1419,16.2078,22.4648,41.2245,48.9451,3.0195,1.1873,False
+AgeGroup,36-45,468,43,425,9.1880,6.8929,12.1477,31.8367,18.1435,-6.9344,0.5699,False
+AgeGroup,46-60,273,34,239,12.4542,9.0508,16.8996,18.5714,14.3460,-3.6682,0.7725,False

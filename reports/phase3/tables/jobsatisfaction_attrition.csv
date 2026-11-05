@@ -1,0 +1,5 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+JobSatisfaction,1,289,66,223,22.8374,18.3726,28.0148,19.6599,27.8481,6.7149,1.4165,False
+JobSatisfaction,2,280,46,234,16.4286,12.5484,21.2174,19.0476,19.4093,0.3061,1.0190,False
+JobSatisfaction,3,442,73,369,16.5158,13.3455,20.2632,30.0680,30.8017,0.3934,1.0244,False
+JobSatisfaction,4,459,52,407,11.3290,8.7447,14.5552,31.2245,21.9409,-4.7935,0.7027,False

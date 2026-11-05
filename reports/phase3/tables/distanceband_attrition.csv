@@ -1,0 +1,5 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+DistanceBand,1-5,632,87,545,13.7658,11.2978,16.6717,42.9932,36.7089,-2.3566,0.8538,False
+DistanceBand,6-10,394,57,337,14.4670,11.3365,18.2837,26.8027,24.0506,-1.6554,0.8973,False
+DistanceBand,11-20,240,48,192,20.0000,15.4298,25.5154,16.3265,20.2532,3.8776,1.2405,False
+DistanceBand,21-29,204,45,159,22.0588,16.9145,28.2360,13.8776,18.9873,5.9364,1.3682,False

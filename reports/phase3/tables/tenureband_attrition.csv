@@ -1,0 +1,6 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+TenureBand,0-1,215,75,140,34.8837,28.8290,41.4691,14.6259,31.6456,18.7613,2.1637,False
+TenureBand,2-3,255,47,208,18.4314,14.1531,23.6466,17.3469,19.8312,2.3089,1.1432,False
+TenureBand,4-5,306,40,266,13.0719,9.7485,17.3110,20.8163,16.8776,-3.0506,0.8108,False
+TenureBand,6-10,448,55,393,12.2768,9.5547,15.6403,30.4762,23.2068,-3.8457,0.7615,False
+TenureBand,11+,246,20,226,8.1301,5.3244,12.2233,16.7347,8.4388,-7.9924,0.5043,False

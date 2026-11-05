@@ -1,0 +1,5 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+StockOptionLevel,0,631,154,477,24.4057,21.2158,27.9054,42.9252,64.9789,8.2833,1.5138,False
+StockOptionLevel,1,596,56,540,9.3960,7.3066,12.0054,40.5442,23.6287,-6.7265,0.5828,False
+StockOptionLevel,2,158,12,146,7.5949,4.3977,12.8052,10.7483,5.0633,-8.5275,0.4711,False
+StockOptionLevel,3,85,15,70,17.6471,10.9964,27.0956,5.7823,6.3291,1.5246,1.0946,False

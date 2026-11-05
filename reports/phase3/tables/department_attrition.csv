@@ -1,0 +1,4 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+Department,Human Resources,63,12,51,19.0476,11.2462,30.4068,4.2857,5.0633,2.9252,1.1814,False
+Department,Research & Development,961,133,828,13.8398,11.8001,16.1674,65.3741,56.1181,-2.2827,0.8584,False
+Department,Sales,446,92,354,20.6278,17.1310,24.6262,30.3401,38.8186,4.5054,1.2794,False

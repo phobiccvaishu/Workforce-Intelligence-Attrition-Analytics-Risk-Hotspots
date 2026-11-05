@@ -1,0 +1,6 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+Education,1,170,31,139,18.2353,13.1545,24.7200,11.5646,13.0802,2.1128,1.1310,False
+Education,2,282,44,238,15.6028,11.8330,20.2972,19.1837,18.5654,-0.5196,0.9678,False
+Education,3,572,99,473,17.3077,14.4282,20.6234,38.9116,41.7722,1.1852,1.0735,False
+Education,4,398,58,340,14.5729,11.4452,18.3779,27.0748,24.4726,-1.5496,0.9039,False
+Education,5,48,5,43,10.4167,4.5322,22.1674,3.2653,2.1097,-5.7058,0.6461,False

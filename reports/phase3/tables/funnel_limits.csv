@@ -1,0 +1,13 @@
+dimension,segment,n,leavers,attrition_rate_pct,lower_95_pct,upper_95_pct,status_95,lower_99.8_pct,upper_99.8_pct,status_99.8
+JobRole,Healthcare Representative,131,9,6.8702,9.9237,22.9008,Below,6.8702,26.7176,Below
+JobRole,Human Resources,52,12,23.0769,7.6923,26.9231,Inside,1.9231,32.6923,Inside
+JobRole,Laboratory Technician,259,62,23.9382,11.9691,20.8494,Above,9.6525,23.5521,Above
+JobRole,Manager,102,5,4.9020,9.8039,23.5294,Below,5.8824,28.4314,Below
+JobRole,Manufacturing Director,145,10,6.8966,10.3448,22.0690,Below,7.5862,26.2069,Below
+JobRole,Research Director,80,2,2.5000,8.7500,25.0000,Below,5.0000,30.0000,Below
+JobRole,Research Scientist,292,47,16.0959,11.9863,20.5479,Inside,9.9315,22.9452,Inside
+JobRole,Sales Executive,326,57,17.4847,12.2699,20.2454,Inside,10.1227,22.6994,Inside
+JobRole,Sales Representative,83,33,39.7590,8.4337,24.0964,Above,4.8193,30.1205,Above
+Department,Human Resources,63,12,19.0476,7.9365,25.3968,Inside,3.1746,31.7460,Inside
+Department,Research & Development,961,133,13.8398,13.8398,18.5224,Inside,12.5911,19.8751,Inside
+Department,Sales,446,92,20.6278,12.7803,19.5067,Above,10.9865,21.7489,Inside

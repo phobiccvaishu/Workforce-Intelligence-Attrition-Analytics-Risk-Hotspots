@@ -1,0 +1,7 @@
+OverTime,BusinessTravel,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+No,Non-Travel,115,5,110,4.3478,1.8712,9.7758,7.8231,2.1097,-11.7746,0.2697,False
+No,Travel_Frequently,191,33,158,17.2775,12.5752,23.2700,12.9932,13.9241,1.1550,1.0716,False
+No,Travel_Rarely,748,72,676,9.6257,7.7136,11.9503,50.8844,30.3797,-6.4968,0.5970,False
+Yes,Non-Travel,35,7,28,20.0000,10.0424,35.8916,2.3810,2.9536,3.8776,1.2405,False
+Yes,Travel_Frequently,86,36,50,41.8605,32.0015,52.4155,5.8503,15.1899,25.7380,2.5964,False
+Yes,Travel_Rarely,295,84,211,28.4746,23.6271,33.8754,20.0680,35.4430,12.3521,1.7661,False

@@ -513,3 +513,279 @@ In accordance with Section 5.7 and Rule 0.4, small sample sizes are explicitly f
 - **Machine-Readable Summary:** `reports/phase2/preprocessing_summary.json`
 """
     return content
+
+
+
+# -----------------------------------------------------------------------------
+# Phase 3A Analysis Plan & EDA Reporting Functions
+# -----------------------------------------------------------------------------
+
+def build_analysis_plan() -> str:
+    """Generate docs/analysis_plan.md documenting pre-specified EDA analyses and hotspot protocol."""
+    from workforce_intel.config import ANALYSIS_REGISTRY, SENSITIVITY_SPECS, TWO_WAY_SPECS
+
+    registry_rows = []
+    for item in ANALYSIS_REGISTRY:
+        p_note = " Yes (Descriptive Only)" if item.get("protected") else " No"
+        registry_rows.append(
+            f"| `{item['stage']}` | **{item['name']}** | `{item.get('dimension') or item.get('dim1') or item.get('type')}` | {item['description']} |{p_note} |"
+        )
+    registry_table_md = "\n".join(registry_rows)
+
+    two_way_rows = []
+    for d1, d2 in TWO_WAY_SPECS:
+        two_way_rows.append(
+            f"| `{d1} x {d2}` | Full Cartesian cross-tabulation | `reports/phase3/tables/two_way_{d1.lower()}_x_{d2.lower()}.csv` |"
+        )
+    two_way_table_md = "\n".join(two_way_rows)
+
+    sens_rows = []
+    for s in SENSITIVITY_SPECS:
+        sens_rows.append(
+            f"| `{s['family']}` | **{s['spec_name']}** | `{s['type']}` | `{s['column']}` |"
+        )
+    sens_table_md = "\n".join(sens_rows)
+
+    content = f"""# Workforce Intelligence: Exploratory Data Analysis & Hotspot Protocol Plan
+
+This document formalizes the pre-specified analytical protocol for Phase 3A (Descriptive EDA Engine). All analyses, interaction cross-tabulations, and sensitivity checks are enumerated in advance to prevent selective reporting, p-hacking, and post-hoc data dredging.
+
+---
+
+## 1. Governance, Ethical Guardrails & Language Policy
+
+1. **Strict Descriptive Focus:** Phase 3A reports observed employee attrition rates, proportions, counts, and statistical intervals. In accordance with project policy, no causal statements, attributions, or directional assertions are made. Observed subgroup differences represent historical patterns and do not indicate individual probability or organizational fault.
+2. **Protected Attributes Guardrail:** Demographic attributes (such as Age, Gender, and Marital Status) are evaluated strictly for aggregate organizational benchmarking and representation parity. They are never designated for individual scoring, decision-making, or predictive modeling.
+3. **Multiplicity Control & Hotspot Screening:** Interaction screening evaluates multiple cross-classifications simultaneously. Cells with elevated rates are designated exclusively as *hotspot candidates for formal statistical evaluation in Phase 4*, not established findings.
+4. **Sample Size Floor (n < 30):** Any subgroup with total sample size n < 30 is explicitly tagged with a low-sample warning flag. Confidence intervals reflect small-sample uncertainty, and findings in small cohorts are interpreted with caution.
+
+---
+
+## 2. Pre-Specified Analysis Registry
+
+The following analyses are systematically executed against `data/processed/workforce_attrition_processed.csv`:
+
+| Stage | Analysis Name | Primary Dimension | Analytical Objective | Protected Attribute |
+| :--- | :--- | :--- | :--- | :--- |
+{registry_table_md}
+
+---
+
+## 3. Pre-Specified Two-Way Interaction Specifications
+
+The following two-way interactions are exhaustively computed to examine cross-dimensional attrition patterns:
+
+| Interaction Pair | Evaluation Type | Destination Table |
+| :--- | :--- | :--- |
+{two_way_table_md}
+
+---
+
+## 4. Sensitivity Analysis Specifications
+
+Alternative binning definitions and threshold parameters are systematically evaluated to confirm that findings do not depend on arbitrary categorization boundaries:
+
+| Dimension Family | Specification Name | Parameter Type | Target Metric |
+| :--- | :--- | :--- | :--- |
+{sens_table_md}
+
+---
+
+## 5. Statistical Estimation Standards
+
+- **Proportion Intervals:** All subgroup attrition rates are presented with 95% Wilson score confidence intervals to handle small sample sizes and boundary proportions reliably.
+- **Funnel Control Limits:** Organizational units (Job Roles and Departments) are plotted against exact binomial control limits at 95% (warning tier) and 99.8% (action tier) centered on the overall workforce baseline rate (16.12%).
+- **Hotspot Screening Criteria:** Interaction cells are flagged as hotspot candidates only when they satisfy:
+  1. Cell headcount `n >= 30`
+  2. Wilson 95% lower confidence bound strictly exceeds the overall organizational baseline rate (16.12%).
+"""
+    return content
+
+
+def build_phase3a_report(
+    tables_dict: Dict[str, pd.DataFrame],
+    summary_dict: Dict[str, Any],
+) -> str:
+    """Generate reports/phase3/eda_tables_report.md from computed tables and summary."""
+    from workforce_intel.config import REPORT_RATE_DECIMALS
+
+    def format_rate_table(df: pd.DataFrame, dim_col: str = "segment") -> str:
+        lines = [
+            f"| {dim_col} | Headcount (n) | Leavers | Retained | Attrition Rate (%) | 95% Wilson CI (%) | Workforce Share (%) | Leaver Share (%) | Flag |",
+            "| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |",
+        ]
+        for _, r in df.iterrows():
+            n = int(r["n"])
+            leavers = int(r["leavers"])
+            retained = int(r["retained"])
+            rate = f"{r['attrition_rate_pct']:.{REPORT_RATE_DECIMALS}f}%" if pd.notna(r["attrition_rate_pct"]) else "N/A"
+            ci = (
+                f"[{r['ci95_low_pct']:.{REPORT_RATE_DECIMALS}f}%, {r['ci95_high_pct']:.{REPORT_RATE_DECIMALS}f}%]"
+                if pd.notna(r["ci95_low_pct"])
+                else "N/A"
+            )
+            wf_share = f"{r['share_of_workforce_pct']:.{REPORT_RATE_DECIMALS}f}%"
+            l_share = f"{r['share_of_leavers_pct']:.{REPORT_RATE_DECIMALS}f}%"
+            flag = "[n < 30]" if r.get("low_n_flag") else "OK"
+            seg = str(r[dim_col])
+            lines.append(
+                f"| {seg} | {n:,} | {leavers:,} | {retained:,} | {rate} | {ci} | {wf_share} | {l_share} | {flag} |"
+            )
+        return "\n".join(lines)
+
+    ov = summary_dict["overall_metrics"]
+    hotspot_info = summary_dict["hotspot_candidates_scan"]
+
+    dept_table_md = format_rate_table(tables_dict["department_attrition"])
+    role_table_md = format_rate_table(tables_dict["jobrole_attrition"])
+    level_table_md = format_rate_table(tables_dict["joblevel_attrition"])
+    age_table_md = format_rate_table(tables_dict["agegroup_attrition"])
+    gender_table_md = format_rate_table(tables_dict["gender_attrition"])
+    marital_table_md = format_rate_table(tables_dict["maritalstatus_attrition"])
+    tenure_table_md = format_rate_table(tables_dict["tenureband_attrition"])
+    early_table_md = format_rate_table(tables_dict["earlytenure_attrition"])
+    overtime_table_md = format_rate_table(tables_dict["overtime_attrition"])
+    travel_table_md = format_rate_table(tables_dict["businesstravel_attrition"])
+    distance_table_md = format_rate_table(tables_dict["distanceband_attrition"])
+    p_cohort_table_md = format_rate_table(tables_dict["promotiongap_cohort_attrition"])
+
+    # Format Hotspot candidates table
+    hotspot_df = tables_dict["hotspot_candidates"]
+    hotspot_lines = [
+        "| Candidate Subgroup | Interaction | Headcount (n) | Leavers | Attrition Rate (%) | 95% Wilson CI (%) | Diff vs Overall (pp) | Rate Ratio |",
+        "| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |",
+    ]
+    for _, r in hotspot_df.iterrows():
+        n = int(r["n"])
+        leavers = int(r["leavers"])
+        rate = f"{r['attrition_rate_pct']:.{REPORT_RATE_DECIMALS}f}%"
+        ci = f"[{r['ci95_low_pct']:.{REPORT_RATE_DECIMALS}f}%, {r['ci95_high_pct']:.{REPORT_RATE_DECIMALS}f}%]"
+        diff = f"+{r['diff_vs_overall_pp']:.{REPORT_RATE_DECIMALS}f} pp" if r["diff_vs_overall_pp"] > 0 else f"{r['diff_vs_overall_pp']:.{REPORT_RATE_DECIMALS}f} pp"
+        ratio = f"{r['ratio_vs_overall']:.2f}x"
+        hotspot_lines.append(
+            f"| `{r['subgroup']}` | {r['interaction']} | {n:,} | {leavers:,} | {rate} | {ci} | {diff} | {ratio} |"
+        )
+    hotspot_table_md = "\n".join(hotspot_lines)
+
+    # Format Funnel table
+    funnel_df = tables_dict["funnel_limits"]
+    funnel_lines = [
+        "| Dimension | Segment | Headcount (n) | Leavers | Attrition Rate (%) | 95% Limits (%) | 95% Status | 99.8% Limits (%) | 99.8% Status |",
+        "| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |",
+    ]
+    for _, r in funnel_df.iterrows():
+        n = int(r["n"])
+        leavers = int(r["leavers"])
+        rate = f"{r['attrition_rate_pct']:.{REPORT_RATE_DECIMALS}f}%"
+        lim95 = f"[{r['lower_95_pct']:.{REPORT_RATE_DECIMALS}f}%, {r['upper_95_pct']:.{REPORT_RATE_DECIMALS}f}%]"
+        lim998 = f"[{r['lower_99.8_pct']:.{REPORT_RATE_DECIMALS}f}%, {r['upper_99.8_pct']:.{REPORT_RATE_DECIMALS}f}%]"
+        funnel_lines.append(
+            f"| {r['dimension']} | {r['segment']} | {n:,} | {leavers:,} | {rate} | {lim95} | `{r['status_95']}` | {lim998} | `{r['status_99.8']}` |"
+        )
+    funnel_table_md = "\n".join(funnel_lines)
+
+    content = f"""# Phase 3A Exploratory Data Analysis Report
+## Descriptive Attrition Rate Tables, Sensitivity Checks & Risk Hotspot Screening
+
+- **Execution Timestamp (UTC):** {summary_dict["execution_timestamp"]}
+- **Dataset File:** `{summary_dict["dataset_file"]}`
+- **Processed Dataset SHA-256:** `{summary_dict["dataset_sha256"]}`
+- **Workforce Dimensions:** {summary_dict["dimensions"]["rows"]:,} employees across {summary_dict["dimensions"]["columns"]} columns
+- **Runtime Environment:** Python {summary_dict["environment"]["python_version"]}, pandas {summary_dict["environment"]["pandas_version"]}, numpy {summary_dict["environment"]["numpy_version"]}
+
+> [!IMPORTANT]
+> **Governance & Descriptive Standard:** This report presents strictly descriptive calculations (counts, observed rates, and statistical confidence intervals). In compliance with analytical guidelines, this document makes no causal claims and asserts no directional attributions. Protected demographic attributes are reported solely for aggregate equity monitoring and are never to be utilized for individual employee assessment.
+
+---
+
+## 1. Overall Workforce Attrition Baseline
+
+Across the entire monitored workforce of {ov["total_employees"]:,} employees:
+- **Total Leavers:** {ov["leavers"]:,} employees departed the organization.
+- **Total Retained:** {ov["retained"]:,} employees remained active.
+- **Baseline Attrition Rate:** **{ov["attrition_rate_pct"]:.{REPORT_RATE_DECIMALS}f}%** (95% Wilson Score CI: **[{ov["ci95_low_pct"]:.{REPORT_RATE_DECIMALS}f}%, {ov["ci95_high_pct"]:.{REPORT_RATE_DECIMALS}f}%]**).
+- **Workforce Imbalance Ratio:** {ov["imbalance_ratio"]:.2f} retained employees per departing employee.
+
+---
+
+## 2. Organizational Hierarchy Breakdowns
+
+### 2.1 Department Breakdown
+{dept_table_md}
+
+### 2.2 Job Role Breakdown
+{role_table_md}
+
+### 2.3 Job Level Breakdown
+{level_table_md}
+
+---
+
+## 3. Binomial Funnel Limits & Organizational Disproportion
+
+Exact binomial control limits evaluate observed organizational subgroup rates against expected random variation around the workforce baseline ({ov["attrition_rate_pct"]:.{REPORT_RATE_DECIMALS}f}%):
+
+{funnel_table_md}
+
+---
+
+## 4. Workload, Mobility & Tenure Patterns
+
+### 4.1 Overtime Status
+{overtime_table_md}
+
+### 4.2 Business Travel Frequency
+{travel_table_md}
+
+### 4.3 Distance Band (Commute)
+*Note: Commute distance units are undocumented in the source data.*
+{distance_table_md}
+
+### 4.4 Company Tenure Band
+{tenure_table_md}
+
+### 4.5 Early Tenure Cohort (<= 1 Year vs > 1 Year)
+{early_table_md}
+
+### 4.6 Promotion Gap Band (Within Promotion Analysis Cohort, n = 890)
+*Evaluated exclusively for employees with company tenure >= 5 years to separate career stagnation from initial onboarding tenure.*
+{p_cohort_table_md}
+
+---
+
+## 5. Demographic Cohorts (Descriptive Monitoring Only)
+
+> [!NOTE]
+> Demographic characteristics are analyzed solely for aggregate organizational parity benchmarking.
+
+### 5.1 Age Group Distribution
+{age_table_md}
+
+### 5.2 Gender Distribution
+{gender_table_md}
+
+### 5.3 Marital Status Distribution
+{marital_table_md}
+
+---
+
+## 6. Pre-Specified Risk Hotspot Candidates Scan
+
+Across {hotspot_info["total_cells_scanned"]} scanned two-way interaction cells, exactly {hotspot_info["candidate_count"]} subgroups met the dual pre-specified qualification criteria:
+1. Headcount `n >= {hotspot_info["min_n_threshold"]}`
+2. Wilson 95% lower confidence bound strictly exceeding the organizational baseline ({ov["attrition_rate_pct"]:.{REPORT_RATE_DECIMALS}f}%).
+
+> [!WARNING]
+> **Preliminary Screening Notice:** These interaction cells represent *candidates for formal multivariable statistical testing in Phase 4*, not validated independent factors.
+
+{hotspot_table_md}
+
+---
+
+## 7. Artifact Manifest & Verification Tables
+
+- **Summary Metadata:** `reports/phase3/eda_summary.json`
+- **Formal Analysis Plan:** `docs/analysis_plan.md`
+- **Output CSV Tables:** Exactly {len(tables_dict)} CSV tables stored in `reports/phase3/tables/` with 4-decimal precision (`ROUND_DIGITS = 4`) and LF line endings.
+"""
+    return content

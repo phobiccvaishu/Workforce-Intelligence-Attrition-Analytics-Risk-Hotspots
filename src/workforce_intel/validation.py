@@ -13,6 +13,7 @@ import pandas as pd
 from pandas.api import types as ptypes
 from scipy import stats
 
+from workforce_intel.stats_utils import wilson_interval
 from workforce_intel.config import (
     ALL_NUMERIC_COLUMNS,
     CONTINUOUS_COLUMNS,
@@ -315,17 +316,8 @@ def target_audit(df: pd.DataFrame, target_col: str = TARGET_COLUMN) -> Dict[str,
     imbalance_ratio = (count_0 / count_1) if count_1 > 0 else np.nan
 
     # Wilson 95% Score Confidence Interval
-    # z for 95% = 1.959963984540054
-    z = 1.959963984540054
-    p = rate_1
-    n = n_total
-    if n > 0:
-        denominator = 1.0 + (z**2) / n
-        center_adj = p + (z**2) / (2 * n)
-        margin = z * math.sqrt((p * (1.0 - p) / n) + ((z**2) / (4 * (n**2))))
-        ci_lower = max(0.0, (center_adj - margin) / denominator)
-        ci_upper = min(1.0, (center_adj + margin) / denominator)
-    else:
+    ci_lower, ci_upper = wilson_interval(count_1, n_total, confidence=0.95)
+    if n_total == 0:
         ci_lower, ci_upper = 0.0, 0.0
 
     return {

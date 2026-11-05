@@ -1,0 +1,4 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+BusinessTravel,Non-Travel,150,12,138,8.0000,4.6354,13.4621,10.2041,5.0633,-8.1224,0.4962,False
+BusinessTravel,Travel_Frequently,277,69,208,24.9097,20.1831,30.3227,18.8435,29.1139,8.7873,1.5450,False
+BusinessTravel,Travel_Rarely,1043,156,887,14.9569,12.9212,17.2497,70.9524,65.8228,-1.1656,0.9277,False

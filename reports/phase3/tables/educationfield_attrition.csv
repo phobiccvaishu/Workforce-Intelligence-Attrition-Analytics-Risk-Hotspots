@@ -1,0 +1,7 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+EducationField,Human Resources,27,7,20,25.9259,13.1704,44.6786,1.8367,2.9536,9.8035,1.6081,True
+EducationField,Life Sciences,606,89,517,14.6865,12.0908,17.7271,41.2245,37.5527,-1.4360,0.9109,False
+EducationField,Marketing,159,35,124,22.0126,16.2749,29.0707,10.8163,14.7679,5.8901,1.3653,False
+EducationField,Medical,464,63,401,13.5776,10.7583,16.9950,31.5646,26.5823,-2.5449,0.8422,False
+EducationField,Other,82,11,71,13.4146,7.6587,22.4450,5.5782,4.6414,-2.7078,0.8320,False
+EducationField,Technical Degree,132,32,100,24.2424,17.7275,32.2142,8.9796,13.5021,8.1200,1.5036,False

@@ -1,0 +1,6 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+JobLevel,1,543,143,400,26.3352,22.8061,30.1968,36.9388,60.3376,10.2127,1.6334,False
+JobLevel,2,534,52,482,9.7378,7.5034,12.5474,36.3265,21.9409,-6.3846,0.6040,False
+JobLevel,3,218,32,186,14.6789,10.5936,19.9875,14.8299,13.5021,-1.4435,0.9105,False
+JobLevel,4,106,5,101,4.7170,2.0314,10.5699,7.2109,2.1097,-11.4055,0.2926,False
+JobLevel,5,69,5,64,7.2464,3.1348,15.8674,4.6939,2.1097,-8.8761,0.4495,False

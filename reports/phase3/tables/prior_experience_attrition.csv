@@ -1,0 +1,3 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+HasPriorExperience,0,474,89,385,18.7764,15.5169,22.5379,32.2449,37.5527,2.6539,1.1646,False
+HasPriorExperience,1,996,148,848,14.8594,12.7856,17.2033,67.7551,62.4473,-1.2630,0.9217,False

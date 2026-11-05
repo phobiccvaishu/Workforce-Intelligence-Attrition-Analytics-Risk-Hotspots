@@ -1,0 +1,5 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+WorkLifeBalance,1,80,25,55,31.2500,22.1504,42.0678,5.4422,10.5485,15.1276,1.9383,False
+WorkLifeBalance,2,344,58,286,16.8605,13.2749,21.1780,23.4014,24.4726,0.7380,1.0458,False
+WorkLifeBalance,3,893,127,766,14.2217,12.0840,16.6660,60.7483,53.5865,-1.9007,0.8821,False
+WorkLifeBalance,4,153,27,126,17.6471,12.4209,24.4580,10.4082,11.3924,1.5246,1.0946,False

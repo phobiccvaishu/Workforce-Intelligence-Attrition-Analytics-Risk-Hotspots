@@ -1,0 +1,11 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+NumCompaniesWorked,0,197,23,174,11.6751,7.9069,16.9094,13.4014,9.7046,-4.4473,0.7242,False
+NumCompaniesWorked,1,521,98,423,18.8100,15.6872,22.3894,35.4422,41.3502,2.6875,1.1667,False
+NumCompaniesWorked,2,146,16,130,10.9589,6.8590,17.0606,9.9320,6.7511,-5.1635,0.6797,False
+NumCompaniesWorked,3,159,16,143,10.0629,6.2894,15.7207,10.8163,6.7511,-6.0596,0.6242,False
+NumCompaniesWorked,4,139,17,122,12.2302,7.7779,18.7141,9.4558,7.1730,-3.8922,0.7586,False
+NumCompaniesWorked,5,63,16,47,25.3968,16.2804,37.3412,4.2857,6.7511,9.2744,1.5752,False
+NumCompaniesWorked,6,70,16,54,22.8571,14.5881,33.9503,4.7619,6.7511,6.7347,1.4177,False
+NumCompaniesWorked,7,74,17,57,22.9730,14.8672,33.7463,5.0340,7.1730,6.8505,1.4249,False
+NumCompaniesWorked,8,49,6,43,12.2449,5.7348,24.2444,3.3333,2.5316,-3.8776,0.7595,False
+NumCompaniesWorked,9,52,12,40,23.0769,13.7243,36.1338,3.5374,5.0633,6.9545,1.4314,False

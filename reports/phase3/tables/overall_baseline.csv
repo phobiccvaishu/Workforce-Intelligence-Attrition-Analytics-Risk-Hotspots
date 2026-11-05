@@ -1,0 +1,2 @@
+metric,total_employees,leavers,retained,attrition_rate_pct,retention_rate_pct,ci95_low_pct,ci95_high_pct,imbalance_ratio
+Overall Baseline,1470,237,1233,16.1224,83.8776,14.3313,18.0902,5.2025

@@ -1,0 +1,4 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+MaritalStatus,Divorced,327,33,294,10.0917,7.2764,13.8338,22.2449,13.9241,-6.0307,0.6259,False
+MaritalStatus,Married,673,84,589,12.4814,10.1953,15.1934,45.7823,35.4430,-3.6410,0.7742,False
+MaritalStatus,Single,470,120,350,25.5319,21.7992,29.6614,31.9728,50.6329,9.4095,1.5836,False

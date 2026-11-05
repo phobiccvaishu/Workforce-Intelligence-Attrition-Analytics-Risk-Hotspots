@@ -1,0 +1,3 @@
+segment_dim,segment,n,leavers,retained,attrition_rate_pct,ci95_low_pct,ci95_high_pct,share_of_workforce_pct,share_of_leavers_pct,diff_vs_overall_pp,ratio_vs_overall,low_n_flag
+EarlyTenure,0,1255,162,1093,12.9084,11.1659,14.8772,85.3741,68.3544,-3.2141,0.8006,False
+EarlyTenure,1,215,75,140,34.8837,28.8290,41.4691,14.6259,31.6456,18.7613,2.1637,False
