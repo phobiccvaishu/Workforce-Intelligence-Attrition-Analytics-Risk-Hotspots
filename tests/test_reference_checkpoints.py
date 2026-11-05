@@ -249,13 +249,18 @@ def test_phase3b_section_6_checkpoints():
     above_flags = {}
     below_flags = {}
     no_sep_dims = []
+    segments_ge_30 = 0
+    segments_lt_30 = []
 
     for dim in dims:
         grp = df.groupby(dim)["Attrition"].agg(["count", "sum"])
         dim_above = []
         dim_below = []
         for val, (cnt, lvs) in grp.iterrows():
-            if cnt < 30:
+            if cnt >= 30:
+                segments_ge_30 += 1
+            else:
+                segments_lt_30.append((dim, str(val), int(cnt)))
                 continue
             lb, ub = wilson_ci(lvs, cnt)
             if lb > overall_rate:
@@ -268,6 +273,10 @@ def test_phase3b_section_6_checkpoints():
             below_flags[dim] = dim_below
         if not dim_above and not dim_below:
             no_sep_dims.append(dim)
+
+    # Check: evaluated segments with n >= 30 across 28 dimensions = 115; exactly one below 30
+    assert segments_ge_30 == 115, f"Expected 115 evaluated segments (n >= 30), got {segments_ge_30}"
+    assert segments_lt_30 == [("EducationField", "Human Resources", 27)], f"Unexpected low-n segments: {segments_lt_30}" 
 
     # Check 1: Flag counts
     total_above = sum(len(v) for v in above_flags.values())

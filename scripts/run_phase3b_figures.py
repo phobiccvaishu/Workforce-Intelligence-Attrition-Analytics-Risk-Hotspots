@@ -29,6 +29,7 @@ from workforce_intel.config import (
     EXECUTED_FIGURES_IPYNB,
     PHASE3_FIGURES_DIR,
     PHASE3_MANIFEST_CSV,
+    PHASE3_SUMMARY_JSON,
     PHASE3_TABLES_DIR,
 )
 from workforce_intel.findings import (
@@ -248,7 +249,11 @@ def main() -> None:
     # 4. Build Findings Register & Summary JSON
     logger.info("Evaluating mechanical interval-flagging rule across dimensions...")
     findings_df = build_findings(tables, FINDINGS_RULE)
-    summary_dict = compile_findings_summary(tables, findings_df)
+    eda_summary = None
+    if PHASE3_SUMMARY_JSON.exists():
+        with open(PHASE3_SUMMARY_JSON, "r", encoding="utf-8") as f:
+            eda_summary = json.load(f)
+    summary_dict = compile_findings_summary(tables, findings_df, eda_summary=eda_summary)
 
     FINDINGS_SUMMARY_JSON.parent.mkdir(parents=True, exist_ok=True)
     FINDINGS_SUMMARY_JSON.write_text(

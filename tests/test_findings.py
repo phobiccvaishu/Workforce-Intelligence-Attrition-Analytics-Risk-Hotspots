@@ -137,24 +137,127 @@ def test_language_hygiene_phase3b_documents():
     assert not violations, "Forbidden terms found in Phase 3B documents:\n" + "\n".join(violations)
 
 
-def test_findings_provenance_synthetic_data(loaded_tables):
-    """Verify build_findings and render_register_markdown contain zero hardcoded real numbers."""
-    synthetic_tables = {}
-    for name, df in loaded_tables.items():
-        syn_df = df.copy()
-        if "attrition_rate_pct" in syn_df.columns:
-            syn_df["attrition_rate_pct"] = syn_df["attrition_rate_pct"] + 11.1111
-        if "ci95_low_pct" in syn_df.columns:
-            syn_df["ci95_low_pct"] = syn_df["ci95_low_pct"] + 11.1111
-        if "ci95_high_pct" in syn_df.columns:
-            syn_df["ci95_high_pct"] = syn_df["ci95_high_pct"] + 11.1111
-        synthetic_tables[name] = syn_df
+def test_findings_provenance_synthetic_data():
+    """Verify build_findings and render_register_markdown contain zero hardcoded real numbers.
+    
+    Generates a genuinely distinct synthetic dataset (~300 rows, different segments/roles/departments,
+    different attrition rate), runs through Phase 3A table engine, build_findings, and render_register_markdown.
+    (a) Asserts expected synthetic values independently computed with pandas appear without 'or'.
+    (b) Asserts zero real-data numeric tokens and segment names appear in synthetic render.
+    """
+    from workforce_intel.eda import overall_summary, rate_table
+    import numpy as np
 
-    syn_findings = build_findings(synthetic_tables)
-    syn_summary = compile_findings_summary(synthetic_tables, syn_findings)
+    np.random.seed(42)
+    n_rows = 300
+
+    syn_data = {
+        "Department": ["Hardware"] * 150 + ["Operations"] * 150,
+        "JobRole": (["Architect"] * 50 + ["Technician"] * 50 + ["Operator"] * 50) * 2,
+        "JobLevel": ([1] * 50 + [2] * 50 + [3] * 50) * 2,
+        "AgeGroup": (["Youth"] * 50 + ["Prime"] * 50 + ["Senior"] * 50) * 2,
+        "Gender": ["NonBinary"] * 150 + ["Agender"] * 150,
+        "MaritalStatus": ["DomesticPartner"] * 150 + ["Widowed"] * 150,
+        "Education": ([1] * 75 + [2] * 75) * 2,
+        "EducationField": (["Physics"] * 75 + ["Chemistry"] * 75) * 2,
+        "TenureBand": ["BandA"] * 150 + ["BandB"] * 150,
+        "EarlyTenure": ([1] * 75 + [0] * 75) * 2,
+        "CareerStage": ["EarlyCareer"] * 150 + ["LateCareer"] * 150,
+        "RoleTenureBand": ["RoleEarly"] * 150 + ["RoleSenior"] * 150,
+        "ManagerTenureBand": ["MgrEarly"] * 150 + ["MgrSenior"] * 150,
+        "PromotionGapBand": ["GapLow"] * 150 + ["GapHigh"] * 150,
+        "PromotionGapEqualsTenure": ([1] * 75 + [0] * 75) * 2,
+        "HasPriorExperience": ([1] * 75 + [0] * 75) * 2,
+        "NumCompaniesWorked": ([1] * 75 + [2] * 75) * 2,
+        "OverTime": ["Always"] * 150 + ["Never"] * 150,
+        "BusinessTravel": ["FrequentFlyer"] * 150 + ["Stationary"] * 150,
+        "DistanceBand": ["NearOffice"] * 150 + ["FarOffice"] * 150,
+        "WorkLifeBalance": ([1] * 75 + [2] * 75) * 2,
+        "JobSatisfaction": ([1] * 75 + [2] * 75) * 2,
+        "EnvironmentSatisfaction": ([1] * 75 + [2] * 75) * 2,
+        "RelationshipSatisfaction": ([1] * 75 + [2] * 75) * 2,
+        "JobInvolvement": ([1] * 75 + [2] * 75) * 2,
+        "StockOptionLevel": ([1] * 75 + [2] * 75) * 2,
+        "TrainingTimesLastYear": ([1] * 75 + [2] * 75) * 2,
+        "PerformanceRating": ([1] * 75 + [2] * 75) * 2,
+        "PromotionAnalysisCohort": [1] * 200 + [0] * 100,
+    }
+
+    # 60 leavers in first 150, 15 leavers in last 150 => 75 total leavers (25.0%)
+    syn_data["Attrition"] = [1] * 60 + [0] * 90 + [1] * 15 + [0] * 135
+    df_syn = pd.DataFrame(syn_data)
+
+    # Run through Phase 3A table engine
+    syn_tables = {}
+    syn_tables["overall_baseline"] = overall_summary(df_syn, target_col="Attrition")
+    syn_tables["overall_baseline.csv"] = syn_tables["overall_baseline"]
+
+    for dim_info in ANALYSIS_DIMENSIONS:
+        dim = dim_info["dimension"]
+        tbl = dim_info["table"]
+        rt = rate_table(df_syn, dim, target_col="Attrition")
+        syn_tables[tbl] = rt
+        syn_tables[tbl.replace(".csv", "")] = rt
+
+    cohort_syn = df_syn[df_syn["PromotionAnalysisCohort"] == 1].copy()
+    cohort_rt = rate_table(cohort_syn, "PromotionGapBand", target_col="Attrition")
+    syn_tables["promotiongap_cohort_attrition.csv"] = cohort_rt
+    syn_tables["promotiongap_cohort_attrition"] = cohort_rt
+
+    # Build findings & markdown
+    syn_findings = build_findings(syn_tables)
+    syn_summary = compile_findings_summary(syn_tables, syn_findings)
     syn_md = render_register_markdown(syn_findings, syn_summary)
 
-    # Check that synthetic baseline rate (16.1224 + 11.1111 = 27.2335) appears in markdown
-    assert "27.2335" in syn_md or "27.2%" in syn_md, "Synthetic baseline rate must propagate dynamically."
-    # Real data baseline 16.1224 must NOT appear in synthetic markdown
-    assert "16.1224" not in syn_md, "Real baseline rate 16.1224 was unexpectedly found in synthetic render."
+    # (a) Assert synthetic values independently computed appear without "or"
+    exp_rate_pct = f"{(df_syn['Attrition'].sum() / len(df_syn)) * 100.0:.1f}%"
+    assert exp_rate_pct in syn_md
+    assert str(len(df_syn)) in syn_md
+    assert str(int(df_syn["Attrition"].sum())) in syn_md
+    cohort_rate_pct = f"{(cohort_syn['Attrition'].sum() / len(cohort_syn)) * 100.0:.1f}%"
+    assert cohort_rate_pct in syn_md
+    assert str(len(cohort_syn)) in syn_md
+    assert str(int(cohort_syn["Attrition"].sum())) in syn_md
+    assert "Hardware" in syn_md
+    assert "Operations" in syn_md
+
+    # (b) Token cross-check against REAL findings_register.md and findings_summary.json
+    real_md = FINDINGS_REGISTER_MD.read_text(encoding="utf-8")
+    with open(FINDINGS_SUMMARY_JSON, "r", encoding="utf-8") as f:
+        real_summary = json.load(f)
+
+    syn_table_tokens = set()
+    for df in syn_tables.values():
+        for col in df.columns:
+            for val in df[col].dropna():
+                if isinstance(val, (int, float)):
+                    syn_table_tokens.add(str(val))
+                    syn_table_tokens.add(f"{val:.1f}")
+                    syn_table_tokens.add(f"{val:.2f}")
+                    syn_table_tokens.add(f"{val:.4f}")
+                else:
+                    for tok in re.findall(r"\b\d+(?:\.\d+)?\b", str(val)):
+                        syn_table_tokens.add(tok)
+
+    allowed_constants = {"30", "0.05", "95", "1.5"}
+    structural_tokens = {"1", "2", "3", "4", "28"}
+    for i in range(1, 100):
+        structural_tokens.add(f"{i:02d}")
+        structural_tokens.add(str(i))
+
+    real_tokens = set(re.findall(r"\b\d+(?:\.\d+)?\b", real_md))
+    forbidden_real_tokens = real_tokens - syn_table_tokens - allowed_constants - structural_tokens
+
+    syn_md_tokens = set(re.findall(r"\b\d+(?:\.\d+)?\b", syn_md))
+    leaked_tokens = syn_md_tokens & forbidden_real_tokens
+    assert not leaked_tokens, f"Real data numeric tokens leaked into synthetic render: {leaked_tokens}"
+
+    real_segment_names = [
+        "Sales Executive", "Research Scientist", "Laboratory Technician",
+        "Manufacturing Director", "Healthcare Representative", "Sales Representative",
+        "Research & Development", "Human Resources", "Travel_Frequently",
+        "Travel_Rarely", "Non-Travel", "Life Sciences", "Medical",
+        "Technical Degree", "Marketing",
+    ]
+    for seg in real_segment_names:
+        assert seg not in syn_md, f"Real segment name '{seg}' leaked into synthetic markdown render."

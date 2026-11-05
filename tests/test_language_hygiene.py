@@ -24,6 +24,26 @@ FORBIDDEN_WORDS = [
 ]
 
 
+def check_files_for_forbidden_words(files_to_check):
+    """Scan every line of given files for forbidden causal terms."""
+    violations = []
+    for file_path in files_to_check:
+        if not file_path.exists():
+            continue
+        lines = file_path.read_text(encoding="utf-8").splitlines()
+        for line_num, line in enumerate(lines, start=1):
+            # For decision_log.md, only evaluate Phase 3+ decisions (DL-27 onwards)
+            if file_path.name == "decision_log.md" and not any(f"DL-{i:02d}" in line for i in range(27, 50)):
+                continue
+            for pat in FORBIDDEN_WORDS:
+                match = re.search(pat, line, re.IGNORECASE)
+                if match:
+                    violations.append(
+                        f"{file_path}:{line_num} contains forbidden pattern '{match.group(0)}': {line.strip()}"
+                    )
+    return violations
+
+
 def test_language_hygiene_phase3_reports():
     """Reports, plans, and EDA source code must contain zero forbidden causal terms."""
     files_to_check = [
@@ -39,26 +59,23 @@ def test_language_hygiene_phase3_reports():
         Path("scripts/run_phase3b_figures.py"),
     ]
 
-    violations = []
-
-    for file_path in files_to_check:
-        if not file_path.exists():
-            continue
-        lines = file_path.read_text(encoding="utf-8").splitlines()
-        for line_num, line in enumerate(lines, start=1):
-            # Exclude code lines that define FORBIDDEN_WORDS or tests asserting them
-            if "FORBIDDEN_WORDS" in line or "test_language_hygiene" in line:
-                continue
-            # For decision_log.md, only evaluate Phase 3+ decisions (DL-27 onwards)
-            if file_path.name == "decision_log.md" and not any(f"DL-{i:02d}" in line for i in range(27, 50)):
-                continue
-            for pat in FORBIDDEN_WORDS:
-                match = re.search(pat, line, re.IGNORECASE)
-                if match:
-                    violations.append(
-                        f"{file_path}:{line_num} contains forbidden pattern '{match.group(0)}': {line.strip()}"
-                    )
-
+    violations = check_files_for_forbidden_words(files_to_check)
     assert not violations, (
         "Forbidden causal terms found in Phase 3 documents:\n" + "\n".join(violations)
     )
+
+
+def test_language_hygiene_mutation_fails(tmp_path):
+    """Verify that adding a forbidden word to docs/findings_register.md triggers an assertion failure."""
+    original_md = Path("docs/findings_register.md")
+    assert original_md.exists(), "docs/findings_register.md must exist for mutation testing."
+
+    # Create temporary copy with injected forbidden word
+    mutated_file = tmp_path / "findings_register.md"
+    content = original_md.read_text(encoding="utf-8")
+    mutated_content = content + "\nThis observation causes high attrition.\n"
+    mutated_file.write_text(mutated_content, encoding="utf-8")
+
+    violations = check_files_for_forbidden_words([mutated_file])
+    assert len(violations) > 0, "Mutated file with forbidden word must trigger a violation."
+    assert any("causes" in v for v in violations)

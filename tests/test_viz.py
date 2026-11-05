@@ -120,3 +120,77 @@ def test_missing_table_error_handling(loaded_tables):
 
     with pytest.raises(KeyError, match="jobrole_attrition"):
         viz.plot_fig02_jobrole_attrition({"overall_baseline.csv": loaded_tables["overall_baseline.csv"]})
+
+def test_figure_hatched_bars_match_low_n_count(loaded_tables):
+    """Verify that hatched bar/patch count equals low_n_flag count in plotted DataFrame for all figures."""
+    funcs = [
+        ("FIG-01", viz.plot_fig01_department_overview),
+        ("FIG-02", viz.plot_fig02_jobrole_attrition),
+        ("FIG-03", viz.plot_fig03_funnel_plot),
+        ("FIG-04", viz.plot_fig04_leaver_concentration),
+        ("FIG-05", viz.plot_fig05_age_sensitivity),
+        ("FIG-06", viz.plot_fig06_tenure_sensitivity),
+        ("FIG-07", viz.plot_fig07_promotion_gap_cohort),
+        ("FIG-08", viz.plot_fig08_workload_mobility),
+        ("FIG-09", viz.plot_fig09_satisfaction_small_multiples),
+        ("FIG-10", viz.plot_fig10_overtime_interactions),
+        ("FIG-11", viz.plot_fig11_hotspot_candidates),
+        ("FIG-12", viz.plot_fig12_hotspot_overlap),
+        ("FIG-13", viz.plot_fig13_numeric_distributions),
+        ("FIG-14", viz.plot_fig14_demographics_background),
+    ]
+
+    for fid, func in funcs:
+        fig, plotted_df = func(loaded_tables)
+        hatched_count = 0
+        for ax in fig.axes:
+            for patch in ax.patches:
+                if patch.get_hatch() is not None:
+                    hatched_count += 1
+
+        exp_low_n = int(plotted_df["low_n_flag"].sum()) if "low_n_flag" in plotted_df.columns else 0
+        assert hatched_count == exp_low_n, f"{fid}: Hatched patches ({hatched_count}) != expected low_n rows ({exp_low_n})"
+        plt.close(fig)
+
+
+def test_fig14_plotted_colors_agree_with_findings_flags(loaded_tables):
+    """Verify that bar colors in FIG-14 match findings classifications from findings.py."""
+    from workforce_intel.findings import build_findings
+    from workforce_intel.config import FIGURE_PALETTE
+    import matplotlib.colors as mcolors
+
+    fig, plotted_df = viz.plot_fig14_demographics_background(loaded_tables)
+    findings_df = build_findings(loaded_tables)
+
+    dims = ["Gender", "MaritalStatus", "Education", "EducationField", "HasPriorExperience", "PerformanceRating"]
+
+    # Verify each panel
+    for ax_idx, dim in enumerate(dims):
+        ax = fig.axes[ax_idx]
+        bars = ax.patches
+        dim_findings = findings_df[findings_df["dimension"] == dim]
+
+        for b in bars:
+            fc = b.get_facecolor()
+            hatch = b.get_hatch()
+
+            # If hatched, must be low-n
+            if hatch == "//":
+                assert mcolors.to_hex(fc[:3]).lower() == FIGURE_PALETTE["low_n"].lower()
+            elif mcolors.to_hex(fc[:3]).lower() == FIGURE_PALETTE["highlight"].lower():
+                # Must be flagged above
+                assert len(dim_findings[dim_findings["direction"] == "above baseline"]) > 0
+            elif mcolors.to_hex(fc[:3]).lower() == FIGURE_PALETTE["secondary"].lower():
+                # Must be flagged below
+                assert len(dim_findings[dim_findings["direction"] == "below baseline"]) > 0
+            else:
+                # Must be neutral primary
+                assert mcolors.to_hex(fc[:3]).lower() == FIGURE_PALETTE["primary"].lower()
+
+    # Specifically verify EducationField Human Resources is hatched grey
+    edf_ax = fig.axes[3]
+    hatched_in_edf = [b for b in edf_ax.patches if b.get_hatch() == "//"]
+    assert len(hatched_in_edf) == 1, "FIG-14 panel D (EducationField) must have exactly 1 hatched bar (Human Resources, n=27)."
+
+    plt.close(fig)
+

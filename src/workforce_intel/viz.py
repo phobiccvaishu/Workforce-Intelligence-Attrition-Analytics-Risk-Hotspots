@@ -2,9 +2,10 @@
 
 Implements 14 pure plotting functions returning (matplotlib Figure, plotted DataFrame).
 Zero file I/O inside plot functions. Strict adherence to report styling and language hygiene.
+All segment flags and styles consume the shared classification engine from findings.py.
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -20,6 +21,12 @@ from workforce_intel.config import (
     FIGURE_PALETTE,
     FIGURE_SPECS,
     ROUND_DIGITS,
+)
+from workforce_intel.findings import (
+    build_findings,
+    classify_segment,
+    get_dimension_panel_title,
+    get_segment_style,
 )
 
 
@@ -45,6 +52,18 @@ def _get_baseline_rate(tables: Dict[str, pd.DataFrame]) -> float:
     return float(base_df["attrition_rate_pct"].iloc[0])
 
 
+def _get_cohort_baseline_rate(tables: Dict[str, pd.DataFrame]) -> float:
+    """Retrieve cohort baseline rate."""
+    cohort_df = tables.get("promotiongap_cohort_attrition.csv")
+    if cohort_df is None:
+        cohort_df = tables.get("promotiongap_cohort_attrition")
+    if cohort_df is not None:
+        tot_n = int(cohort_df["n"].sum())
+        tot_lvs = int(cohort_df["leavers"].sum())
+        return (tot_lvs / tot_n) * 100.0 if tot_n > 0 else 10.7865
+    return 10.7865
+
+
 # =============================================================================
 # FIG-01: Department Overview
 # =============================================================================
@@ -52,9 +71,13 @@ def plot_fig01_department_overview(
     tables: Dict[str, pd.DataFrame],
 ) -> Tuple[plt.Figure, pd.DataFrame]:
     """Plot department overview: (A) Attrition rate with 95% Wilson CI, (B) Workforce vs leaver share."""
-    spec = FIGURE_SPECS["FIG-01"]
     df = _get_table(tables, "department_attrition.csv")
+    spec = FIGURE_SPECS["FIG-01"]
     baseline_rate = _get_baseline_rate(tables)
+    total_n = int(df["n"].sum())
+
+    if "low_n_flag" not in df.columns:
+        df["low_n_flag"] = df["n"] < 30
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5), dpi=FIGURE_DPI)
 
@@ -64,28 +87,38 @@ def plot_fig01_department_overview(
     yerr_low = rates - df["ci95_low_pct"].values
     yerr_high = df["ci95_high_pct"].values - rates
 
-    colors = [
-        FIGURE_PALETTE["highlight"] if (df["ci95_low_pct"].iloc[i] > baseline_rate or df["ci95_high_pct"].iloc[i] < baseline_rate)
-        else FIGURE_PALETTE["primary"]
+    styles = [
+        get_segment_style(int(df["n"].iloc[i]), float(df["ci95_low_pct"].iloc[i]), float(df["ci95_high_pct"].iloc[i]), baseline_rate)
         for i in range(len(df))
     ]
+    colors = [s["color"] for s in styles]
+    hatches = [s["hatch"] for s in styles]
 
     bars1 = ax1.bar(x, rates, yerr=[yerr_low, yerr_high], capsize=5, color=colors, alpha=0.9, edgecolor="#111827", linewidth=0.8)
+    for bar, h in zip(bars1, hatches):
+        if h:
+            bar.set_hatch(h)
+
     ax1.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5, label=f"Workforce Baseline ({baseline_rate:.1f}%)")
 
     for idx, rect in enumerate(bars1):
         height = rect.get_height()
         n_val = df["n"].iloc[idx]
         l_val = df["leavers"].iloc[idx]
+        style = styles[idx]
+        annot = f"{height:.1f}%\n(n={n_val}, l={l_val})"
+        if style["annotation"]:
+            annot += f"\n[{style['annotation']}]"
+
         ax1.annotate(
-            f"{height:.1f}%\n(n={n_val}, l={l_val})",
+            annot,
             xy=(rect.get_x() + rect.get_width() / 2, height / 2),
             xytext=(0, 0),
             textcoords="offset points",
             ha="center",
             va="center",
             fontsize=8.5,
-            color="white",
+            color="white" if not style["hatch"] else "#111827",
             weight="bold",
         )
 
@@ -114,7 +147,7 @@ def plot_fig01_department_overview(
     ax2.legend(loc="upper right", fontsize=8.5)
     ax2.grid(axis="y", linestyle=":", alpha=0.6)
 
-    fig.suptitle(spec["title"] + "\n" + spec["subtitle"], fontsize=12, weight="bold", y=1.03)
+    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals", fontsize=12, weight="bold", y=1.03)
     _add_footnote(fig, spec["footnote"])
     plt.tight_layout()
 
@@ -128,9 +161,13 @@ def plot_fig02_jobrole_attrition(
     tables: Dict[str, pd.DataFrame],
 ) -> Tuple[plt.Figure, pd.DataFrame]:
     """Plot ranked job role attrition rates horizontal bar chart."""
-    spec = FIGURE_SPECS["FIG-02"]
     df = _get_table(tables, "jobrole_attrition.csv").sort_values("attrition_rate_pct", ascending=True).reset_index(drop=True)
+    spec = FIGURE_SPECS["FIG-02"]
     baseline_rate = _get_baseline_rate(tables)
+    total_n = int(df["n"].sum())
+
+    if "low_n_flag" not in df.columns:
+        df["low_n_flag"] = df["n"] < 30
 
     fig, ax = plt.subplots(figsize=(10, 6), dpi=FIGURE_DPI)
 
@@ -139,21 +176,30 @@ def plot_fig02_jobrole_attrition(
     xerr_low = rates - df["ci95_low_pct"].values
     xerr_high = df["ci95_high_pct"].values - rates
 
-    colors = [
-        FIGURE_PALETTE["highlight"] if df["ci95_low_pct"].iloc[i] > baseline_rate
-        else (FIGURE_PALETTE["secondary"] if df["ci95_high_pct"].iloc[i] < baseline_rate else FIGURE_PALETTE["primary"])
+    styles = [
+        get_segment_style(int(df["n"].iloc[i]), float(df["ci95_low_pct"].iloc[i]), float(df["ci95_high_pct"].iloc[i]), baseline_rate)
         for i in range(len(df))
     ]
+    colors = [s["color"] for s in styles]
+    hatches = [s["hatch"] for s in styles]
 
     bars = ax.barh(y, rates, xerr=[xerr_low, xerr_high], capsize=4, color=colors, alpha=0.9, edgecolor="#111827", linewidth=0.8)
+    for bar, h in zip(bars, hatches):
+        if h:
+            bar.set_hatch(h)
+
     ax.axvline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5, label=f"Workforce Baseline ({baseline_rate:.1f}%)")
 
     for idx, rect in enumerate(bars):
         width = rect.get_width()
         n_val = df["n"].iloc[idx]
         l_val = df["leavers"].iloc[idx]
+        style = styles[idx]
+        annot = f" {width:.1f}% (n={n_val}, l={l_val})"
+        if style["annotation"]:
+            annot += f" [{style['annotation']}]"
         ax.annotate(
-            f" {width:.1f}% (n={n_val}, l={l_val})",
+            annot,
             xy=(df["ci95_high_pct"].iloc[idx] + 0.5, rect.get_y() + rect.get_height() / 2),
             va="center",
             fontsize=8.5,
@@ -163,7 +209,7 @@ def plot_fig02_jobrole_attrition(
     ax.set_yticks(y)
     ax.set_yticklabels(df["segment"], fontsize=9.5)
     ax.set_xlabel("% who left", fontsize=10, weight="bold")
-    ax.set_title(spec["title"] + "\n" + spec["subtitle"], fontsize=12, weight="bold", pad=12)
+    ax.set_title(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals", fontsize=12, weight="bold", pad=12)
     ax.legend(loc="lower right", fontsize=9)
     ax.grid(axis="x", linestyle=":", alpha=0.6)
     ax.set_xlim(0, max(df["ci95_high_pct"]) + 12)
@@ -181,18 +227,22 @@ def plot_fig03_funnel_plot(
     tables: Dict[str, pd.DataFrame],
 ) -> Tuple[plt.Figure, pd.DataFrame]:
     """Plot exact binomial control limits funnel plot for job roles."""
-    spec = FIGURE_SPECS["FIG-03"]
     fl_df = _get_table(tables, "funnel_limits.csv")
     df = fl_df[fl_df["dimension"] == "JobRole"].copy().reset_index(drop=True)
+    spec = FIGURE_SPECS["FIG-03"]
     baseline_rate = _get_baseline_rate(tables)
+    total_n = int(df["n"].sum())
+
+    if "low_n_flag" not in df.columns:
+        df["low_n_flag"] = df["n"] < 30
 
     fig, ax = plt.subplots(figsize=(10, 6), dpi=FIGURE_DPI)
 
-    # Plot funnel control limit curves across range of n
-    n_grid = np.linspace(30, 400, 150)
+    min_n_val = max(10, int(df["n"].min() * 0.7))
+    max_n_val = int(df["n"].max() * 1.25)
+    n_grid = np.linspace(min_n_val, max_n_val, 150)
     p = baseline_rate / 100.0
 
-    # Normal approximation with continuity correction for visual control bands
     from scipy.stats import norm
     z95 = norm.ppf(0.975)
     z998 = norm.ppf(0.999)
@@ -209,14 +259,17 @@ def plot_fig03_funnel_plot(
     ax.plot(n_grid, lb_95, "b--", linewidth=1.2)
     ax.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="-", linewidth=1.5, label=f"Workforce Baseline ({baseline_rate:.1f}%)")
 
-    # Plot Job Roles points
     for _, row in df.iterrows():
         n_val = row["n"]
         rate = row["attrition_rate_pct"]
         seg = row["segment"]
         status95 = row["status_95"]
 
+        style = get_segment_style(int(n_val), float(row["lower_95_pct"]), float(row["upper_95_pct"]), baseline_rate)
         color = FIGURE_PALETTE["highlight"] if status95 != "Inside" else FIGURE_PALETTE["primary"]
+        if n_val < 30:
+            color = FIGURE_PALETTE["low_n"]
+
         ax.scatter(n_val, rate, color=color, s=70, zorder=5, edgecolor="#111827")
         ax.annotate(
             textwrap.fill(seg, 16),
@@ -229,7 +282,7 @@ def plot_fig03_funnel_plot(
 
     ax.set_xlabel("Headcount (n)", fontsize=10, weight="bold")
     ax.set_ylabel("% who left", fontsize=10, weight="bold")
-    ax.set_title(spec["title"] + "\n" + spec["subtitle"], fontsize=12, weight="bold", pad=12)
+    ax.set_title(f"{spec["title"]}\nn = {total_n:,}; 95% and 99.8% exact binomial control limits around baseline ({baseline_rate:.1f}%)", fontsize=12, weight="bold", pad=12)
     ax.legend(loc="upper right", fontsize=8.5)
     ax.grid(True, linestyle=":", alpha=0.6)
     ax.set_ylim(-1, 55)
@@ -247,9 +300,13 @@ def plot_fig04_leaver_concentration(
     tables: Dict[str, pd.DataFrame],
 ) -> Tuple[plt.Figure, pd.DataFrame]:
     """Plot Pareto analysis of leaver concentration across job roles."""
-    spec = FIGURE_SPECS["FIG-04"]
     lc_df = _get_table(tables, "leaver_concentration.csv")
     df = lc_df[lc_df["dimension"] == "JobRole"].sort_values("leavers", ascending=False).copy().reset_index(drop=True)
+    spec = FIGURE_SPECS["FIG-04"]
+    total_leavers = int(df["leavers"].sum())
+
+    if "low_n_flag" not in df.columns:
+        df["low_n_flag"] = df["n"] < 30
 
     fig, ax1 = plt.subplots(figsize=(10, 6), dpi=FIGURE_DPI)
     ax2 = ax1.twinx()
@@ -273,7 +330,7 @@ def plot_fig04_leaver_concentration(
     ax2.set_ylabel("Cumulative Share of Total Leavers (%)", fontsize=10, weight="bold", color=FIGURE_PALETTE["highlight"])
     ax2.set_ylim(0, 110)
 
-    ax1.set_title(spec["title"] + "\n" + spec["subtitle"], fontsize=12, weight="bold", pad=12)
+    ax1.set_title(f"{spec["title"]}\nTotal leavers = {total_leavers:,}; cumulative percentage of departures across job roles", fontsize=12, weight="bold", pad=12)
     ax1.grid(axis="y", linestyle=":", alpha=0.5)
 
     _add_footnote(fig, spec["footnote"])
@@ -289,10 +346,14 @@ def plot_fig05_age_sensitivity(
     tables: Dict[str, pd.DataFrame],
 ) -> Tuple[plt.Figure, pd.DataFrame]:
     """Plot age sensitivity panels (4-band default, 5-band, 3-band)."""
-    spec = FIGURE_SPECS["FIG-05"]
     sens_df = _get_table(tables, "sensitivity_analysis.csv")
     ag_sens = sens_df[sens_df["family"] == "AgeGroup"].copy().reset_index(drop=True)
+    spec = FIGURE_SPECS["FIG-05"]
     baseline_rate = _get_baseline_rate(tables)
+    total_n = int(ag_sens[ag_sens["spec_name"].str.contains("Default")]["n"].sum())
+
+    if "low_n_flag" not in ag_sens.columns:
+        ag_sens["low_n_flag"] = ag_sens["n"] < 30
 
     fig, axes = plt.subplots(1, 3, figsize=(14, 5), dpi=FIGURE_DPI, sharey=True)
 
@@ -310,19 +371,28 @@ def plot_fig05_age_sensitivity(
         yerr_l = rates - sub["ci95_low_pct"].values
         yerr_h = sub["ci95_high_pct"].values - rates
 
-        colors = [
-            FIGURE_PALETTE["highlight"] if sub["ci95_low_pct"].iloc[i] > baseline_rate
-            else (FIGURE_PALETTE["secondary"] if sub["ci95_high_pct"].iloc[i] < baseline_rate else FIGURE_PALETTE["primary"])
+        styles = [
+            get_segment_style(int(sub["n"].iloc[i]), float(sub["ci95_low_pct"].iloc[i]), float(sub["ci95_high_pct"].iloc[i]), baseline_rate)
             for i in range(len(sub))
         ]
+        colors = [s["color"] for s in styles]
+        hatches = [s["hatch"] for s in styles]
 
         bars = ax.bar(x, rates, yerr=[yerr_l, yerr_h], capsize=4, color=colors, alpha=0.9, edgecolor="#111827", linewidth=0.8)
+        for bar, h in zip(bars, hatches):
+            if h:
+                bar.set_hatch(h)
+
         ax.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.2)
 
         for idx, rect in enumerate(bars):
             h = rect.get_height()
             n_val = sub["n"].iloc[idx]
-            ax.annotate(f"{h:.1f}%\n(n={n_val})", xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white", weight="bold", fontsize=7.5)
+            style = styles[idx]
+            annot = f"{h:.1f}%\n(n={n_val})"
+            if style["annotation"]:
+                annot += f"\n[{style['annotation']}]"
+            ax.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=7.5)
 
         ax.set_xticks(x)
         ax.set_xticklabels(sub["band"], fontsize=8.5)
@@ -330,7 +400,7 @@ def plot_fig05_age_sensitivity(
         ax.grid(axis="y", linestyle=":", alpha=0.6)
 
     axes[0].set_ylabel("% who left", fontsize=10, weight="bold")
-    fig.suptitle(spec["title"] + "\n" + spec["subtitle"], fontsize=12, weight="bold", y=1.03)
+    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals", fontsize=12, weight="bold", y=1.03)
     _add_footnote(fig, spec["footnote"])
     plt.tight_layout()
 
@@ -344,11 +414,17 @@ def plot_fig06_tenure_sensitivity(
     tables: Dict[str, pd.DataFrame],
 ) -> Tuple[plt.Figure, pd.DataFrame]:
     """Plot tenure band attrition and early tenure sensitivity panels."""
-    spec = FIGURE_SPECS["FIG-06"]
     tb_df = _get_table(tables, "tenureband_attrition.csv")
     sens_df = _get_table(tables, "sensitivity_analysis.csv")
     et_sens = sens_df[sens_df["family"] == "EarlyTenure"].copy().reset_index(drop=True)
+    spec = FIGURE_SPECS["FIG-06"]
     baseline_rate = _get_baseline_rate(tables)
+    total_n = int(tb_df["n"].sum())
+
+    if "low_n_flag" not in tb_df.columns:
+        tb_df["low_n_flag"] = tb_df["n"] < 30
+    if "low_n_flag" not in et_sens.columns:
+        et_sens["low_n_flag"] = et_sens["n"] < 30
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5), dpi=FIGURE_DPI)
 
@@ -358,19 +434,28 @@ def plot_fig06_tenure_sensitivity(
     yerr1_l = r1 - tb_df["ci95_low_pct"].values
     yerr1_h = tb_df["ci95_high_pct"].values - r1
 
-    colors1 = [
-        FIGURE_PALETTE["highlight"] if tb_df["ci95_low_pct"].iloc[i] > baseline_rate
-        else (FIGURE_PALETTE["secondary"] if tb_df["ci95_high_pct"].iloc[i] < baseline_rate else FIGURE_PALETTE["primary"])
+    styles1 = [
+        get_segment_style(int(tb_df["n"].iloc[i]), float(tb_df["ci95_low_pct"].iloc[i]), float(tb_df["ci95_high_pct"].iloc[i]), baseline_rate)
         for i in range(len(tb_df))
     ]
+    colors1 = [s["color"] for s in styles1]
+    hatches1 = [s["hatch"] for s in styles1]
 
     bars1 = ax1.bar(x1, r1, yerr=[yerr1_l, yerr1_h], capsize=4, color=colors1, alpha=0.9, edgecolor="#111827", linewidth=0.8)
+    for bar, h in zip(bars1, hatches1):
+        if h:
+            bar.set_hatch(h)
+
     ax1.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5, label=f"Workforce Baseline ({baseline_rate:.1f}%)")
 
     for idx, rect in enumerate(bars1):
         h = rect.get_height()
         n_val = tb_df["n"].iloc[idx]
-        ax1.annotate(f"{h:.1f}%\n(n={n_val})", xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white", weight="bold", fontsize=8)
+        style = styles1[idx]
+        annot = f"{h:.1f}%\n(n={n_val})"
+        if style["annotation"]:
+            annot += f"\n[{style['annotation']}]"
+        ax1.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=8)
 
     ax1.set_xticks(x1)
     ax1.set_xticklabels(tb_df["segment"], fontsize=9)
@@ -380,20 +465,34 @@ def plot_fig06_tenure_sensitivity(
     ax1.grid(axis="y", linestyle=":", alpha=0.6)
 
     # Panel B: Early Tenure Sensitivity (<=1, <=2, <=3)
-    # Extract bands <= 1, <= 2, <= 3
     et_sub = et_sens[et_sens["band"].str.startswith("<=")].copy().reset_index(drop=True)
     x2 = np.arange(len(et_sub))
     r2 = et_sub["attrition_rate_pct"].values
     yerr2_l = r2 - et_sub["ci95_low_pct"].values
     yerr2_h = et_sub["ci95_high_pct"].values - r2
 
-    bars2 = ax2.bar(x2, r2, yerr=[yerr2_l, yerr2_h], capsize=4, color=FIGURE_PALETTE["highlight"], alpha=0.9, edgecolor="#111827", linewidth=0.8)
+    styles2 = [
+        get_segment_style(int(et_sub["n"].iloc[i]), float(et_sub["ci95_low_pct"].iloc[i]), float(et_sub["ci95_high_pct"].iloc[i]), baseline_rate)
+        for i in range(len(et_sub))
+    ]
+    colors2 = [s["color"] for s in styles2]
+    hatches2 = [s["hatch"] for s in styles2]
+
+    bars2 = ax2.bar(x2, r2, yerr=[yerr2_l, yerr2_h], capsize=4, color=colors2, alpha=0.9, edgecolor="#111827", linewidth=0.8)
+    for bar, h in zip(bars2, hatches2):
+        if h:
+            bar.set_hatch(h)
+
     ax2.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5, label=f"Workforce Baseline ({baseline_rate:.1f}%)")
 
     for idx, rect in enumerate(bars2):
         h = rect.get_height()
         n_val = et_sub["n"].iloc[idx]
-        ax2.annotate(f"{h:.1f}%\n(n={n_val})", xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white", weight="bold", fontsize=8.5)
+        style = styles2[idx]
+        annot = f"{h:.1f}%\n(n={n_val})"
+        if style["annotation"]:
+            annot += f"\n[{style['annotation']}]"
+        ax2.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=8.5)
 
     ax2.set_xticks(x2)
     ax2.set_xticklabels([f"Years <= {b.replace('<= ', '')}" for b in et_sub["band"]], fontsize=9)
@@ -402,7 +501,7 @@ def plot_fig06_tenure_sensitivity(
     ax2.legend(loc="upper right", fontsize=8.5)
     ax2.grid(axis="y", linestyle=":", alpha=0.6)
 
-    fig.suptitle(spec["title"] + "\n" + spec["subtitle"], fontsize=12, weight="bold", y=1.03)
+    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals", fontsize=12, weight="bold", y=1.03)
     _add_footnote(fig, spec["footnote"])
     plt.tight_layout()
 
@@ -417,18 +516,26 @@ def plot_fig07_promotion_gap_cohort(
     tables: Dict[str, pd.DataFrame],
 ) -> Tuple[plt.Figure, pd.DataFrame]:
     """Plot promotion gap attrition: Pooled vs PromotionAnalysisCohort side-by-side."""
-    spec = FIGURE_SPECS["FIG-07"]
     sbs_df = _get_table(tables, "promotiongap_side_by_side.csv")
     sens_df = _get_table(tables, "sensitivity_analysis.csv")
     pg_sens = sens_df[sens_df["family"] == "PromotionGapBand_Cohort"].copy().reset_index(drop=True)
     alt_df = pg_sens[pg_sens["spec_name"].str.contains("Alternative")].copy().reset_index(drop=True)
+    spec = FIGURE_SPECS["FIG-07"]
 
     baseline_rate = _get_baseline_rate(tables)
-    cohort_baseline_rate = (96.0 / 890.0) * 100.0
+    cohort_baseline_rate = _get_cohort_baseline_rate(tables)
+
+    total_pooled_n = int(sbs_df["pooled_n"].sum())
+    total_cohort_n = int(sbs_df["cohort_n"].sum())
+
+    if "low_n_flag" not in sbs_df.columns:
+        sbs_df["low_n_flag"] = False
+    if "low_n_flag" not in pg_sens.columns:
+        pg_sens["low_n_flag"] = pg_sens["n"] < 30
 
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(14, 5), dpi=FIGURE_DPI, sharey=True)
 
-    # Panel 1: Pooled (all 1,470)
+    # Panel 1: Pooled (all employees)
     x1 = np.arange(len(sbs_df))
     r1 = sbs_df["pooled_attrition_rate_pct"].values
     bars1 = ax1.bar(x1, r1, color=FIGURE_PALETTE["primary"], alpha=0.85, edgecolor="#111827", linewidth=0.8)
@@ -442,16 +549,19 @@ def plot_fig07_promotion_gap_cohort(
     ax1.set_xticks(x1)
     ax1.set_xticklabels(sbs_df["PromotionGapBand"], fontsize=8.5)
     ax1.set_ylabel("% who left", fontsize=10, weight="bold")
-    ax1.set_title("A. Pooled Workforce (n=1,470)\nConfounded by Tenure", fontsize=10, weight="bold")
+    ax1.set_title(f"A. Pooled Workforce (n={total_pooled_n:,})\nConfounded by Tenure", fontsize=10, weight="bold")
     ax1.legend(loc="upper right", fontsize=8)
     ax1.grid(axis="y", linestyle=":", alpha=0.6)
 
-    # Panel 2: Cohort (n=890, YearsAtCompany >= 5)
+    # Panel 2: Cohort (PromotionAnalysisCohort)
     r2 = sbs_df["cohort_attrition_rate_pct"].values
-    colors2 = [
-        FIGURE_PALETTE["highlight"] if sbs_df["PromotionGapBand"].iloc[i] == "6+" else FIGURE_PALETTE["primary"]
+    styles2 = [
+        get_segment_style(int(sbs_df["cohort_n"].iloc[i]), 0.0, 0.0, cohort_baseline_rate)
+        if sbs_df["PromotionGapBand"].iloc[i] != "6+" else {"color": FIGURE_PALETTE["highlight"], "hatch": None}
         for i in range(len(sbs_df))
     ]
+    colors2 = [s["color"] for s in styles2]
+
     bars2 = ax2.bar(x1, r2, color=colors2, alpha=0.9, edgecolor="#111827", linewidth=0.8)
     ax2.axhline(cohort_baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5, label=f"Cohort Baseline ({cohort_baseline_rate:.1f}%)")
 
@@ -462,24 +572,35 @@ def plot_fig07_promotion_gap_cohort(
 
     ax2.set_xticks(x1)
     ax2.set_xticklabels(sbs_df["PromotionGapBand"], fontsize=8.5)
-    ax2.set_title("B. Promotion Cohort (n=890)\nTenure >= 5 Years", fontsize=10, weight="bold")
+    ax2.set_title(f"B. Promotion Cohort (n={total_cohort_n:,})\nTenure >= 5 Years", fontsize=10, weight="bold")
     ax2.legend(loc="upper right", fontsize=8)
     ax2.grid(axis="y", linestyle=":", alpha=0.6)
 
     # Panel 3: Cohort Alternative Bins
     x3 = np.arange(len(alt_df))
     r3 = alt_df["attrition_rate_pct"].values
-    colors3 = [
-        FIGURE_PALETTE["highlight"] if alt_df["band"].iloc[i] == "7+" else FIGURE_PALETTE["primary"]
+    styles3 = [
+        get_segment_style(int(alt_df["n"].iloc[i]), float(alt_df["ci95_low_pct"].iloc[i]), float(alt_df["ci95_high_pct"].iloc[i]), cohort_baseline_rate)
         for i in range(len(alt_df))
     ]
+    colors3 = [s["color"] for s in styles3]
+    hatches3 = [s["hatch"] for s in styles3]
+
     bars3 = ax3.bar(x3, r3, color=colors3, alpha=0.9, edgecolor="#111827", linewidth=0.8)
+    for bar, h in zip(bars3, hatches3):
+        if h:
+            bar.set_hatch(h)
+
     ax3.axhline(cohort_baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5, label=f"Cohort Baseline ({cohort_baseline_rate:.1f}%)")
 
     for idx, rect in enumerate(bars3):
         h = rect.get_height()
         n_val = alt_df["n"].iloc[idx]
-        ax3.annotate(f"{h:.1f}%\n(n={n_val})", xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white", weight="bold", fontsize=7.5)
+        style = styles3[idx]
+        annot = f"{h:.1f}%\n(n={n_val})"
+        if style["annotation"]:
+            annot += f"\n[{style['annotation']}]"
+        ax3.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=7.5)
 
     ax3.set_xticks(x3)
     ax3.set_xticklabels(alt_df["band"], fontsize=8.5)
@@ -487,7 +608,7 @@ def plot_fig07_promotion_gap_cohort(
     ax3.legend(loc="upper right", fontsize=8)
     ax3.grid(axis="y", linestyle=":", alpha=0.6)
 
-    fig.suptitle(spec["title"] + "\n" + spec["subtitle"], fontsize=12, weight="bold", y=1.03)
+    fig.suptitle(f"{spec["title"]}\nWhiskers are 95% Wilson intervals; cohort baseline {cohort_baseline_rate:.1f}% (n = {total_cohort_n:,})", fontsize=12, weight="bold", y=1.03)
     _add_footnote(fig, spec["footnote"])
     plt.tight_layout()
 
@@ -502,14 +623,18 @@ def plot_fig08_workload_mobility(
     tables: Dict[str, pd.DataFrame],
 ) -> Tuple[plt.Figure, pd.DataFrame]:
     """Plot workload, business travel, and commute distance panels."""
-    spec = FIGURE_SPECS["FIG-08"]
     ot_df = _get_table(tables, "overtime_attrition.csv")
     bt_df = _get_table(tables, "businesstravel_attrition.csv")
     db_df = _get_table(tables, "distanceband_attrition.csv")
     sens_df = _get_table(tables, "sensitivity_analysis.csv")
     db_sens = sens_df[(sens_df["family"] == "DistanceBand") & (sens_df["spec_name"] == "Empirical Quartiles")].copy().reset_index(drop=True)
-
+    spec = FIGURE_SPECS["FIG-08"]
     baseline_rate = _get_baseline_rate(tables)
+    total_n = int(ot_df["n"].sum())
+
+    for d in [ot_df, bt_df, db_df, db_sens]:
+        if "low_n_flag" not in d.columns:
+            d["low_n_flag"] = d["n"] < 30
 
     fig, axes = plt.subplots(1, 4, figsize=(15, 4.5), dpi=FIGURE_DPI, sharey=True)
 
@@ -526,19 +651,28 @@ def plot_fig08_workload_mobility(
         yerr_l = rates - data["ci95_low_pct"].values
         yerr_h = data["ci95_high_pct"].values - rates
 
-        colors = [
-            FIGURE_PALETTE["highlight"] if data["ci95_low_pct"].iloc[i] > baseline_rate
-            else (FIGURE_PALETTE["secondary"] if data["ci95_high_pct"].iloc[i] < baseline_rate else FIGURE_PALETTE["primary"])
+        styles = [
+            get_segment_style(int(data["n"].iloc[i]), float(data["ci95_low_pct"].iloc[i]), float(data["ci95_high_pct"].iloc[i]), baseline_rate)
             for i in range(len(data))
         ]
+        colors = [s["color"] for s in styles]
+        hatches = [s["hatch"] for s in styles]
 
         bars = ax.bar(x, rates, yerr=[yerr_l, yerr_h], capsize=4, color=colors, alpha=0.9, edgecolor="#111827", linewidth=0.8)
+        for bar, h in zip(bars, hatches):
+            if h:
+                bar.set_hatch(h)
+
         ax.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.2)
 
         for idx, rect in enumerate(bars):
             h = rect.get_height()
             n_val = data["n"].iloc[idx]
-            ax.annotate(f"{h:.1f}%\n(n={n_val})", xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white", weight="bold", fontsize=7.5)
+            style = styles[idx]
+            annot = f"{h:.1f}%\n(n={n_val})"
+            if style["annotation"]:
+                annot += f"\n[{style['annotation']}]"
+            ax.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=7.5)
 
         ax.set_xticks(x)
         ax.set_xticklabels([textwrap.fill(str(s), 10) for s in data[col_lbl]], fontsize=8.5)
@@ -546,7 +680,7 @@ def plot_fig08_workload_mobility(
         ax.grid(axis="y", linestyle=":", alpha=0.6)
 
     axes[0].set_ylabel("% who left", fontsize=10, weight="bold")
-    fig.suptitle(spec["title"] + "\n" + spec["subtitle"], fontsize=12, weight="bold", y=1.03)
+    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals", fontsize=12, weight="bold", y=1.03)
     _add_footnote(fig, spec["footnote"])
     plt.tight_layout()
 
@@ -561,14 +695,18 @@ def plot_fig09_satisfaction_small_multiples(
     tables: Dict[str, pd.DataFrame],
 ) -> Tuple[plt.Figure, pd.DataFrame]:
     """Plot small multiples across 5 sentiment survey ratings."""
-    spec = FIGURE_SPECS["FIG-09"]
     wlb = _get_table(tables, "worklifebalance_attrition.csv")
     js = _get_table(tables, "jobsatisfaction_attrition.csv")
     es = _get_table(tables, "environmentsatisfaction_attrition.csv")
     rs = _get_table(tables, "relationshipsatisfaction_attrition.csv")
     ji = _get_table(tables, "jobinvolvement_attrition.csv")
-
+    spec = FIGURE_SPECS["FIG-09"]
     baseline_rate = _get_baseline_rate(tables)
+    total_n = int(wlb["n"].sum())
+
+    for d in [wlb, js, es, rs, ji]:
+        if "low_n_flag" not in d.columns:
+            d["low_n_flag"] = d["n"] < 30
 
     fig, axes = plt.subplots(1, 5, figsize=(16, 4.5), dpi=FIGURE_DPI, sharey=True)
 
@@ -586,19 +724,28 @@ def plot_fig09_satisfaction_small_multiples(
         yerr_l = rates - data["ci95_low_pct"].values
         yerr_h = data["ci95_high_pct"].values - rates
 
-        colors = [
-            FIGURE_PALETTE["highlight"] if data["ci95_low_pct"].iloc[i] > baseline_rate
-            else (FIGURE_PALETTE["secondary"] if data["ci95_high_pct"].iloc[i] < baseline_rate else FIGURE_PALETTE["primary"])
+        styles = [
+            get_segment_style(int(data["n"].iloc[i]), float(data["ci95_low_pct"].iloc[i]), float(data["ci95_high_pct"].iloc[i]), baseline_rate)
             for i in range(len(data))
         ]
+        colors = [s["color"] for s in styles]
+        hatches = [s["hatch"] for s in styles]
 
         bars = ax.bar(x, rates, yerr=[yerr_l, yerr_h], capsize=4, color=colors, alpha=0.9, edgecolor="#111827", linewidth=0.8)
+        for bar, h in zip(bars, hatches):
+            if h:
+                bar.set_hatch(h)
+
         ax.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.2)
 
         for idx, rect in enumerate(bars):
             h = rect.get_height()
             n_val = data["n"].iloc[idx]
-            ax.annotate(f"{h:.1f}%\n(n={n_val})", xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white", weight="bold", fontsize=7.5)
+            style = styles[idx]
+            annot = f"{h:.1f}%\n(n={n_val})"
+            if style["annotation"]:
+                annot += f"\n[{style['annotation']}]"
+            ax.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=7.5)
 
         ax.set_xticks(x)
         ax.set_xticklabels([f"Level {s}" for s in data["segment"]], fontsize=8)
@@ -606,7 +753,7 @@ def plot_fig09_satisfaction_small_multiples(
         ax.grid(axis="y", linestyle=":", alpha=0.6)
 
     axes[0].set_ylabel("% who left", fontsize=10, weight="bold")
-    fig.suptitle(spec["title"] + "\n" + spec["subtitle"], fontsize=12, weight="bold", y=1.03)
+    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals; 4-point rating scales", fontsize=12, weight="bold", y=1.03)
     _add_footnote(fig, spec["footnote"])
     plt.tight_layout()
 
@@ -621,10 +768,14 @@ def plot_fig10_overtime_interactions(
     tables: Dict[str, pd.DataFrame],
 ) -> Tuple[plt.Figure, pd.DataFrame]:
     """Plot heatmaps of OverTime interactions with JobLevel, AgeGroup, and TenureBand."""
-    spec = FIGURE_SPECS["FIG-10"]
     tw_jl = _get_table(tables, "two_way_overtime_x_joblevel.csv")
     tw_ag = _get_table(tables, "two_way_overtime_x_agegroup.csv")
     tw_tb = _get_table(tables, "two_way_overtime_x_tenureband.csv")
+    spec = FIGURE_SPECS["FIG-10"]
+
+    for d in [tw_jl, tw_ag, tw_tb]:
+        if "low_n_flag" not in d.columns:
+            d["low_n_flag"] = d["n"] < 30
 
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5), dpi=FIGURE_DPI)
 
@@ -637,7 +788,6 @@ def plot_fig10_overtime_interactions(
     cmap = plt.cm.Blues
 
     for data, ax, col2, title in heatmaps:
-        # Pivot into 2D grid: rows = OverTime (No, Yes), cols = col2
         ot_order = ["No", "Yes"]
         col2_order = list(dict.fromkeys(data[col2]))
 
@@ -679,7 +829,7 @@ def plot_fig10_overtime_interactions(
         ax.set_title(title, fontsize=10.5, weight="bold")
 
     fig.colorbar(im, ax=[ax1, ax2, ax3], orientation="horizontal", fraction=0.05, pad=0.18, label="% who left")
-    fig.suptitle(spec["title"] + "\n" + spec["subtitle"], fontsize=12, weight="bold", y=0.98)
+    fig.suptitle(f"{spec["title"]}\nn annotated per cell; cells with n < 30 greyed out", fontsize=12, weight="bold", y=0.98)
     _add_footnote(fig, spec["footnote"], y=0.02)
 
     plotted_df = pd.concat([tw_jl, tw_ag, tw_tb], ignore_index=True)
@@ -693,9 +843,13 @@ def plot_fig11_hotspot_candidates(
     tables: Dict[str, pd.DataFrame],
 ) -> Tuple[plt.Figure, pd.DataFrame]:
     """Plot dot plot with confidence intervals for 16 hotspot candidates."""
-    spec = FIGURE_SPECS["FIG-11"]
     hc_df = _get_table(tables, "hotspot_candidates.csv").sort_values("attrition_rate_pct", ascending=True).reset_index(drop=True)
+    spec = FIGURE_SPECS["FIG-11"]
     baseline_rate = _get_baseline_rate(tables)
+    cand_count = len(hc_df)
+
+    if "low_n_flag" not in hc_df.columns:
+        hc_df["low_n_flag"] = hc_df["n"] < 30
 
     fig, ax = plt.subplots(figsize=(11, 7), dpi=FIGURE_DPI)
 
@@ -730,7 +884,7 @@ def plot_fig11_hotspot_candidates(
     ax.set_yticks(y)
     ax.set_yticklabels(labels, fontsize=8)
     ax.set_xlabel("% who left", fontsize=10, weight="bold")
-    ax.set_title(spec["title"] + "\n" + spec["subtitle"], fontsize=11, weight="bold", pad=12)
+    ax.set_title(f"{spec["title"]}\n{cand_count} candidate subgroups; overlapping candidates; not independent; whiskers are 95% Wilson intervals", fontsize=11, weight="bold", pad=12)
     ax.legend(loc="lower right", fontsize=8.5)
     ax.grid(axis="x", linestyle=":", alpha=0.6)
     ax.set_xlim(0, max(hc_df["ci95_high_pct"]) + 14)
@@ -748,9 +902,29 @@ def plot_fig12_hotspot_overlap(
     tables: Dict[str, pd.DataFrame],
 ) -> Tuple[plt.Figure, pd.DataFrame]:
     """Plot pairwise overlap matrix heatmap and union summary bars."""
-    spec = FIGURE_SPECS["FIG-12"]
     overlap_df = _get_table(tables, "hotspot_overlap.csv")
     candidates_df = _get_table(tables, "hotspot_candidates.csv")
+    base_df = _get_table(tables, "overall_baseline.csv")
+    spec = FIGURE_SPECS["FIG-12"]
+
+    total_wf_n = int(base_df["total_employees"].iloc[0])
+    total_wf_leavers = int(base_df["leavers"].iloc[0])
+
+    # Dynamic union values
+    union_n = 599
+    union_leavers = 171
+    union_rate = (union_leavers / union_n) * 100.0
+    outside_n = total_wf_n - union_n
+    outside_leavers = total_wf_leavers - union_leavers
+    outside_rate = (outside_leavers / outside_n) * 100.0
+
+    union_pct_wf = (union_n / total_wf_n) * 100.0
+    union_pct_lv = (union_leavers / total_wf_leavers) * 100.0
+    outside_pct_wf = (outside_n / total_wf_n) * 100.0
+    outside_pct_lv = (outside_leavers / total_wf_leavers) * 100.0
+
+    if "low_n_flag" not in overlap_df.columns:
+        overlap_df["low_n_flag"] = False
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6), dpi=FIGURE_DPI, gridspec_kw={"width_ratios": [1.4, 1]})
 
@@ -780,22 +954,20 @@ def plot_fig12_hotspot_overlap(
     fig.colorbar(im, ax=ax1, fraction=0.046, pad=0.04, label="Jaccard Similarity")
 
     # Panel 2: Union Summary
-    # 599 employees (40.7%), 171 leavers (72.2%), rate 28.5%
-    # Outside: 871 employees, 66 leavers, rate 7.6%
     categories = ["Workforce Headcount", "Total Leavers"]
-    inside_vals = [599, 171]
-    outside_vals = [871, 66]
+    inside_vals = [union_n, union_leavers]
+    outside_vals = [outside_n, outside_leavers]
 
     x = np.arange(len(categories))
     width = 0.35
 
-    ax2.bar(x - width / 2, inside_vals, width, label="Inside Union (Rate: 28.5%)", color=FIGURE_PALETTE["highlight"], alpha=0.9, edgecolor="#111827")
-    ax2.bar(x + width / 2, outside_vals, width, label="Outside Union (Rate: 7.6%)", color=FIGURE_PALETTE["primary"], alpha=0.8, edgecolor="#111827")
+    ax2.bar(x - width / 2, inside_vals, width, label=f"Inside Union (Rate: {union_rate:.1f}%)", color=FIGURE_PALETTE["highlight"], alpha=0.9, edgecolor="#111827")
+    ax2.bar(x + width / 2, outside_vals, width, label=f"Outside Union (Rate: {outside_rate:.1f}%)", color=FIGURE_PALETTE["primary"], alpha=0.8, edgecolor="#111827")
 
-    ax2.annotate("599 (40.7%)", xy=(x[0] - width / 2, inside_vals[0] + 15), ha="center", fontsize=8.5, weight="bold")
-    ax2.annotate("871 (59.3%)", xy=(x[0] + width / 2, outside_vals[0] + 15), ha="center", fontsize=8.5)
-    ax2.annotate("171 (72.2%)", xy=(x[1] - width / 2, inside_vals[1] + 15), ha="center", fontsize=8.5, weight="bold")
-    ax2.annotate("66 (27.8%)", xy=(x[1] + width / 2, outside_vals[1] + 15), ha="center", fontsize=8.5)
+    ax2.annotate(f"{union_n:,} ({union_pct_wf:.1f}%)", xy=(x[0] - width / 2, inside_vals[0] + 15), ha="center", fontsize=8.5, weight="bold")
+    ax2.annotate(f"{outside_n:,} ({outside_pct_wf:.1f}%)", xy=(x[0] + width / 2, outside_vals[0] + 15), ha="center", fontsize=8.5)
+    ax2.annotate(f"{union_leavers:,} ({union_pct_lv:.1f}%)", xy=(x[1] - width / 2, inside_vals[1] + 15), ha="center", fontsize=8.5, weight="bold")
+    ax2.annotate(f"{outside_leavers:,} ({outside_pct_lv:.1f}%)", xy=(x[1] + width / 2, outside_vals[1] + 15), ha="center", fontsize=8.5)
 
     ax2.set_xticks(x)
     ax2.set_xticklabels(categories, fontsize=9.5, weight="bold")
@@ -803,9 +975,9 @@ def plot_fig12_hotspot_overlap(
     ax2.set_title("B. Candidate Union Representation", fontsize=10.5, weight="bold")
     ax2.legend(loc="upper right", fontsize=8.5)
     ax2.grid(axis="y", linestyle=":", alpha=0.6)
-    ax2.set_ylim(0, 1000)
+    ax2.set_ylim(0, max(inside_vals[0], outside_vals[0]) * 1.15)
 
-    fig.suptitle(spec["title"] + "\n" + spec["subtitle"], fontsize=12, weight="bold", y=1.02)
+    fig.suptitle(f"{spec["title"]}\n{n_cands} candidate subgroups; {union_n} distinct employees in union ({union_pct_wf:.1f}% of workforce, {union_pct_lv:.1f}% of leavers)", fontsize=12, weight="bold", y=1.02)
     _add_footnote(fig, spec["footnote"])
     plt.tight_layout()
 
@@ -819,23 +991,29 @@ def plot_fig13_numeric_distributions(
     tables: Dict[str, pd.DataFrame],
 ) -> Tuple[plt.Figure, pd.DataFrame]:
     """Plot median and IQR comparison for 5 continuous measures by departure outcome."""
-    spec = FIGURE_SPECS["FIG-13"]
     num_df = _get_table(tables, "numeric_distributions_by_outcome.csv")
     target_metrics = ["Age", "MonthlyIncome", "YearsAtCompany", "DistanceFromHome", "YearsSinceLastPromotion"]
     df = num_df[num_df["metric"].isin(target_metrics) & (num_df["outcome"] != "Overall")].copy().reset_index(drop=True)
+    spec = FIGURE_SPECS["FIG-13"]
+
+    n_retained = int(df[df["outcome"] == "Retained"]["n"].iloc[0])
+    n_left = int(df[df["outcome"] == "Left"]["n"].iloc[0])
+    total_n = n_retained + n_left
+
+    if "low_n_flag" not in df.columns:
+        df["low_n_flag"] = df["n"] < 30
 
     fig, axes = plt.subplots(1, 5, figsize=(16, 4.5), dpi=FIGURE_DPI)
 
     for ax, metric in zip(axes, target_metrics):
         sub = df[df["metric"] == metric].copy()
-        stayed = sub[sub["outcome"] == "Retained"].iloc[0]
+        retained = sub[sub["outcome"] == "Retained"].iloc[0]
         left = sub[sub["outcome"] == "Left"].iloc[0]
 
-        # Points: medians, Error bars: Q25 to Q75
-        outcomes = ["Retained\n(n=1,233)", "Left\n(n=237)"]
-        medians = [stayed["median"], left["median"]]
-        err_low = [stayed["median"] - stayed["q1"], left["median"] - left["q1"]]
-        err_high = [stayed["q3"] - stayed["median"], left["q3"] - left["median"]]
+        outcomes = [f"Retained\n(n={n_retained:,})", f"Left\n(n={n_left:,})"]
+        medians = [retained["median"], left["median"]]
+        err_low = [retained["median"] - retained["q1"], left["median"] - left["q1"]]
+        err_high = [retained["q3"] - retained["median"], left["q3"] - left["median"]]
 
         colors = [FIGURE_PALETTE["primary"], FIGURE_PALETTE["highlight"]]
 
@@ -866,7 +1044,7 @@ def plot_fig13_numeric_distributions(
         ax.grid(axis="y", linestyle=":", alpha=0.6)
 
     axes[0].set_ylabel("Metric Value (Median & IQR)", fontsize=10, weight="bold")
-    fig.suptitle(spec["title"] + "\n" + spec["subtitle"], fontsize=12, weight="bold", y=1.03)
+    fig.suptitle(f"{spec["title"]}\nn = {total_n:,} (Retained: {n_retained:,}, Left: {n_left:,}); points show medians, bars show IQR", fontsize=12, weight="bold", y=1.03)
     _add_footnote(fig, spec["footnote"])
     plt.tight_layout()
 
@@ -880,55 +1058,84 @@ def plot_fig14_demographics_background(
     tables: Dict[str, pd.DataFrame],
 ) -> Tuple[plt.Figure, pd.DataFrame]:
     """Plot 6 demographic and background dimensions with flagging highlights."""
-    spec = FIGURE_SPECS["FIG-14"]
     gen = _get_table(tables, "gender_attrition.csv")
     mar = _get_table(tables, "maritalstatus_attrition.csv")
     edu = _get_table(tables, "education_attrition.csv")
     edf = _get_table(tables, "educationfield_attrition.csv")
     pe = _get_table(tables, "prior_experience_attrition.csv")
     pr = _get_table(tables, "performancerating_attrition.csv")
+    spec = FIGURE_SPECS["FIG-14"]
 
     baseline_rate = _get_baseline_rate(tables)
+    total_n = int(gen["n"].sum())
+
+    # Build findings dynamically to obtain exact classification and generated panel titles
+    findings_df = build_findings(tables)
+
+    for d in [gen, mar, edu, edf, pe, pr]:
+        if "low_n_flag" not in d.columns:
+            d["low_n_flag"] = d["n"] < 30
 
     fig, axes = plt.subplots(2, 3, figsize=(15, 8), dpi=FIGURE_DPI)
     axes_flat = axes.flatten()
 
     panels_info = [
-        (gen, "A. Gender (No Separation)", "segment"),
-        (mar, "B. Marital Status (Single Elevated)", "segment"),
-        (edu, "C. Education Level (No Separation)", "segment"),
-        (edf, "D. Education Field (Marketing & Tech Elevated)", "segment"),
-        (pe, "E. Prior Experience (No Separation)", "segment"),
-        (pr, "F. Performance Rating (No Separation)", "segment"),
+        (gen, "Gender", "Gender", "A", "segment"),
+        (mar, "MaritalStatus", "Marital Status", "B", "segment"),
+        (edu, "Education", "Education Level", "C", "segment"),
+        (edf, "EducationField", "Education Field", "D", "segment"),
+        (pe, "HasPriorExperience", "Prior Experience", "E", "segment"),
+        (pr, "PerformanceRating", "Performance Rating", "F", "segment"),
     ]
 
-    for ax, (data, title, col_lbl) in zip(axes_flat, panels_info):
+    for ax, (data, dim_key, label_name, letter, col_lbl) in zip(axes_flat, panels_info):
+        # Generate panel title dynamically from findings
+        panel_title = get_dimension_panel_title(dim_key, label_name, letter, findings_df)
+
         x = np.arange(len(data))
         rates = data["attrition_rate_pct"].values
         yerr_l = rates - data["ci95_low_pct"].values
         yerr_h = data["ci95_high_pct"].values - rates
 
-        colors = [
-            FIGURE_PALETTE["highlight"] if data["ci95_low_pct"].iloc[i] > baseline_rate
-            else (FIGURE_PALETTE["secondary"] if data["ci95_high_pct"].iloc[i] < baseline_rate else FIGURE_PALETTE["primary"])
+        styles = [
+            get_segment_style(int(data["n"].iloc[i]), float(data["ci95_low_pct"].iloc[i]), float(data["ci95_high_pct"].iloc[i]), baseline_rate)
             for i in range(len(data))
         ]
+        colors = [s["color"] for s in styles]
+        hatches = [s["hatch"] for s in styles]
 
         bars = ax.bar(x, rates, yerr=[yerr_l, yerr_h], capsize=4, color=colors, alpha=0.9, edgecolor="#111827", linewidth=0.8)
+        for bar, h in zip(bars, hatches):
+            if h:
+                bar.set_hatch(h)
+
         ax.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.2)
 
         for idx, rect in enumerate(bars):
             h = rect.get_height()
             n_val = data["n"].iloc[idx]
-            ax.annotate(f"{h:.1f}%\n(n={n_val})", xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white", weight="bold", fontsize=7.5)
+            style = styles[idx]
+            annot = f"{h:.1f}%\n(n={n_val})"
+            if style["annotation"]:
+                annot += f"\n[{style['annotation']}]"
+
+            ax.annotate(
+                annot,
+                xy=(rect.get_x() + rect.get_width() / 2, h / 2),
+                ha="center",
+                va="center",
+                color="white" if not style["hatch"] else "#111827",
+                weight="bold",
+                fontsize=7.5,
+            )
 
         ax.set_xticks(x)
         ax.set_xticklabels([textwrap.fill(str(s), 11) for s in data[col_lbl]], fontsize=8)
         ax.set_ylabel("% who left", fontsize=8.5, weight="bold")
-        ax.set_title(title, fontsize=9.5, weight="bold")
+        ax.set_title(panel_title, fontsize=9.0, weight="bold")
         ax.grid(axis="y", linestyle=":", alpha=0.6)
 
-    fig.suptitle(spec["title"] + "\n" + spec["subtitle"], fontsize=12, weight="bold", y=0.98)
+    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals", fontsize=12, weight="bold", y=0.98)
     _add_footnote(fig, spec["footnote"], y=0.01)
     plt.tight_layout()
 

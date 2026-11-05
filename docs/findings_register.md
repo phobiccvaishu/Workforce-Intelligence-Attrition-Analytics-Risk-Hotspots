@@ -9,6 +9,11 @@
 
 ## 1. Synthesis & Scan Summary
 
+> [!NOTE]
+> **Multi-Dimension Correlation Notice:** Several evaluated dimensions exhibit substantial structural correlation
+> (for example, multiple tenure measures, job level and stock option tier, job role and department).
+> Consequently, flagged subgroups are not mutually independent findings.
+
 - **Dimensions Evaluated:** 28
 - **Subgroups Evaluated (Headcount n >= 30):** 115
 - **Workforce Baseline Attrition Rate:** 16.1224%
@@ -17,6 +22,7 @@
 - **Subgroups Flagged Below Baseline:** 26
 - **Dimensions with Zero Flagged Segments:** 4 (Gender, Education, HasPriorExperience, PerformanceRating)
 - **Rough Count Expected by Chance Alone:** 5.8 (stated as: flags are not statistical tests)
+- **Chance Comparison Statement:** 52 segments flagged against roughly 5.8 expected by chance alone.
 
 ---
 

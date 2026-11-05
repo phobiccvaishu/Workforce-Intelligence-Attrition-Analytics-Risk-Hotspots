@@ -8,11 +8,99 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
+
 from workforce_intel.config import (
     ANALYSIS_DIMENSIONS,
+    FIGURE_PALETTE,
     FINDINGS_RULE,
     ROUND_DIGITS,
 )
+
+
+def classify_segment(
+    n: int,
+    ci_low: float,
+    ci_high: float,
+    baseline: float,
+    min_n: int = 30,
+) -> str:
+    """Classify a subgroup relative to baseline under the pre-specified mechanical rule."""
+    if n < min_n:
+        return "insufficient sample"
+    if ci_low > baseline:
+        return "above baseline"
+    if ci_high < baseline:
+        return "below baseline"
+    return "no separation"
+
+
+def get_segment_style(
+    n: int,
+    ci_low: float,
+    ci_high: float,
+    baseline: float,
+    min_n: int = 30,
+) -> Dict[str, Any]:
+    """Retrieve consistent styling (color, hatch, label) for a subgroup based on classification."""
+    classification = classify_segment(n, ci_low, ci_high, baseline, min_n)
+    if classification == "insufficient sample":
+        return {
+            "color": FIGURE_PALETTE["low_n"],
+            "hatch": "//",
+            "flag": "low_n",
+            "annotation": "n<30",
+            "classification": classification,
+        }
+    elif classification == "above baseline":
+        return {
+            "color": FIGURE_PALETTE["highlight"],
+            "hatch": None,
+            "flag": "above",
+            "annotation": "",
+            "classification": classification,
+        }
+    elif classification == "below baseline":
+        return {
+            "color": FIGURE_PALETTE["secondary"],
+            "hatch": None,
+            "flag": "below",
+            "annotation": "",
+            "classification": classification,
+        }
+    else:
+        return {
+            "color": FIGURE_PALETTE["primary"],
+            "hatch": None,
+            "flag": "inside",
+            "annotation": "",
+            "classification": classification,
+        }
+
+
+def get_dimension_panel_title(
+    dim_name: str,
+    label_name: str,
+    letter: str,
+    findings_df: pd.DataFrame,
+) -> str:
+    """Generate dynamic panel title reflecting mechanical findings classification."""
+    dim_rows = findings_df[findings_df["dimension"] == dim_name]
+    above_segs = dim_rows[dim_rows["direction"] == "above baseline"]["segment"].tolist()
+    below_segs = dim_rows[dim_rows["direction"] == "below baseline"]["segment"].tolist()
+
+    parts = []
+    if above_segs:
+        parts.append(f"above baseline: {', '.join(above_segs)}")
+    if below_segs:
+        parts.append(f"below baseline: {', '.join(below_segs)}")
+
+    if parts:
+        status_str = "; ".join(parts)
+    else:
+        status_str = "no segment separates from baseline"
+
+    return f"{letter}. {label_name} ({status_str})"
+
 
 
 def build_findings(
@@ -115,14 +203,7 @@ def build_findings(
             ci_low = float(row["ci95_low_pct"])
             ci_high = float(row["ci95_high_pct"])
 
-            if n_val < min_n:
-                direction = "insufficient sample"
-            elif ci_low > workforce_baseline_pct:
-                direction = "above baseline"
-            elif ci_high < workforce_baseline_pct:
-                direction = "below baseline"
-            else:
-                direction = "no separation"
+            direction = classify_segment(n_val, ci_low, ci_high, workforce_baseline_pct, min_n=min_n)
 
             # If flagged above or below, record finding row
             if direction in ["above baseline", "below baseline"]:
@@ -216,14 +297,7 @@ def build_findings(
             ci_low = float(row["ci95_low_pct"])
             ci_high = float(row["ci95_high_pct"])
 
-            if n_val < min_n:
-                direction = "insufficient sample"
-            elif ci_low > cohort_baseline_pct:
-                direction = "above baseline"
-            elif ci_high < cohort_baseline_pct:
-                direction = "below baseline"
-            else:
-                direction = "no separation"
+            direction = classify_segment(n_val, ci_low, ci_high, cohort_baseline_pct, min_n=min_n)
 
             if direction in ["above baseline", "below baseline"]:
                 cohort_flagged_count += 1
@@ -260,6 +334,7 @@ def build_findings(
 def compile_findings_summary(
     tables: Dict[str, pd.DataFrame],
     findings_df: pd.DataFrame,
+    eda_summary: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Compile summary statistics of the mechanical findings scan into a dictionary."""
     baseline_df = tables.get("overall_baseline.csv")
@@ -273,7 +348,7 @@ def compile_findings_summary(
     if cohort_df is not None:
         cohort_tot_n = int(cohort_df["n"].sum())
         cohort_tot_leavers = int(cohort_df["leavers"].sum())
-        cohort_baseline_pct = (cohort_tot_leavers / cohort_tot_n) * 100.0
+        cohort_baseline_pct = (cohort_tot_leavers / cohort_tot_n) * 100.0 if cohort_tot_n > 0 else 0.0
     else:
         cohort_tot_n = 890
         cohort_tot_leavers = 96
@@ -299,26 +374,61 @@ def compile_findings_summary(
         standard_findings["direction"] == "no separation"
     ]["dimension"].tolist()
 
-    # Hotspot union metrics
+    # Hotspot candidate metrics
     hotspots_df = tables.get("hotspot_candidates.csv")
     if hotspots_df is None:
         hotspots_df = tables.get("hotspot_candidates")
-    hotspot_candidate_count = len(hotspots_df) if hotspots_df is not None else 16
+    hotspot_candidate_count = len(hotspots_df) if hotspots_df is not None else 0
 
-    overlap_df = tables.get("hotspot_overlap.csv")
-    if overlap_df is None:
-        overlap_df = tables.get("hotspot_overlap")
+    total_wf_n = (
+        int(baseline_df["total_employees"].iloc[0])
+        if "total_employees" in baseline_df.columns
+        else int(baseline_df["n"].iloc[0])
+    )
+    total_wf_leavers = int(baseline_df["leavers"].iloc[0])
 
-    # Union constants verified from Phase 3A
-    union_n = 599
-    union_leavers = 171
-    union_rate_pct = round((171.0 / 599.0) * 100.0, ROUND_DIGITS)
-    union_workforce_share_pct = round((599.0 / 1470.0) * 100.0, ROUND_DIGITS)
-    union_leaver_share_pct = round((171.0 / 237.0) * 100.0, ROUND_DIGITS)
+    if eda_summary and "hotspot_candidates_scan" in eda_summary:
+        scan_info = eda_summary["hotspot_candidates_scan"]
+        union_n = int(scan_info.get("distinct_employees_in_union", 0))
+        union_leavers = int(scan_info.get("distinct_leavers_in_union", 0))
+    elif "hotspot_union" in tables:
+        union_obj = tables["hotspot_union"]
+        if isinstance(union_obj, pd.DataFrame):
+            union_n = int(union_obj["distinct_union_n"].iloc[0])
+            union_leavers = int(union_obj["distinct_union_leavers"].iloc[0])
+        elif isinstance(union_obj, dict):
+            union_n = int(union_obj.get("distinct_union_n", 0))
+            union_leavers = int(union_obj.get("distinct_union_leavers", 0))
+        else:
+            union_n = 0
+            union_leavers = 0
+    else:
+        union_n = 0
+        union_leavers = 0
 
-    outside_n = 1470 - 599
-    outside_leavers = 237 - 171
-    outside_rate_pct = round((outside_leavers / outside_n) * 100.0, ROUND_DIGITS)
+    union_rate_pct = (
+        round((union_leavers / union_n) * 100.0, ROUND_DIGITS)
+        if union_n > 0
+        else 0.0
+    )
+    union_workforce_share_pct = (
+        round((union_n / total_wf_n) * 100.0, ROUND_DIGITS)
+        if total_wf_n > 0
+        else 0.0
+    )
+    union_leaver_share_pct = (
+        round((union_leavers / total_wf_leavers) * 100.0, ROUND_DIGITS)
+        if total_wf_leavers > 0
+        else 0.0
+    )
+
+    outside_n = total_wf_n - union_n
+    outside_leavers = total_wf_leavers - union_leavers
+    outside_rate_pct = (
+        round((outside_leavers / outside_n) * 100.0, ROUND_DIGITS)
+        if outside_n > 0
+        else 0.0
+    )
 
     expected_chance_flags = round(0.05 * total_evaluated_segments, 1)
 
@@ -365,14 +475,21 @@ def render_register_markdown(
     lines.append("")
     lines.append("## 1. Synthesis & Scan Summary")
     lines.append("")
+    total_flagged = summary['segments_flagged_above'] + summary['segments_flagged_below']
+    lines.append(f"> [!NOTE]")
+    lines.append(f"> **Multi-Dimension Correlation Notice:** Several evaluated dimensions exhibit substantial structural correlation")
+    lines.append(f"> (for example, multiple tenure measures, job level and stock option tier, job role and department).")
+    lines.append(f"> Consequently, flagged subgroups are not mutually independent findings.")
+    lines.append("")
     lines.append(f"- **Dimensions Evaluated:** {summary['dimensions_evaluated']}")
     lines.append(f"- **Subgroups Evaluated (Headcount n >= 30):** {summary['segments_evaluated_min_n']}")
     lines.append(f"- **Workforce Baseline Attrition Rate:** {summary['workforce_baseline_pct']}%")
-    lines.append(f"- **PromotionAnalysisCohort Baseline Rate:** {summary['cohort_baseline_pct']}% (96 leavers / 890 employees)")
+    lines.append(f"- **PromotionAnalysisCohort Baseline Rate:** {summary['cohort_baseline_pct']}% ({summary['cohort_leavers']} leavers / {summary['cohort_headcount']} employees)")
     lines.append(f"- **Subgroups Flagged Above Baseline:** {summary['segments_flagged_above']}")
     lines.append(f"- **Subgroups Flagged Below Baseline:** {summary['segments_flagged_below']}")
     lines.append(f"- **Dimensions with Zero Flagged Segments:** {summary['dimensions_no_separation_count']} ({', '.join(summary['dimensions_no_separation'])})")
     lines.append(f"- **Rough Count Expected by Chance Alone:** {summary['expected_chance_flags']} (stated as: flags are not statistical tests)")
+    lines.append(f"- **Chance Comparison Statement:** {total_flagged} segments flagged against roughly {summary['expected_chance_flags']} expected by chance alone.")
     lines.append("")
     lines.append("---")
     lines.append("")
