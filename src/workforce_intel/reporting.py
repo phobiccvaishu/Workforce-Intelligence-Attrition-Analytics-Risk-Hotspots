@@ -748,7 +748,7 @@ Exact binomial control limits evaluate observed organizational subgroup rates ag
 {early_table_md}
 
 ### 4.6 Promotion Gap Band (Within Promotion Analysis Cohort, n = 890)
-*Evaluated exclusively for employees with company tenure >= 5 years to separate career stagnation from initial onboarding tenure.*
+*Evaluated exclusively for employees with company tenure >= 5 years to separate promotion gap progression from initial onboarding tenure.*
 {p_cohort_table_md}
 
 ---
@@ -768,10 +768,10 @@ Exact binomial control limits evaluate observed organizational subgroup rates ag
 {marital_table_md}
 
 ### 5.4 Age Cohort Sensitivity & Boundary Effects
-Sensitivity analysis across alternative categorization boundaries indicates that the elevated attrition rate in the oldest age cohort appears under some cut points and not others:
-- Under the 5-band cut points (`[17, 24, 34, 44, 54, 60]`), the oldest cohort (`55-60`) displays an elevated attrition rate of **15.9%** (11 leavers / 69 employees), compared with 10.1% for ages `35-44` and 10.2% for ages `45-54`.
-- Under the 4-band baseline (`[17, 25, 35, 45, 60]`) and the 3-band specification (`[17, 30, 45, 60]`), the oldest aggregated cohort (`46-60`) displays an attrition rate of **12.5%** (34 leavers / 273 employees), which is below the overall organizational baseline.
-- Therefore, the apparent elevation in the upper age tier is sensitive to boundary placement and cohort disaggregation.
+Sensitivity analysis evaluates whether the attrition pattern across age cohorts is robust to alternative boundary placements. Specifically, evaluating the oldest observed age band against its immediate predecessor across specifications reveals:
+- **4-Band Specification (`[17, 25, 35, 45, 60]`):** The oldest band (`46-60`, rate 12.5%, n = 273, 95% Wilson CI [9.1%, 16.9%]) is **higher** than the preceding band (`36-45`, rate 9.2%, n = 468, 95% Wilson CI [6.9%, 12.1%]); their Wilson intervals overlap.
+- **5-Band Specification (`[17, 24, 34, 44, 54, 60]`):** The oldest band (`55-60`, rate 15.9%, n = 69, 95% Wilson CI [9.1%, 26.3%]) is **higher** than the preceding band (`45-54`, rate 10.2%, n = 245, 95% Wilson CI [7.0%, 14.6%]); their Wilson intervals overlap.
+- **3-Band Specification (`[17, 30, 45, 60]`):** The oldest band (`46-60`, rate 12.5%, n = 273, 95% Wilson CI [9.1%, 16.9%]) is **not higher** than the preceding band (`31-45`, rate 12.7%, n = 811, 95% Wilson CI [10.6%, 15.2%]); their Wilson intervals overlap.
 
 ---
 

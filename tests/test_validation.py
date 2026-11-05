@@ -542,6 +542,8 @@ def _build_expected_decision_log_tokens() -> Dict[str, List[str]]:
         "DL-29": ["12", f"{t_metrics['rate_attrition_1_pct']:.2f}", "3", "9"],
         "DL-30": ["16", "58", "30", "52", "30"],
         "DL-31": [str(bucket_table.loc[("PromotionAnalysisCohort", "1"), "count"]), total_rows, "4"],
+        "DL-32": ["16", "120", "599", "171"],
+        "DL-33": ["28", "30", "26", "26", "4", "10.79", "96", "890"],
     }
 
 
@@ -620,6 +622,8 @@ def test_documentation_evidence_matches_validation_summary():
         "DL-29": "PROPOSED",
         "DL-30": "PROPOSED",
         "DL-31": "PROPOSED",
+        "DL-32": "PROPOSED",
+        "DL-33": "PROPOSED",
     }
     for dl_id, expected_status in expected_statuses.items():
         pattern = rf"`{dl_id}`.*?`{expected_status}`"

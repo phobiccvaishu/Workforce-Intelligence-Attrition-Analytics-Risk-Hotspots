@@ -487,15 +487,18 @@ def sensitivity_table(
         temp_col = f"_sens_{family}"
         if stype == "threshold":
             t = spec["threshold"]
-            sub_df[temp_col] = np.where(
-                sub_df[col] <= t, f"<= {t}", f"> {t}"
+            labels = [f"<= {t}", f"> {t}"]
+            sub_df[temp_col] = pd.Categorical(
+                np.where(sub_df[col] <= t, labels[0], labels[1]),
+                categories=labels,
+                ordered=True,
             )
         elif stype == "bins":
             bins = spec["bins"]
             labels = spec["labels"]
             sub_df[temp_col] = pd.cut(
-                sub_df[col], bins=bins, labels=labels, right=True
-            ).astype(str)
+                sub_df[col], bins=bins, labels=labels, right=True, ordered=True
+            )
         elif stype == "quantiles":
             q = spec["q"]
             # Compute empirical quartiles from the data
@@ -508,7 +511,7 @@ def sensitivity_table(
                 q_labels.append(f"Q{i+1}: {left_b+1 if i>0 else left_b}-{right_b}")
             sub_df[temp_col] = pd.qcut(
                 sub_df[col], q=q, labels=q_labels, duplicates="drop"
-            ).astype(str)
+            )
 
         rt = rate_table(sub_df, temp_col, min_n=min_n, target_col=target_col)
 

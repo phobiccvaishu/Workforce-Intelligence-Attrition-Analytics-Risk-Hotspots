@@ -18,18 +18,18 @@ AgeGroup,"3 Bands (18-30, 31-45, 46-60)",18-30,386,100,25.9067,21.7886,30.4997,F
 AgeGroup,"3 Bands (18-30, 31-45, 46-60)",31-45,811,103,12.7004,10.5832,15.1692,False,False,False
 AgeGroup,"3 Bands (18-30, 31-45, 46-60)",46-60,273,34,12.4542,9.0508,16.8996,False,False,True
 TenureBand,"5 Bands (Default: 0-1, 2-3, 4-5, 6-10, 11+)",0-1,215,75,34.8837,28.8290,41.4691,False,True,False
-TenureBand,"5 Bands (Default: 0-1, 2-3, 4-5, 6-10, 11+)",11+,246,20,8.1301,5.3244,12.2233,False,False,True
 TenureBand,"5 Bands (Default: 0-1, 2-3, 4-5, 6-10, 11+)",2-3,255,47,18.4314,14.1531,23.6466,False,False,False
 TenureBand,"5 Bands (Default: 0-1, 2-3, 4-5, 6-10, 11+)",4-5,306,40,13.0719,9.7485,17.3110,False,False,False
 TenureBand,"5 Bands (Default: 0-1, 2-3, 4-5, 6-10, 11+)",6-10,448,55,12.2768,9.5547,15.6403,False,False,False
+TenureBand,"5 Bands (Default: 0-1, 2-3, 4-5, 6-10, 11+)",11+,246,20,8.1301,5.3244,12.2233,False,False,True
 TenureBand,"4 Bands (0-2, 3-5, 6-10, 11+)",0-2,342,102,29.8246,25.2219,34.8754,False,True,False
-TenureBand,"4 Bands (0-2, 3-5, 6-10, 11+)",11+,246,20,8.1301,5.3244,12.2233,False,False,True
 TenureBand,"4 Bands (0-2, 3-5, 6-10, 11+)",3-5,434,60,13.8249,10.8937,17.3909,False,False,False
 TenureBand,"4 Bands (0-2, 3-5, 6-10, 11+)",6-10,448,55,12.2768,9.5547,15.6403,False,False,False
+TenureBand,"4 Bands (0-2, 3-5, 6-10, 11+)",11+,246,20,8.1301,5.3244,12.2233,False,False,True
 DistanceBand,"Fixed Bins (Default: 1-5, 6-10, 11-20, 21-29)",1-5,632,87,13.7658,11.2978,16.6717,False,False,True
+DistanceBand,"Fixed Bins (Default: 1-5, 6-10, 11-20, 21-29)",6-10,394,57,14.4670,11.3365,18.2837,False,False,False
 DistanceBand,"Fixed Bins (Default: 1-5, 6-10, 11-20, 21-29)",11-20,240,48,20.0000,15.4298,25.5154,False,False,False
 DistanceBand,"Fixed Bins (Default: 1-5, 6-10, 11-20, 21-29)",21-29,204,45,22.0588,16.9145,28.2360,False,True,False
-DistanceBand,"Fixed Bins (Default: 1-5, 6-10, 11-20, 21-29)",6-10,394,57,14.4670,11.3365,18.2837,False,False,False
 DistanceBand,Empirical Quartiles,Q1: 1-2,419,54,12.8878,10.0136,16.4364,False,False,True
 DistanceBand,Empirical Quartiles,Q2: 3-7,356,51,14.3258,11.0670,18.3464,False,False,False
 DistanceBand,Empirical Quartiles,Q3: 8-14,340,59,17.3529,13.6982,21.7371,False,False,False
