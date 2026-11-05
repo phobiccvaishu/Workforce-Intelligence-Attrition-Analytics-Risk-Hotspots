@@ -99,7 +99,7 @@ def get_dimension_panel_title(
     else:
         status_str = "no segment separates from baseline"
 
-    return f"{letter}. {label_name} ({status_str})"
+    return f"{letter}. {label_name}\n({status_str})"
 
 
 

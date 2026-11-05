@@ -194,3 +194,113 @@ def test_fig14_plotted_colors_agree_with_findings_flags(loaded_tables):
 
     plt.close(fig)
 
+
+
+def test_color_coded_figures_agree_with_findings_flags(loaded_tables):
+    """Verify that bar colors in FIG-07, FIG-08, FIG-09, and FIG-14 agree with findings flags."""
+    from workforce_intel.findings import build_findings
+    from workforce_intel.config import FIGURE_PALETTE
+    import matplotlib.colors as mcolors
+
+    findings_df = build_findings(loaded_tables)
+
+    # 1. FIG-07
+    fig, plotted_df = viz.plot_fig07_promotion_gap_cohort(loaded_tables)
+    pg_findings = findings_df[findings_df["dimension"] == "PromotionGapBand"]
+    ax_a = fig.axes[0]
+    for b in ax_a.patches:
+        fc = mcolors.to_hex(b.get_facecolor()[:3]).lower()
+        if fc == FIGURE_PALETTE["secondary"].lower():
+            assert len(pg_findings[pg_findings["direction"] == "below baseline"]) > 0
+        else:
+            assert fc == FIGURE_PALETTE["primary"].lower()
+
+    pg_c_findings = findings_df[findings_df["dimension"] == "PromotionGapBand_Cohort"]
+    ax_b = fig.axes[1]
+    for b in ax_b.patches:
+        fc = mcolors.to_hex(b.get_facecolor()[:3]).lower()
+        if fc == FIGURE_PALETTE["highlight"].lower():
+            assert len(pg_c_findings[pg_c_findings["direction"] == "above baseline"]) > 0
+        else:
+            assert fc == FIGURE_PALETTE["primary"].lower()
+    plt.close(fig)
+
+    # 2. FIG-08: OverTime, BusinessTravel, DistanceBand
+    fig, plotted_df = viz.plot_fig08_workload_mobility(loaded_tables)
+    for ax_idx, dim in enumerate(["OverTime", "BusinessTravel", "DistanceBand"]):
+        ax = fig.axes[ax_idx]
+        dim_findings = findings_df[findings_df["dimension"] == dim]
+        for b in ax.patches:
+            fc = mcolors.to_hex(b.get_facecolor()[:3]).lower()
+            hatch = b.get_hatch()
+            if hatch == "//":
+                assert fc == FIGURE_PALETTE["low_n"].lower()
+            elif fc == FIGURE_PALETTE["highlight"].lower():
+                assert len(dim_findings[dim_findings["direction"] == "above baseline"]) > 0
+            elif fc == FIGURE_PALETTE["secondary"].lower():
+                assert len(dim_findings[dim_findings["direction"] == "below baseline"]) > 0
+            else:
+                assert fc == FIGURE_PALETTE["primary"].lower()
+    plt.close(fig)
+
+    # 3. FIG-09: Satisfaction Small Multiples
+    fig, plotted_df = viz.plot_fig09_satisfaction_small_multiples(loaded_tables)
+    sat_dims = ["WorkLifeBalance", "JobSatisfaction", "EnvironmentSatisfaction", "RelationshipSatisfaction", "JobInvolvement"]
+    for ax_idx, dim in enumerate(sat_dims):
+        ax = fig.axes[ax_idx]
+        dim_findings = findings_df[findings_df["dimension"] == dim]
+        for b in ax.patches:
+            fc = mcolors.to_hex(b.get_facecolor()[:3]).lower()
+            hatch = b.get_hatch()
+            if hatch == "//":
+                assert fc == FIGURE_PALETTE["low_n"].lower()
+            elif fc == FIGURE_PALETTE["highlight"].lower():
+                assert len(dim_findings[dim_findings["direction"] == "above baseline"]) > 0
+            elif fc == FIGURE_PALETTE["secondary"].lower():
+                assert len(dim_findings[dim_findings["direction"] == "below baseline"]) > 0
+            else:
+                assert fc == FIGURE_PALETTE["primary"].lower()
+    plt.close(fig)
+
+
+def test_figures_with_whiskers_in_subtitle_have_errorbars(loaded_tables):
+    """Verify that any figure whose title or subtitle mentions whiskers draws errorbar artists."""
+    from matplotlib.container import ErrorbarContainer
+
+    fig_funcs = [
+        ("FIG-01", viz.plot_fig01_department_overview),
+        ("FIG-02", viz.plot_fig02_jobrole_attrition),
+        ("FIG-03", viz.plot_fig03_funnel_plot),
+        ("FIG-04", viz.plot_fig04_leaver_concentration),
+        ("FIG-05", viz.plot_fig05_age_sensitivity),
+        ("FIG-06", viz.plot_fig06_tenure_sensitivity),
+        ("FIG-07", viz.plot_fig07_promotion_gap_cohort),
+        ("FIG-08", viz.plot_fig08_workload_mobility),
+        ("FIG-09", viz.plot_fig09_satisfaction_small_multiples),
+        ("FIG-10", viz.plot_fig10_overtime_interactions),
+        ("FIG-11", viz.plot_fig11_hotspot_candidates),
+        ("FIG-12", viz.plot_fig12_hotspot_overlap),
+        ("FIG-13", viz.plot_fig13_numeric_distributions),
+        ("FIG-14", viz.plot_fig14_demographics_background),
+    ]
+
+    for fid, func in fig_funcs:
+        fig, plotted_df = func(loaded_tables)
+        all_text = ""
+        if fig._suptitle:
+            all_text += fig._suptitle.get_text() + " "
+        for ax in fig.axes:
+            all_text += ax.get_title() + " "
+
+        mentions_whiskers = "whisker" in all_text.lower()
+        if mentions_whiskers:
+            has_errorbars = False
+            for ax in fig.axes:
+                for c in ax.containers:
+                    if isinstance(c, ErrorbarContainer):
+                        has_errorbars = True
+                        break
+                if has_errorbars:
+                    break
+            assert has_errorbars, f"{fid} subtitle mentions whiskers but draws no ErrorbarContainer artists."
+        plt.close(fig)

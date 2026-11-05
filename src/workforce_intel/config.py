@@ -887,8 +887,8 @@ FIGURE_SPECS = {
     "FIG-11": {
         "figure_id": "FIG-11",
         "file": "fig11_hotspot_candidates.png",
-        "title": "Pre-Specified Risk Hotspot Candidates (Ranked Dot Plot)",
-        "subtitle": "Whiskers are 95% Wilson intervals; overlapping candidates; not independent",
+        "title": "Screened Risk Hotspot Candidates",
+        "subtitle": "Screening rule: two-way interaction cells with n >= 30 where Wilson lower bound exceeds overall baseline; whiskers are 95% Wilson intervals; overlapping candidates",
         "source_tables": ["hotspot_candidates.csv", "overall_baseline.csv"],
         "footnote": FIGURE_FOOTNOTE_STANDARD,
         "alt_text": "Dot plot of 16 qualified hotspot candidate subgroups with 95% Wilson intervals and sample sizes.",
