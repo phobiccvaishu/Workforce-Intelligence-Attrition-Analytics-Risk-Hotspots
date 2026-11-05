@@ -217,17 +217,47 @@ def test_real_data_two_way_marginal_reconciliations():
 
 def test_real_data_hotspot_candidates_invariants():
     """Hotspot candidate scanning satisfies all qualification rules."""
+    from workforce_intel.eda import hotspot_overlap_table
+
     df = load_processed(PROCESSED_DATA_FILE, PROCESSED_SCHEMA_FILE)
     ov = overall_summary(df)
     baseline_rate = float(ov["attrition_rate_pct"].iloc[0])
 
     two_ways = {f"{d1}_{d2}": two_way_table(df, d1, d2) for d1, d2 in TWO_WAY_SPECS}
-    cands_df, total_scanned = hotspot_candidates(two_ways, overall_rate_pct=baseline_rate)
+    cands_df, total_scanned, cells_ge_30 = hotspot_candidates(
+        two_ways, overall_rate_pct=baseline_rate, min_n=HOTSPOT_MIN_N, top_k=None
+    )
 
     assert total_scanned == 58, f"Expected 58 scanned cells, got {total_scanned}"
-    assert len(cands_df) == 15, f"Expected top 15 hotspot candidates, got {len(cands_df)}"
+    assert cells_ge_30 == 52, f"Expected 52 cells with n >= 30, got {cells_ge_30}"
+    assert len(cands_df) == 16, f"Expected 16 eligible hotspot candidates, got {len(cands_df)}"
 
     for _, row in cands_df.iterrows():
         assert row["n"] >= HOTSPOT_MIN_N, f"Candidate {row['subgroup']} violates min n >= {HOTSPOT_MIN_N}"
         assert row["ci95_low_pct"] > baseline_rate, f"Candidate {row['subgroup']} Wilson lower bound <= baseline"
         assert row["diff_vs_overall_pp"] > 0.0
+
+    # Overlap invariants
+    overlap_df, union_n, union_leavers = hotspot_overlap_table(df, cands_df)
+    assert len(overlap_df) == 120  # 16 * 15 / 2
+    assert union_n == 599
+    assert union_leavers == 171
+    assert (overlap_df["note"] == "candidates overlap and are not independent").all()
+
+
+def test_two_way_hand_computed_regression_cells():
+    """Regression test verifying exact hand-computed cells across two-way tables."""
+    df = load_processed(PROCESSED_DATA_FILE, PROCESSED_SCHEMA_FILE)
+
+    def assert_cell(dim1, val1, dim2, val2, exp_n, exp_leavers):
+        mask = (df[dim1].astype(str) == val1) & (df[dim2].astype(str) == val2)
+        assert int(mask.sum()) == exp_n, f"{dim1}={val1} & {dim2}={val2} n mismatch"
+        assert int(df.loc[mask, "Attrition"].sum()) == exp_leavers, f"{dim1}={val1} & {dim2}={val2} leavers mismatch"
+
+    assert_cell("OverTime", "Yes", "AgeGroup", "26-35", 159, 62)
+    assert_cell("OverTime", "Yes", "TenureBand", "2-3", 75, 29)
+    assert_cell("OverTime", "Yes", "TenureBand", "4-5", 87, 22)
+    assert_cell("OverTime", "Yes", "TenureBand", "6-10", 120, 31)
+    assert_cell("OverTime", "Yes", "JobRole", "Sales Executive", 94, 31)
+    assert_cell("OverTime", "Yes", "JobRole", "Research Scientist", 97, 33)
+    assert_cell("OverTime", "No", "TenureBand", "0-1", 146, 37)

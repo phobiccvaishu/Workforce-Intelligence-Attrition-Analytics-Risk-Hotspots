@@ -58,3 +58,4 @@ desktop.ini
 # Run logs
 reports/phase1/run.log
 reports/phase2/run.log
+reports/phase3/run.log

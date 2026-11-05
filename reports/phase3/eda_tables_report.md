@@ -1,7 +1,7 @@
 # Phase 3A Exploratory Data Analysis Report
 ## Descriptive Attrition Rate Tables, Sensitivity Checks & Risk Hotspot Screening
 
-- **Execution Timestamp (UTC):** 2026-11-05T19:37:31.471774+00:00
+- **Execution Timestamp (UTC):** 2026-11-05T20:02:15.727307+00:00
 - **Dataset File:** `workforce_attrition_processed.csv`
 - **Processed Dataset SHA-256:** `48553275587384b98f091dacfd4466cadb9bddda131fe32bbd586e0b15bacb2d`
 - **Workforce Dimensions:** 1,470 employees across 47 columns
@@ -152,16 +152,24 @@ Exact binomial control limits evaluate observed organizational subgroup rates ag
 | Married | 673 | 84 | 589 | 12.5% | [10.2%, 15.2%] | 45.8% | 35.4% | OK |
 | Single | 470 | 120 | 350 | 25.5% | [21.8%, 29.7%] | 32.0% | 50.6% | OK |
 
+### 5.4 Age Cohort Sensitivity & Boundary Effects
+Sensitivity analysis across alternative categorization boundaries indicates that the elevated attrition rate in the oldest age cohort appears under some cut points and not others:
+- Under the 5-band cut points (`[17, 24, 34, 44, 54, 60]`), the oldest cohort (`55-60`) displays an elevated attrition rate of **15.9%** (11 leavers / 69 employees), compared with 10.1% for ages `35-44` and 10.2% for ages `45-54`.
+- Under the 4-band baseline (`[17, 25, 35, 45, 60]`) and the 3-band specification (`[17, 30, 45, 60]`), the oldest aggregated cohort (`46-60`) displays an attrition rate of **12.5%** (34 leavers / 273 employees), which is below the overall organizational baseline.
+- Therefore, the apparent elevation in the upper age tier is sensitive to boundary placement and cohort disaggregation.
+
 ---
 
 ## 6. Pre-Specified Risk Hotspot Candidates Scan
 
-Across 58 scanned two-way interaction cells, exactly 15 subgroups met the dual pre-specified qualification criteria:
+Across 58 scanned two-way interaction cells (52 cells with headcount n >= 30), 16 subgroups met the dual pre-specified qualification criteria:
 1. Headcount `n >= 30`
 2. Wilson 95% lower confidence bound strictly exceeding the organizational baseline (16.1%).
 
 > [!WARNING]
 > **Preliminary Screening Notice:** These interaction cells represent *candidates for formal multivariable statistical testing in Phase 4*, not validated independent factors.
+>
+> **Overlap Notice:** Candidate cells overlap and are not independent. Across all 16 qualified candidate cells, there are 599 distinct individual employees (171 distinct leavers). Complete pairwise intersection headcounts and Jaccard similarities are documented in `reports/phase3/tables/hotspot_overlap.csv`.
 
 | Candidate Subgroup | Interaction | Headcount (n) | Leavers | Attrition Rate (%) | 95% Wilson CI (%) | Diff vs Overall (pp) | Rate Ratio |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -180,6 +188,7 @@ Across 58 scanned two-way interaction cells, exactly 15 subgroups met the dual p
 | `OverTime=Yes & Department=Research & Development` | OverTime x Department | 271 | 74 | 27.3% | [22.3%, 32.9%] | +11.2 pp | 1.69x |
 | `OverTime=Yes & TenureBand=6-10` | OverTime x TenureBand | 120 | 31 | 25.8% | [18.8%, 34.3%] | +9.7 pp | 1.60x |
 | `OverTime=No & TenureBand=0-1` | OverTime x TenureBand | 146 | 37 | 25.3% | [19.0%, 33.0%] | +9.2 pp | 1.57x |
+| `OverTime=Yes & TenureBand=4-5` | OverTime x TenureBand | 87 | 22 | 25.3% | [17.3%, 35.3%] | +9.2 pp | 1.57x |
 
 ---
 
@@ -187,4 +196,4 @@ Across 58 scanned two-way interaction cells, exactly 15 subgroups met the dual p
 
 - **Summary Metadata:** `reports/phase3/eda_summary.json`
 - **Formal Analysis Plan:** `docs/analysis_plan.md`
-- **Output CSV Tables:** Exactly 45 CSV tables stored in `reports/phase3/tables/` with 4-decimal precision (`ROUND_DIGITS = 4`) and LF line endings.
+- **Output CSV Tables:** Exactly 46 CSV tables stored in `reports/phase3/tables/` with 4-decimal precision (`ROUND_DIGITS = 4`) and LF line endings.

@@ -41,6 +41,7 @@ from workforce_intel.config import (
     get_environment_metadata,
 )
 from workforce_intel.eda import (
+    hotspot_overlap_table,
     concentration_table,
     funnel_table,
     hotspot_candidates,
@@ -103,7 +104,7 @@ def update_decision_log(logger: logging.Logger) -> None:
     new_rows = """| `DL-27` | **Descriptive Focus & Absence of Causal Inference in Phase 3A** | 1,470 total records evaluated across 9 pre-specified analysis stages. Table: reports/phase3/tables/overall_baseline.csv | Strictly report observed rates, counts, and statistical intervals without directional claims. | Assert predictive factor statuses; perform unadjusted regression ranking. | `PROPOSED` | Phase 3 (Exploratory Data Analysis) |
 | `DL-28` | **Wilson Score Confidence Intervals for Subgroup Rates** | Overall baseline 16.12% has 95% Wilson CI [14.33%, 18.09%]. Table: reports/phase3/tables/overall_baseline.csv | Report 95% Wilson score confidence intervals for all subgroup rates to handle near-boundary and small-sample estimates accurately. | Normal approximation (Wald) intervals; unadjusted point estimates. | `PROPOSED` | Phase 3 (Statistical Methodology) |
 | `DL-29` | **Exact Binomial Funnel Limits for Organizational Outliers** | 12 organizational subgroups evaluated against baseline 16.12% (Department: 3, JobRole: 9). Table: reports/phase3/tables/funnel_limits.csv | Benchmark Department and JobRole attrition rates using exact binomial control limits at 95% and 99.8% to distinguish sample-size variation from outlying rates. | Arbitrary percentage cutoffs; standard deviation intervals assuming normal distribution. | `PROPOSED` | Phase 3 (Organizational Analytics) |
-| `DL-30` | **Hotspot Candidate Screening Protocol** | 15 candidate subgroups selected from 58 scanned two-way interaction cells with n >= 30. Table: reports/phase3/tables/hotspot_candidates.csv | Require interaction cells to have n >= 30 and Wilson lower bound exceeding overall baseline (16.12%) to qualify as candidates for Phase 4 testing. | Rank all raw interaction rates without sample size floor or confidence interval threshold. | `PROPOSED` | Phase 3 / Phase 4 (Hotspot Protocol) |
+| `DL-30` | **Hotspot Candidate Screening Protocol** | 16 candidate subgroups selected from 58 scanned two-way interaction cells with n >= 30 (52 cells with n >= 30). Table: reports/phase3/tables/hotspot_candidates.csv | Require interaction cells to have n >= 30 and Wilson lower bound exceeding overall baseline (16.12%) to qualify as candidates for Phase 4 testing. | Rank all raw interaction rates without sample size floor or confidence interval threshold. | `PROPOSED` | Phase 3 / Phase 4 (Hotspot Protocol) |
 | `DL-31` | **Dual Reporting of Promotion Gap (Pooled vs PromotionAnalysisCohort)** | 890 cohort records compared with 1,470 pooled records across 4 promotion gap bands. Table: reports/phase3/tables/promotiongap_side_by_side.csv | Report PromotionGapBand both pooled across all 1,470 employees and restricted to the eligible cohort (n = 890, YearsAtCompany >= 5) to isolate career stagnation. | Report pooled rates only; disregard tenure threshold. | `PROPOSED` | Phase 3 (Career & Mobility Analytics) |
 """
     # Insert before the last lines or append
@@ -231,15 +232,34 @@ def main() -> None:
         tables_dict[key] = tw_df
         two_way_tables_map[key] = tw_df
 
-    candidates_df, total_scanned_cells = hotspot_candidates(
+    candidates_df, total_scanned_cells, cells_with_min_n = hotspot_candidates(
         two_way_tables_map,
         overall_rate_pct=baseline_rate_pct,
         min_n=HOTSPOT_MIN_N,
-        top_k=HOTSPOT_TOP_K,
+        top_k=None,
     )
-    tables_dict["hotspot_candidates"] = candidates_df
+    overlap_df, distinct_union_n, distinct_union_leavers = hotspot_overlap_table(
+        df, candidates_df, target_col=TARGET_COLUMN
+    )
+    candidates_export = candidates_df[
+        [
+            "interaction",
+            "subgroup",
+            "n",
+            "leavers",
+            "attrition_rate_pct",
+            "ci95_low_pct",
+            "ci95_high_pct",
+            "diff_vs_overall_pp",
+            "ratio_vs_overall",
+        ]
+    ].copy()
+    tables_dict["hotspot_candidates"] = candidates_export
+    tables_dict["hotspot_overlap"] = overlap_df
     logger.info(
-        f"Scanned {total_scanned_cells} interaction cells. Identified {len(candidates_df)} hotspot candidates with n >= {HOTSPOT_MIN_N} and Wilson LB > {baseline_rate_pct:.2f}%."
+        f"Scanned {total_scanned_cells} interaction cells ({cells_with_min_n} with n >= {HOTSPOT_MIN_N}). "
+        f"Identified {len(candidates_export)} eligible hotspot candidates with Wilson LB > {baseline_rate_pct:.2f}%. "
+        f"Union contains {distinct_union_n} distinct employees ({distinct_union_leavers} leavers)."
     )
 
     # 9. Stage I: Sensitivity Analysis
@@ -249,7 +269,7 @@ def main() -> None:
     )
 
     # 10. Save all CSV tables deterministically
-    logger.info(f"Saving {len(tables_dict)} CSV tables to {PHASE3_TABLES_DIR}...")
+    logger.info(f"Saving {len(tables_dict)} CSV tables to reports/phase3/tables...")
     for name, table_df in tables_dict.items():
         csv_path = PHASE3_TABLES_DIR / f"{name}.csv"
         # Export with LF line endings and fixed precision
@@ -280,9 +300,12 @@ def main() -> None:
         },
         "hotspot_candidates_scan": {
             "total_cells_scanned": total_scanned_cells,
+            "cells_with_min_n": cells_with_min_n,
             "min_n_threshold": HOTSPOT_MIN_N,
             "candidate_count": len(candidates_df),
-            "candidates": candidates_df.to_dict(orient="records"),
+            "distinct_employees_in_union": distinct_union_n,
+            "distinct_leavers_in_union": distinct_union_leavers,
+            "candidates": candidates_export.to_dict(orient="records"),
         },
         "funnel_summary": {
             "status_95": funnel_status_95,
@@ -293,14 +316,14 @@ def main() -> None:
 
     with open(PHASE3_SUMMARY_JSON, "w", encoding="utf-8", newline="\n") as f:
         json.dump(summary_data, f, indent=2)
-    logger.info(f"Saved summary JSON to {PHASE3_SUMMARY_JSON}")
+    logger.info(f"Saved summary JSON to reports/phase3/eda_summary.json")
 
     # 12. Build and save analysis plan & markdown report
-    logger.info(f"Generating Analysis Plan at {ANALYSIS_PLAN_MD}...")
+    logger.info(f"Generating Analysis Plan at docs/analysis_plan.md...")
     plan_md = build_analysis_plan()
     ANALYSIS_PLAN_MD.write_text(plan_md, encoding="utf-8")
 
-    logger.info(f"Generating EDA Tables Report at {PHASE3_REPORT_MD}...")
+    logger.info(f"Generating EDA Tables Report at reports/phase3/eda_tables_report.md...")
     report_md = build_phase3a_report(tables_dict, summary_data)
     PHASE3_REPORT_MD.write_text(report_md, encoding="utf-8")
 

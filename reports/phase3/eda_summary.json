@@ -1,5 +1,5 @@
 {
-  "execution_timestamp": "2026-11-05T19:37:31.471774+00:00",
+  "execution_timestamp": "2026-11-05T20:02:15.727307+00:00",
   "dataset_file": "workforce_attrition_processed.csv",
   "dataset_sha256": "48553275587384b98f091dacfd4466cadb9bddda131fe32bbd586e0b15bacb2d",
   "environment": {
@@ -26,8 +26,11 @@
   },
   "hotspot_candidates_scan": {
     "total_cells_scanned": 58,
+    "cells_with_min_n": 52,
     "min_n_threshold": 30,
-    "candidate_count": 15,
+    "candidate_count": 16,
+    "distinct_employees_in_union": 599,
+    "distinct_leavers_in_union": 171,
     "candidates": [
       {
         "interaction": "OverTime x AgeGroup",
@@ -193,6 +196,17 @@
         "ci95_high_pct": 32.9678,
         "diff_vs_overall_pp": 9.22,
         "ratio_vs_overall": 1.5719
+      },
+      {
+        "interaction": "OverTime x TenureBand",
+        "subgroup": "OverTime=Yes & TenureBand=4-5",
+        "n": 87,
+        "leavers": 22,
+        "attrition_rate_pct": 25.2874,
+        "ci95_low_pct": 17.3332,
+        "ci95_high_pct": 35.3316,
+        "diff_vs_overall_pp": 9.1649,
+        "ratio_vs_overall": 1.5685
       }
     ]
   },
@@ -208,5 +222,5 @@
       "Above": 2
     }
   },
-  "table_count": 45
+  "table_count": 46
 }

@@ -649,8 +649,8 @@ def hotspot_candidates(
     two_way_tables: Dict[str, pd.DataFrame] | List[pd.DataFrame],
     overall_rate_pct: float,
     min_n: int = HOTSPOT_MIN_N,
-    top_k: int = HOTSPOT_TOP_K,
-) -> Tuple[pd.DataFrame, int]:
+    top_k: Optional[int] = None,
+) -> Tuple[pd.DataFrame, int, int]:
     """Screen interaction cells for elevated attrition rates where Wilson lower bound exceeds overall baseline.
 
     Parameters
@@ -661,13 +661,13 @@ def hotspot_candidates(
         Overall population attrition rate in percent (e.g. 16.12).
     min_n : int, default 30
         Minimum cell sample size threshold.
-    top_k : int, default 15
-        Maximum number of candidate cells to return.
+    top_k : int, optional
+        Maximum number of candidate cells to return. If None, returns all eligible candidates without truncation.
 
     Returns
     -------
-    tuple of (pd.DataFrame, int)
-        (candidates_dataframe, total_cells_scanned)
+    tuple of (pd.DataFrame, int, int)
+        (candidates_dataframe, total_cells_scanned, cells_with_min_n)
     """
     if isinstance(two_way_tables, dict):
         table_list = list(two_way_tables.values())
@@ -676,6 +676,7 @@ def hotspot_candidates(
 
     all_cells: List[Dict[str, Any]] = []
     total_cells = 0
+    cells_with_min_n = 0
 
     for table in table_list:
         cols = list(table.columns)
@@ -690,6 +691,9 @@ def hotspot_candidates(
             ci_high = r["ci95_high_pct"]
             leavers = int(r["leavers"])
 
+            if n >= min_n:
+                cells_with_min_n += 1
+
             if np.isnan(rate):
                 continue
 
@@ -699,6 +703,10 @@ def hotspot_candidates(
                     {
                         "interaction": f"{dim1} x {dim2}",
                         "subgroup": f"{dim1}={r[dim1]} & {dim2}={r[dim2]}",
+                        "dim1": dim1,
+                        "val1": str(r[dim1]),
+                        "dim2": dim2,
+                        "val2": str(r[dim2]),
                         "n": n,
                         "leavers": leavers,
                         "attrition_rate_pct": rate,
@@ -712,13 +720,19 @@ def hotspot_candidates(
     candidates_df = pd.DataFrame(all_cells)
     if len(candidates_df) > 0:
         candidates_df = candidates_df.sort_values(
-            by=["attrition_rate_pct", "n"], ascending=[False, False]
-        ).head(top_k).reset_index(drop=True)
+            by=["attrition_rate_pct", "subgroup"], ascending=[False, True]
+        ).reset_index(drop=True)
+        if top_k is not None:
+            candidates_df = candidates_df.head(top_k)
     else:
         candidates_df = pd.DataFrame(
             columns=[
                 "interaction",
                 "subgroup",
+                "dim1",
+                "val1",
+                "dim2",
+                "val2",
                 "n",
                 "leavers",
                 "attrition_rate_pct",
@@ -729,4 +743,84 @@ def hotspot_candidates(
             ]
         )
 
-    return (candidates_df, total_cells)
+    return (candidates_df, total_cells, cells_with_min_n)
+
+
+def hotspot_overlap_table(
+    df: pd.DataFrame,
+    candidates_df: pd.DataFrame,
+    target_col: str = TARGET_COLUMN,
+) -> Tuple[pd.DataFrame, int, int]:
+    """Calculate pairwise employee overlap and distinct union size across candidate cells.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Processed dataset.
+    candidates_df : pd.DataFrame
+        Table of eligible hotspot candidates containing dim1, val1, dim2, val2, subgroup, and n.
+    target_col : str, default TARGET_COLUMN
+        Target variable name.
+
+    Returns
+    -------
+    tuple of (pd.DataFrame, int, int)
+        (pairwise_overlap_df, distinct_employees_in_union, distinct_leavers_in_union)
+    """
+    if len(candidates_df) == 0:
+        empty_overlap = pd.DataFrame(
+            columns=[
+                "candidate_1",
+                "candidate_2",
+                "headcount_candidate_1",
+                "headcount_candidate_2",
+                "overlap_headcount",
+                "overlap_leavers",
+                "jaccard_similarity",
+                "note",
+            ]
+        )
+        return (empty_overlap, 0, 0)
+
+    # Build mask for each candidate
+    masks = []
+    for _, r in candidates_df.iterrows():
+        m = (df[r["dim1"]].astype(str) == r["val1"]) & (df[r["dim2"]].astype(str) == r["val2"])
+        masks.append(m)
+
+    union_mask = pd.Series(False, index=df.index)
+    for m in masks:
+        union_mask = union_mask | m
+
+    distinct_union_n = int(union_mask.sum())
+    distinct_union_leavers = int((union_mask & (df[target_col] == 1)).sum())
+
+    pairwise_rows = []
+    n_cands = len(candidates_df)
+    for i in range(n_cands):
+        for j in range(i + 1, n_cands):
+            sub1 = candidates_df.loc[i, "subgroup"]
+            sub2 = candidates_df.loc[j, "subgroup"]
+            n1 = int(candidates_df.loc[i, "n"])
+            n2 = int(candidates_df.loc[j, "n"])
+            inter = masks[i] & masks[j]
+            overlap_n = int(inter.sum())
+            overlap_leavers = int((inter & (df[target_col] == 1)).sum())
+            denom = n1 + n2 - overlap_n
+            jaccard = round(overlap_n / denom, ROUND_DIGITS) if denom > 0 else 0.0
+
+            pairwise_rows.append(
+                {
+                    "candidate_1": sub1,
+                    "candidate_2": sub2,
+                    "headcount_candidate_1": n1,
+                    "headcount_candidate_2": n2,
+                    "overlap_headcount": overlap_n,
+                    "overlap_leavers": overlap_leavers,
+                    "jaccard_similarity": jaccard,
+                    "note": "candidates overlap and are not independent",
+                }
+            )
+
+    overlap_df = pd.DataFrame(pairwise_rows)
+    return (overlap_df, distinct_union_n, distinct_union_leavers)

@@ -767,16 +767,24 @@ Exact binomial control limits evaluate observed organizational subgroup rates ag
 ### 5.3 Marital Status Distribution
 {marital_table_md}
 
+### 5.4 Age Cohort Sensitivity & Boundary Effects
+Sensitivity analysis across alternative categorization boundaries indicates that the elevated attrition rate in the oldest age cohort appears under some cut points and not others:
+- Under the 5-band cut points (`[17, 24, 34, 44, 54, 60]`), the oldest cohort (`55-60`) displays an elevated attrition rate of **15.9%** (11 leavers / 69 employees), compared with 10.1% for ages `35-44` and 10.2% for ages `45-54`.
+- Under the 4-band baseline (`[17, 25, 35, 45, 60]`) and the 3-band specification (`[17, 30, 45, 60]`), the oldest aggregated cohort (`46-60`) displays an attrition rate of **12.5%** (34 leavers / 273 employees), which is below the overall organizational baseline.
+- Therefore, the apparent elevation in the upper age tier is sensitive to boundary placement and cohort disaggregation.
+
 ---
 
 ## 6. Pre-Specified Risk Hotspot Candidates Scan
 
-Across {hotspot_info["total_cells_scanned"]} scanned two-way interaction cells, exactly {hotspot_info["candidate_count"]} subgroups met the dual pre-specified qualification criteria:
+Across {hotspot_info["total_cells_scanned"]} scanned two-way interaction cells ({hotspot_info["cells_with_min_n"]} cells with headcount n >= {hotspot_info["min_n_threshold"]}), {hotspot_info["candidate_count"]} subgroups met the dual pre-specified qualification criteria:
 1. Headcount `n >= {hotspot_info["min_n_threshold"]}`
 2. Wilson 95% lower confidence bound strictly exceeding the organizational baseline ({ov["attrition_rate_pct"]:.{REPORT_RATE_DECIMALS}f}%).
 
 > [!WARNING]
 > **Preliminary Screening Notice:** These interaction cells represent *candidates for formal multivariable statistical testing in Phase 4*, not validated independent factors.
+>
+> **Overlap Notice:** Candidate cells overlap and are not independent. Across all {hotspot_info["candidate_count"]} qualified candidate cells, there are {hotspot_info["distinct_employees_in_union"]:,} distinct individual employees ({hotspot_info["distinct_leavers_in_union"]:,} distinct leavers). Complete pairwise intersection headcounts and Jaccard similarities are documented in `reports/phase3/tables/hotspot_overlap.csv`.
 
 {hotspot_table_md}
 

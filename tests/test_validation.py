@@ -540,7 +540,7 @@ def _build_expected_decision_log_tokens() -> Dict[str, List[str]]:
         "DL-27": [total_rows, "9"],
         "DL-28": [f"{t_metrics['rate_attrition_1_pct']:.2f}", "95", f"{t_metrics['wilson_95_ci_lower_pct']:.2f}", f"{t_metrics['wilson_95_ci_upper_pct']:.2f}"],
         "DL-29": ["12", f"{t_metrics['rate_attrition_1_pct']:.2f}", "3", "9"],
-        "DL-30": ["15", "58", "30"],
+        "DL-30": ["16", "58", "30", "52", "30"],
         "DL-31": [str(bucket_table.loc[("PromotionAnalysisCohort", "1"), "count"]), total_rows, "4"],
     }
 

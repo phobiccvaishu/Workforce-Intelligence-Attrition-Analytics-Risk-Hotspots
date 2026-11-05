@@ -14,3 +14,4 @@ OverTime x BusinessTravel,OverTime=Yes & BusinessTravel=Travel_Rarely,295,84,28.
 OverTime x Department,OverTime=Yes & Department=Research & Development,271,74,27.3063,22.3466,32.9003,11.1838,1.6937
 OverTime x TenureBand,OverTime=Yes & TenureBand=6-10,120,31,25.8333,18.8374,34.3285,9.7109,1.6023
 OverTime x TenureBand,OverTime=No & TenureBand=0-1,146,37,25.3425,18.9814,32.9678,9.2200,1.5719
+OverTime x TenureBand,OverTime=Yes & TenureBand=4-5,87,22,25.2874,17.3332,35.3316,9.1649,1.5685

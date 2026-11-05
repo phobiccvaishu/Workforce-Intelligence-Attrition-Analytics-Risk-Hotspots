@@ -1,0 +1,121 @@
+candidate_1,candidate_2,headcount_candidate_1,headcount_candidate_2,overlap_headcount,overlap_leavers,jaccard_similarity,note
+OverTime=Yes & AgeGroup=18-25,OverTime=Yes & TenureBand=0-1,39,69,17,15,0.1868,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=18-25,OverTime=Yes & JobLevel=1,39,156,32,23,0.1963,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=18-25,OverTime=Yes & JobRole=Laboratory Technician,39,62,9,7,0.0978,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=18-25,OverTime=Yes & BusinessTravel=Travel_Frequently,39,86,10,9,0.0870,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=18-25,OverTime=Yes & AgeGroup=26-35,39,159,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=18-25,OverTime=Yes & TenureBand=2-3,39,75,8,5,0.0755,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=18-25,OverTime=Yes & Department=Sales,39,128,17,11,0.1133,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=18-25,OverTime=Yes & JobRole=Research Scientist,39,97,12,6,0.0968,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=18-25,OverTime=Yes & JobRole=Sales Executive,39,94,6,1,0.0472,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=18-25,OverTime=No & JobRole=Sales Representative,39,59,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=18-25,OverTime=Yes & BusinessTravel=Travel_Rarely,39,295,26,15,0.0844,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=18-25,OverTime=Yes & Department=Research & Development,39,271,22,14,0.0764,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=18-25,OverTime=Yes & TenureBand=6-10,39,120,5,3,0.0325,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=18-25,OverTime=No & TenureBand=0-1,39,146,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=18-25,OverTime=Yes & TenureBand=4-5,39,87,9,2,0.0769,candidates overlap and are not independent
+OverTime=Yes & TenureBand=0-1,OverTime=Yes & JobLevel=1,69,156,44,31,0.2431,candidates overlap and are not independent
+OverTime=Yes & TenureBand=0-1,OverTime=Yes & JobRole=Laboratory Technician,69,62,20,15,0.1802,candidates overlap and are not independent
+OverTime=Yes & TenureBand=0-1,OverTime=Yes & BusinessTravel=Travel_Frequently,69,86,16,12,0.1151,candidates overlap and are not independent
+OverTime=Yes & TenureBand=0-1,OverTime=Yes & AgeGroup=26-35,69,159,18,12,0.0857,candidates overlap and are not independent
+OverTime=Yes & TenureBand=0-1,OverTime=Yes & TenureBand=2-3,69,75,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & TenureBand=0-1,OverTime=Yes & Department=Sales,69,128,18,11,0.1006,candidates overlap and are not independent
+OverTime=Yes & TenureBand=0-1,OverTime=Yes & JobRole=Research Scientist,69,97,20,10,0.1370,candidates overlap and are not independent
+OverTime=Yes & TenureBand=0-1,OverTime=Yes & JobRole=Sales Executive,69,94,7,4,0.0449,candidates overlap and are not independent
+OverTime=Yes & TenureBand=0-1,OverTime=No & JobRole=Sales Representative,69,59,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & TenureBand=0-1,OverTime=Yes & BusinessTravel=Travel_Rarely,69,295,48,23,0.1519,candidates overlap and are not independent
+OverTime=Yes & TenureBand=0-1,OverTime=Yes & Department=Research & Development,69,271,51,27,0.1765,candidates overlap and are not independent
+OverTime=Yes & TenureBand=0-1,OverTime=Yes & TenureBand=6-10,69,120,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & TenureBand=0-1,OverTime=No & TenureBand=0-1,69,146,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & TenureBand=0-1,OverTime=Yes & TenureBand=4-5,69,87,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & JobLevel=1,OverTime=Yes & JobRole=Laboratory Technician,156,62,48,29,0.2824,candidates overlap and are not independent
+OverTime=Yes & JobLevel=1,OverTime=Yes & BusinessTravel=Travel_Frequently,156,86,39,26,0.1921,candidates overlap and are not independent
+OverTime=Yes & JobLevel=1,OverTime=Yes & AgeGroup=26-35,156,159,76,41,0.3180,candidates overlap and are not independent
+OverTime=Yes & JobLevel=1,OverTime=Yes & TenureBand=2-3,156,75,42,20,0.2222,candidates overlap and are not independent
+OverTime=Yes & JobLevel=1,OverTime=Yes & Department=Sales,156,128,22,16,0.0840,candidates overlap and are not independent
+OverTime=Yes & JobLevel=1,OverTime=Yes & JobRole=Research Scientist,156,97,78,33,0.4457,candidates overlap and are not independent
+OverTime=Yes & JobLevel=1,OverTime=Yes & JobRole=Sales Executive,156,94,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & JobLevel=1,OverTime=No & JobRole=Sales Representative,156,59,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & JobLevel=1,OverTime=Yes & BusinessTravel=Travel_Rarely,156,295,109,52,0.3187,candidates overlap and are not independent
+OverTime=Yes & JobLevel=1,OverTime=Yes & Department=Research & Development,156,271,126,62,0.4186,candidates overlap and are not independent
+OverTime=Yes & JobLevel=1,OverTime=Yes & TenureBand=6-10,156,120,32,16,0.1311,candidates overlap and are not independent
+OverTime=Yes & JobLevel=1,OverTime=No & TenureBand=0-1,156,146,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & JobLevel=1,OverTime=Yes & TenureBand=4-5,156,87,34,15,0.1627,candidates overlap and are not independent
+OverTime=Yes & JobRole=Laboratory Technician,OverTime=Yes & BusinessTravel=Travel_Frequently,62,86,13,7,0.0963,candidates overlap and are not independent
+OverTime=Yes & JobRole=Laboratory Technician,OverTime=Yes & AgeGroup=26-35,62,159,28,16,0.1451,candidates overlap and are not independent
+OverTime=Yes & JobRole=Laboratory Technician,OverTime=Yes & TenureBand=2-3,62,75,13,5,0.1048,candidates overlap and are not independent
+OverTime=Yes & JobRole=Laboratory Technician,OverTime=Yes & Department=Sales,62,128,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & JobRole=Laboratory Technician,OverTime=Yes & JobRole=Research Scientist,62,97,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & JobRole=Laboratory Technician,OverTime=Yes & JobRole=Sales Executive,62,94,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & JobRole=Laboratory Technician,OverTime=No & JobRole=Sales Representative,62,59,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & JobRole=Laboratory Technician,OverTime=Yes & BusinessTravel=Travel_Rarely,62,295,45,23,0.1442,candidates overlap and are not independent
+OverTime=Yes & JobRole=Laboratory Technician,OverTime=Yes & Department=Research & Development,62,271,62,31,0.2288,candidates overlap and are not independent
+OverTime=Yes & JobRole=Laboratory Technician,OverTime=Yes & TenureBand=6-10,62,120,17,6,0.1030,candidates overlap and are not independent
+OverTime=Yes & JobRole=Laboratory Technician,OverTime=No & TenureBand=0-1,62,146,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & JobRole=Laboratory Technician,OverTime=Yes & TenureBand=4-5,62,87,9,5,0.0643,candidates overlap and are not independent
+OverTime=Yes & BusinessTravel=Travel_Frequently,OverTime=Yes & AgeGroup=26-35,86,159,34,17,0.1611,candidates overlap and are not independent
+OverTime=Yes & BusinessTravel=Travel_Frequently,OverTime=Yes & TenureBand=2-3,86,75,15,7,0.1027,candidates overlap and are not independent
+OverTime=Yes & BusinessTravel=Travel_Frequently,OverTime=Yes & Department=Sales,86,128,21,14,0.1088,candidates overlap and are not independent
+OverTime=Yes & BusinessTravel=Travel_Frequently,OverTime=Yes & JobRole=Research Scientist,86,97,26,12,0.1656,candidates overlap and are not independent
+OverTime=Yes & BusinessTravel=Travel_Frequently,OverTime=Yes & JobRole=Sales Executive,86,94,12,7,0.0714,candidates overlap and are not independent
+OverTime=Yes & BusinessTravel=Travel_Frequently,OverTime=No & JobRole=Sales Representative,86,59,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & BusinessTravel=Travel_Frequently,OverTime=Yes & BusinessTravel=Travel_Rarely,86,295,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & BusinessTravel=Travel_Frequently,OverTime=Yes & Department=Research & Development,86,271,61,20,0.2061,candidates overlap and are not independent
+OverTime=Yes & BusinessTravel=Travel_Frequently,OverTime=Yes & TenureBand=6-10,86,120,27,10,0.1508,candidates overlap and are not independent
+OverTime=Yes & BusinessTravel=Travel_Frequently,OverTime=No & TenureBand=0-1,86,146,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & BusinessTravel=Travel_Frequently,OverTime=Yes & TenureBand=4-5,86,87,12,5,0.0745,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=26-35,OverTime=Yes & TenureBand=2-3,159,75,32,17,0.1584,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=26-35,OverTime=Yes & Department=Sales,159,128,47,18,0.1958,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=26-35,OverTime=Yes & JobRole=Research Scientist,159,97,47,20,0.2249,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=26-35,OverTime=Yes & JobRole=Sales Executive,159,94,41,15,0.1934,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=26-35,OverTime=No & JobRole=Sales Representative,159,59,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=26-35,OverTime=Yes & BusinessTravel=Travel_Rarely,159,295,112,42,0.3275,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=26-35,OverTime=Yes & Department=Research & Development,159,271,105,40,0.3231,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=26-35,OverTime=Yes & TenureBand=6-10,159,120,61,19,0.2798,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=26-35,OverTime=No & TenureBand=0-1,159,146,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & AgeGroup=26-35,OverTime=Yes & TenureBand=4-5,159,87,33,12,0.1549,candidates overlap and are not independent
+OverTime=Yes & TenureBand=2-3,OverTime=Yes & Department=Sales,75,128,23,13,0.1278,candidates overlap and are not independent
+OverTime=Yes & TenureBand=2-3,OverTime=Yes & JobRole=Research Scientist,75,97,19,7,0.1242,candidates overlap and are not independent
+OverTime=Yes & TenureBand=2-3,OverTime=Yes & JobRole=Sales Executive,75,94,14,7,0.0903,candidates overlap and are not independent
+OverTime=Yes & TenureBand=2-3,OverTime=No & JobRole=Sales Representative,75,59,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & TenureBand=2-3,OverTime=Yes & BusinessTravel=Travel_Rarely,75,295,56,21,0.1783,candidates overlap and are not independent
+OverTime=Yes & TenureBand=2-3,OverTime=Yes & Department=Research & Development,75,271,47,13,0.1572,candidates overlap and are not independent
+OverTime=Yes & TenureBand=2-3,OverTime=Yes & TenureBand=6-10,75,120,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & TenureBand=2-3,OverTime=No & TenureBand=0-1,75,146,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & TenureBand=2-3,OverTime=Yes & TenureBand=4-5,75,87,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & Department=Sales,OverTime=Yes & JobRole=Research Scientist,128,97,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & Department=Sales,OverTime=Yes & JobRole=Sales Executive,128,94,94,31,0.7344,candidates overlap and are not independent
+OverTime=Yes & Department=Sales,OverTime=No & JobRole=Sales Representative,128,59,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & Department=Sales,OverTime=Yes & BusinessTravel=Travel_Rarely,128,295,96,32,0.2936,candidates overlap and are not independent
+OverTime=Yes & Department=Sales,OverTime=Yes & Department=Research & Development,128,271,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & Department=Sales,OverTime=Yes & TenureBand=6-10,128,120,38,10,0.1810,candidates overlap and are not independent
+OverTime=Yes & Department=Sales,OverTime=No & TenureBand=0-1,128,146,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & Department=Sales,OverTime=Yes & TenureBand=4-5,128,87,28,8,0.1497,candidates overlap and are not independent
+OverTime=Yes & JobRole=Research Scientist,OverTime=Yes & JobRole=Sales Executive,97,94,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & JobRole=Research Scientist,OverTime=No & JobRole=Sales Representative,97,59,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & JobRole=Research Scientist,OverTime=Yes & BusinessTravel=Travel_Rarely,97,295,63,18,0.1915,candidates overlap and are not independent
+OverTime=Yes & JobRole=Research Scientist,OverTime=Yes & Department=Research & Development,97,271,97,33,0.3579,candidates overlap and are not independent
+OverTime=Yes & JobRole=Research Scientist,OverTime=Yes & TenureBand=6-10,97,120,26,9,0.1361,candidates overlap and are not independent
+OverTime=Yes & JobRole=Research Scientist,OverTime=No & TenureBand=0-1,97,146,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & JobRole=Research Scientist,OverTime=Yes & TenureBand=4-5,97,87,25,7,0.1572,candidates overlap and are not independent
+OverTime=Yes & JobRole=Sales Executive,OverTime=No & JobRole=Sales Representative,94,59,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & JobRole=Sales Executive,OverTime=Yes & BusinessTravel=Travel_Rarely,94,295,72,22,0.2271,candidates overlap and are not independent
+OverTime=Yes & JobRole=Sales Executive,OverTime=Yes & Department=Research & Development,94,271,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & JobRole=Sales Executive,OverTime=Yes & TenureBand=6-10,94,120,33,9,0.1823,candidates overlap and are not independent
+OverTime=Yes & JobRole=Sales Executive,OverTime=No & TenureBand=0-1,94,146,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & JobRole=Sales Executive,OverTime=Yes & TenureBand=4-5,94,87,25,6,0.1603,candidates overlap and are not independent
+OverTime=No & JobRole=Sales Representative,OverTime=Yes & BusinessTravel=Travel_Rarely,59,295,0,0,0.0000,candidates overlap and are not independent
+OverTime=No & JobRole=Sales Representative,OverTime=Yes & Department=Research & Development,59,271,0,0,0.0000,candidates overlap and are not independent
+OverTime=No & JobRole=Sales Representative,OverTime=Yes & TenureBand=6-10,59,120,0,0,0.0000,candidates overlap and are not independent
+OverTime=No & JobRole=Sales Representative,OverTime=No & TenureBand=0-1,59,146,22,10,0.1202,candidates overlap and are not independent
+OverTime=No & JobRole=Sales Representative,OverTime=Yes & TenureBand=4-5,59,87,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & BusinessTravel=Travel_Rarely,OverTime=Yes & Department=Research & Development,295,271,187,49,0.4934,candidates overlap and are not independent
+OverTime=Yes & BusinessTravel=Travel_Rarely,OverTime=Yes & TenureBand=6-10,295,120,84,20,0.2538,candidates overlap and are not independent
+OverTime=Yes & BusinessTravel=Travel_Rarely,OverTime=No & TenureBand=0-1,295,146,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & BusinessTravel=Travel_Rarely,OverTime=Yes & TenureBand=4-5,295,87,65,15,0.2050,candidates overlap and are not independent
+OverTime=Yes & Department=Research & Development,OverTime=Yes & TenureBand=6-10,271,120,77,20,0.2452,candidates overlap and are not independent
+OverTime=Yes & Department=Research & Development,OverTime=No & TenureBand=0-1,271,146,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & Department=Research & Development,OverTime=Yes & TenureBand=4-5,271,87,55,13,0.1815,candidates overlap and are not independent
+OverTime=Yes & TenureBand=6-10,OverTime=No & TenureBand=0-1,120,146,0,0,0.0000,candidates overlap and are not independent
+OverTime=Yes & TenureBand=6-10,OverTime=Yes & TenureBand=4-5,120,87,0,0,0.0000,candidates overlap and are not independent
+OverTime=No & TenureBand=0-1,OverTime=Yes & TenureBand=4-5,146,87,0,0,0.0000,candidates overlap and are not independent
