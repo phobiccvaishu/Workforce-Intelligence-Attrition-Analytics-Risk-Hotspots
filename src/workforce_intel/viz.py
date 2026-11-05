@@ -47,8 +47,10 @@ def _add_footnote(fig: plt.Figure, text: str, y: float = 0.01) -> None:
     fig.text(0.5, y, wrapped, ha="center", va="bottom", fontsize=8, color="#4B5563", style="italic")
 
 
-def _get_colour_key(baseline_rate: float) -> str:
+def _get_colour_key(baseline_rate: float, custom_baseline_str: Optional[str] = None) -> str:
     """Generate standardized colour key line."""
+    if custom_baseline_str:
+        return f"Orange: interval above baseline; light blue: below; dark blue: no separation; dashed line: {custom_baseline_str}."
     return f"Orange: interval above baseline; light blue: below; dark blue: no separation; dashed line: baseline {baseline_rate:.1f}%."
 
 
@@ -112,18 +114,18 @@ def plot_fig01_department_overview(
         n_val = df["n"].iloc[idx]
         l_val = df["leavers"].iloc[idx]
         style = styles[idx]
-        annot = f"{height:.1f}%\n(n={n_val}, l={l_val})"
+        annot = f"{height:.1f}%\n(n={n_val}, leavers={l_val})"
         if style["annotation"]:
             annot += f"\n[{style['annotation']}]"
 
         ax1.annotate(
             annot,
-            xy=(rect.get_x() + rect.get_width() / 2, height / 2),
+            xy=(rect.get_x() + rect.get_width() / 2, 1.8),
             xytext=(0, 0),
             textcoords="offset points",
             ha="center",
-            va="center",
-            fontsize=8.5,
+            va="bottom",
+            fontsize=8.0,
             color="white" if not style["hatch"] else "#111827",
             weight="bold",
         )
@@ -132,7 +134,8 @@ def plot_fig01_department_overview(
     ax1.set_xticklabels([textwrap.fill(s, width=14, break_long_words=False) for s in df["segment"]], fontsize=9)
     ax1.set_ylabel("% who left", fontsize=10, weight="bold")
     ax1.set_title("A. Department Attrition Rate (95% Wilson CI)", fontsize=11, weight="bold")
-    ax1.legend(loc="upper left", fontsize=8.5)
+    ax1.set_ylim(0, 32)
+    ax1.legend(loc="upper right", fontsize=8.5)
     ax1.grid(axis="y", linestyle=":", alpha=0.6)
 
     # Panel B: Share Comparison
@@ -153,9 +156,9 @@ def plot_fig01_department_overview(
     ax2.legend(loc="upper right", fontsize=8.5)
     ax2.grid(axis="y", linestyle=":", alpha=0.6)
 
-    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=1.02)
+    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=0.97)
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.05, 1, 0.92])
+    plt.tight_layout(rect=[0, 0.06, 1, 0.93])
 
     return fig, df
 
@@ -201,27 +204,28 @@ def plot_fig02_jobrole_attrition(
         n_val = df["n"].iloc[idx]
         l_val = df["leavers"].iloc[idx]
         style = styles[idx]
-        annot = f" {width:.1f}% (n={n_val}, l={l_val})"
+        annot = f" {width:.1f}% (n={n_val}, leavers={l_val})"
         if style["annotation"]:
             annot += f" [{style['annotation']}]"
+        x_pos = max(df["ci95_high_pct"].iloc[idx] + 1.2, 18.5)
         ax.annotate(
             annot,
-            xy=(df["ci95_high_pct"].iloc[idx] + 0.5, rect.get_y() + rect.get_height() / 2),
+            xy=(x_pos, rect.get_y() + rect.get_height() / 2),
             va="center",
-            fontsize=8.5,
+            fontsize=8.0,
             color="#1F2937",
         )
 
     ax.set_yticks(y)
-    ax.set_yticklabels(df["segment"], fontsize=9.5)
+    ax.set_yticklabels(df["segment"], fontsize=9.0)
     ax.set_xlabel("% who left", fontsize=10, weight="bold")
-    ax.set_title(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", pad=12)
-    ax.legend(loc="lower right", fontsize=9)
+    ax.set_title(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=10.0, weight="bold", pad=12)
+    ax.legend(loc="lower right", fontsize=8.5)
     ax.grid(axis="x", linestyle=":", alpha=0.6)
-    ax.set_xlim(0, max(df["ci95_high_pct"]) + 12)
+    ax.set_xlim(0, 60)
 
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+    plt.tight_layout(rect=[0, 0.05, 0.98, 0.94])
 
     return fig, df
 
@@ -235,18 +239,21 @@ def plot_fig03_funnel_plot(
     """Plot exact binomial control limits funnel plot for job roles."""
     fl_df = _get_table(tables, "funnel_limits.csv")
     df = fl_df[fl_df["dimension"] == "JobRole"].copy().reset_index(drop=True)
+    plot_df = df.sort_values("attrition_rate_pct", ascending=False).copy().reset_index(drop=True)
     spec = FIGURE_SPECS["FIG-03"]
     baseline_rate = _get_baseline_rate(tables)
     total_n = int(df["n"].sum())
 
     if "low_n_flag" not in df.columns:
         df["low_n_flag"] = df["n"] < 30
+    if "low_n_flag" not in plot_df.columns:
+        plot_df["low_n_flag"] = plot_df["n"] < 30
 
-    fig, ax = plt.subplots(figsize=(10, 6), dpi=FIGURE_DPI)
+    fig, ax = plt.subplots(figsize=(10.5, 6.5), dpi=FIGURE_DPI)
 
-    min_n_val = max(10, int(df["n"].min() * 0.7))
-    max_n_val = int(df["n"].max() * 1.25)
-    n_grid = np.linspace(min_n_val, max_n_val, 150)
+    min_n_val = 20
+    max_n_val = 360
+    n_grid = np.linspace(min_n_val, max_n_val, 200)
     p = baseline_rate / 100.0
 
     from scipy.stats import norm
@@ -263,38 +270,32 @@ def plot_fig03_funnel_plot(
     ax.plot(n_grid, lb_998, "r:", linewidth=1.2)
     ax.plot(n_grid, ub_95, "b--", linewidth=1.2, label="95% Control Limit")
     ax.plot(n_grid, lb_95, "b--", linewidth=1.2)
-    ax.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="-", linewidth=1.5, label=f"Workforce Baseline ({baseline_rate:.1f}%)")
+    ax.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5, label=f"Workforce Baseline ({baseline_rate:.1f}%)")
 
-    for _, row in df.iterrows():
+    for idx, row in plot_df.iterrows():
         n_val = row["n"]
         rate = row["attrition_rate_pct"]
-        seg = row["segment"]
-        status95 = row["status_95"]
-
         style = get_segment_style(int(n_val), float(row["lower_95_pct"]), float(row["upper_95_pct"]), baseline_rate)
-        color = FIGURE_PALETTE["highlight"] if status95 != "Inside" else FIGURE_PALETTE["primary"]
-        if n_val < 30:
-            color = FIGURE_PALETTE["low_n"]
+        color = style["color"]
 
-        ax.scatter(n_val, rate, color=color, s=70, zorder=5, edgecolor="#111827")
-        ax.annotate(
-            textwrap.fill(seg, 16),
-            xy=(n_val, rate),
-            xytext=(6, 4),
-            textcoords="offset points",
-            fontsize=8,
-            weight="bold" if status95 != "Inside" else "normal",
-        )
+        ax.scatter(n_val, rate, color=color, s=140, zorder=5, edgecolor="#111827", linewidth=1.0)
+        ax.annotate(str(idx + 1), xy=(n_val, rate), ha="center", va="center", color="white", fontsize=8.5, weight="bold", zorder=6)
+
+    key_lines = [f"{idx+1}. {row['segment']} ({row['attrition_rate_pct']:.1f}%)" for idx, row in plot_df.iterrows()]
+    key_text = "Job Roles:\n" + "\n".join(key_lines)
+    ax.text(0.68, 0.96, key_text, transform=ax.transAxes, va="top", ha="left", fontsize=7.5, bbox=dict(boxstyle="round,pad=0.4", facecolor="#F8FAFC", edgecolor="#CBD5E1", alpha=0.95), zorder=7)
 
     ax.set_xlabel("Headcount (n)", fontsize=10, weight="bold")
     ax.set_ylabel("% who left", fontsize=10, weight="bold")
-    ax.set_title(f"{spec["title"]}\nn = {total_n:,}; 95% and 99.8% exact binomial control limits around baseline ({baseline_rate:.1f}%)", fontsize=12, weight="bold", pad=12)
-    ax.legend(loc="upper right", fontsize=8.5)
-    ax.grid(True, linestyle=":", alpha=0.6)
-    ax.set_ylim(-1, 55)
+    ax.set_title(f"{spec["title"]}\nn = {total_n:,}; 95% and 99.8% exact binomial control limits around baseline ({baseline_rate:.1f}%)\n{_get_colour_key(baseline_rate)}", fontsize=10.0, weight="bold", pad=12)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.11), ncol=3, fontsize=8.5, frameon=True)
+    ax.grid(axis="both", linestyle=":", alpha=0.5)
+    ax.set_xlim(30, 360)
+    ax.set_xticks(range(50, 351, 50))
+    ax.set_ylim(0, 50)
 
-    _add_footnote(fig, spec["footnote"])
-    plt.tight_layout()
+    _add_footnote(fig, spec["footnote"], y=0.01)
+    plt.tight_layout(rect=[0.05, 0.09, 0.96, 0.94])
 
     return fig, df
 
@@ -321,26 +322,37 @@ def plot_fig04_leaver_concentration(
     bars = ax1.bar(x, df["leavers"], color=FIGURE_PALETTE["primary"], alpha=0.85, edgecolor="#111827", linewidth=0.8, label="Leavers Count")
     ax2.plot(x, df["cumulative_share_of_leavers_pct"], color=FIGURE_PALETTE["highlight"], marker="o", linewidth=2.2, label="Cumulative Leaver %")
     ax2.axhline(80, color="#6B7280", linestyle=":", linewidth=1.5, label="80% Threshold")
+    ax2.xaxis.set_visible(False)
+    for tl in ax2.get_xticklabels():
+        tl.set_visible(False)
 
     for idx, rect in enumerate(bars):
         l_cnt = df["leavers"].iloc[idx]
-        ax1.annotate(str(l_cnt), xy=(rect.get_x() + rect.get_width() / 2, l_cnt / 2), ha="center", va="center", color="white", weight="bold", fontsize=9)
+        ax1.annotate(str(l_cnt), xy=(rect.get_x() + rect.get_width() / 2, 4.0), ha="center", va="bottom", color="white", weight="bold", fontsize=9)
 
     for idx in range(len(df)):
         cum = df["cumulative_share_of_leavers_pct"].iloc[idx]
-        ax2.annotate(f"{cum:.1f}%", xy=(x[idx], cum + 2), ha="center", fontsize=8, weight="bold", color=FIGURE_PALETTE["highlight"])
+        ax2.annotate(
+            f"{cum:.1f}%",
+            xy=(x[idx], cum + 4),
+            ha="center",
+            fontsize=8,
+            weight="bold",
+            color=FIGURE_PALETTE["highlight"],
+            bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="#CBD5E1", alpha=0.9, linewidth=0.6),
+        )
 
     ax1.set_xticks(x)
-    ax1.set_xticklabels([textwrap.fill(s, 14) for s in df["segment"]], rotation=25, ha="right", fontsize=8.5)
+    ax1.set_xticklabels([textwrap.fill(s, 11) for s in df["segment"]], rotation=45, ha="right", fontsize=8.0)
     ax1.set_ylabel("Leavers Count", fontsize=10, weight="bold", color=FIGURE_PALETTE["primary"])
     ax2.set_ylabel("Cumulative Share of Total Leavers (%)", fontsize=10, weight="bold", color=FIGURE_PALETTE["highlight"])
-    ax2.set_ylim(0, 110)
+    ax2.set_ylim(0, 115)
 
-    ax1.set_title(f"{spec["title"]}\nTotal leavers = {total_leavers:,}; cumulative percentage of departures across job roles", fontsize=12, weight="bold", pad=12)
+    ax1.set_title(f"{spec["title"]}\nTotal leavers = {total_leavers:,}; cumulative percentage of departures across job roles", fontsize=11, weight="bold", pad=12)
     ax1.grid(axis="y", linestyle=":", alpha=0.5)
 
-    _add_footnote(fig, spec["footnote"])
-    plt.tight_layout()
+    _add_footnote(fig, spec["footnote"], y=0.01)
+    plt.tight_layout(rect=[0, 0.16, 1, 0.94])
 
     return fig, df
 
@@ -398,17 +410,18 @@ def plot_fig05_age_sensitivity(
             annot = f"{h:.1f}%\n(n={n_val})"
             if style["annotation"]:
                 annot += f"\n[{style['annotation']}]"
-            ax.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=7.5)
+            ax.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, 1.8), ha="center", va="bottom", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=7.5)
 
         ax.set_xticks(x)
         ax.set_xticklabels(sub["band"], fontsize=8.5)
         ax.set_title(p_title, fontsize=10.5, weight="bold")
         ax.grid(axis="y", linestyle=":", alpha=0.6)
+        ax.set_ylim(0, 48)
 
     axes[0].set_ylabel("% who left", fontsize=10, weight="bold")
-    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=1.02)
+    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=0.97)
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.05, 1, 0.92])
+    plt.tight_layout(rect=[0, 0.05, 1, 0.93])
 
     return fig, ag_sens
 
@@ -461,7 +474,7 @@ def plot_fig06_tenure_sensitivity(
         annot = f"{h:.1f}%\n(n={n_val})"
         if style["annotation"]:
             annot += f"\n[{style['annotation']}]"
-        ax1.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=8)
+        ax1.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, 1.8), ha="center", va="bottom", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=8)
 
     ax1.set_xticks(x1)
     ax1.set_xticklabels(tb_df["segment"], fontsize=9)
@@ -469,6 +482,7 @@ def plot_fig06_tenure_sensitivity(
     ax1.set_title("A. Tenure Band Attrition (Years at Company)", fontsize=11, weight="bold")
     ax1.legend(loc="upper right", fontsize=8.5)
     ax1.grid(axis="y", linestyle=":", alpha=0.6)
+    ax1.set_ylim(0, 48)
 
     # Panel B: Early Tenure Sensitivity (<=1, <=2, <=3)
     et_sub = et_sens[et_sens["band"].str.startswith("<=")].copy().reset_index(drop=True)
@@ -498,7 +512,7 @@ def plot_fig06_tenure_sensitivity(
         annot = f"{h:.1f}%\n(n={n_val})"
         if style["annotation"]:
             annot += f"\n[{style['annotation']}]"
-        ax2.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, h / 2), ha="center", va="center", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=8.5)
+        ax2.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, 1.8), ha="center", va="bottom", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=8.5)
 
     ax2.set_xticks(x2)
     ax2.set_xticklabels([f"Years <= {b.replace('<= ', '')}" for b in et_sub["band"]], fontsize=9)
@@ -506,10 +520,11 @@ def plot_fig06_tenure_sensitivity(
     ax2.set_title("B. Early Tenure Threshold Sensitivity", fontsize=11, weight="bold")
     ax2.legend(loc="upper right", fontsize=8.5)
     ax2.grid(axis="y", linestyle=":", alpha=0.6)
+    ax2.set_ylim(0, 48)
 
-    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=1.02)
+    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=0.97)
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.05, 1, 0.92])
+    plt.tight_layout(rect=[0, 0.05, 1, 0.93])
 
     plotted_df = pd.concat([tb_df, et_sens], ignore_index=True)
     return fig, plotted_df
@@ -646,9 +661,9 @@ def plot_fig07_promotion_gap_cohort(
     ax3.legend(loc="upper right", fontsize=8)
     ax3.grid(axis="y", linestyle=":", alpha=0.6)
 
-    fig.suptitle(f"{spec["title"]}\nWhiskers are 95% Wilson intervals; cohort baseline {cohort_baseline_rate:.1f}% (n = {total_cohort_n:,})\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=1.02)
+    fig.suptitle(f"{spec["title"]}\nWhiskers are 95% Wilson intervals; cohort baseline {cohort_baseline_rate:.1f}% (n = {total_cohort_n:,})\n{_get_colour_key(baseline_rate, custom_baseline_str=f'panel A baseline {baseline_rate:.1f}%, panels B and C baseline {cohort_baseline_rate:.1f}%')}", fontsize=11, weight="bold", y=0.97)
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.05, 1, 0.92])
+    plt.tight_layout(rect=[0, 0.05, 1, 0.93])
 
     plotted_df = pd.concat([sbs_df, pg_sens], ignore_index=True)
     return fig, plotted_df
@@ -718,9 +733,9 @@ def plot_fig08_workload_mobility(
         ax.grid(axis="y", linestyle=":", alpha=0.6)
 
     axes[0].set_ylabel("% who left", fontsize=10, weight="bold")
-    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=1.02)
+    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=0.97)
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.06, 1, 0.92])
+    plt.tight_layout(rect=[0, 0.06, 1, 0.93])
 
     plotted_df = pd.concat([ot_df, bt_df, db_df, db_sens], ignore_index=True)
     return fig, plotted_df
@@ -791,9 +806,9 @@ def plot_fig09_satisfaction_small_multiples(
         ax.grid(axis="y", linestyle=":", alpha=0.6)
 
     axes[0].set_ylabel("% who left", fontsize=10, weight="bold")
-    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals; 4-point rating scales\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=1.02)
+    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals; 4-point rating scales\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=0.97)
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.06, 1, 0.92])
+    plt.tight_layout(rect=[0, 0.06, 1, 0.93])
 
     plotted_df = pd.concat([wlb, js, es, rs, ji], ignore_index=True)
     return fig, plotted_df
@@ -882,10 +897,11 @@ def plot_fig10_overtime_interactions(
 
     plt.subplots_adjust(top=0.86, bottom=0.24, wspace=0.25)
     cbar_ax = fig.add_axes([0.25, 0.12, 0.50, 0.035])
-    fig.colorbar(im, cax=cbar_ax, orientation="horizontal", label="% who left")
+    cbar = fig.colorbar(im, cax=cbar_ax, orientation="horizontal")
+    cbar.ax.set_title("% who left", fontsize=9, weight="bold", pad=4)
 
     fig.suptitle(f"{spec["title"]}\nn annotated per cell; cells with n < 30 greyed out and hatched", fontsize=11, weight="bold", y=0.97)
-    _add_footnote(fig, spec["footnote"], y=0.01)
+    _add_footnote(fig, spec["footnote"], y=0.015)
 
     plotted_df = pd.concat([tw_jl, tw_ag, tw_tb], ignore_index=True)
     return fig, plotted_df
@@ -906,7 +922,7 @@ def plot_fig11_hotspot_candidates(
     if "low_n_flag" not in hc_df.columns:
         hc_df["low_n_flag"] = hc_df["n"] < 30
 
-    fig, ax = plt.subplots(figsize=(11, 7), dpi=FIGURE_DPI)
+    fig, ax = plt.subplots(figsize=(11.5, 7.5), dpi=FIGURE_DPI)
 
     y = np.arange(len(hc_df))
     rates = hc_df["attrition_rate_pct"].values
@@ -939,13 +955,14 @@ def plot_fig11_hotspot_candidates(
     ax.set_yticks(y)
     ax.set_yticklabels(labels, fontsize=8)
     ax.set_xlabel("% who left", fontsize=10, weight="bold")
-    ax.set_title(f"{spec["title"]}\n{cand_count} candidates; {spec["subtitle"]}", fontsize=10.0, weight="bold", pad=12)
-    ax.legend(loc="lower right", fontsize=8.5)
+    ax.set_title(f"{spec["title"]} ({cand_count} candidates)\n{spec["subtitle"]}", fontsize=7.8, weight="bold", pad=12)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.11), ncol=2, fontsize=8.5, frameon=True)
     ax.grid(axis="x", linestyle=":", alpha=0.6)
-    ax.set_xlim(0, max(hc_df["ci95_high_pct"]) + 14)
+    ax.set_xlim(0, 105)
+    ax.set_xticks(range(0, 101, 20))
 
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.04, 1, 0.95])
+    plt.tight_layout(rect=[0, 0.10, 1, 0.95])
 
     return fig, hc_df
 
@@ -981,7 +998,12 @@ def plot_fig12_hotspot_overlap(
     if "low_n_flag" not in overlap_df.columns:
         overlap_df["low_n_flag"] = False
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6), dpi=FIGURE_DPI, gridspec_kw={"width_ratios": [1.4, 1]})
+    fig = plt.figure(figsize=(14, 7.8), dpi=FIGURE_DPI)
+    gs = fig.add_gridspec(2, 2, height_ratios=[1.8, 0.65], width_ratios=[1.3, 1], hspace=0.35, wspace=0.25, top=0.85, bottom=0.06)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax_key = fig.add_subplot(gs[1, :])
+    ax_key.axis("off")
 
     # Panel 1: Overlap Jaccard Similarity Matrix
     candidates = list(candidates_df["subgroup"])
@@ -1004,7 +1026,7 @@ def plot_fig12_hotspot_overlap(
     ax1.set_xticks(np.arange(n_cands))
     ax1.set_yticks(np.arange(n_cands))
     ax1.set_xticklabels([f"C{i+1}" for i in range(n_cands)], fontsize=8)
-    ax1.set_yticklabels([f"C{i+1}: {textwrap.fill(c, width=24, break_long_words=False)}" for i, c in enumerate(candidates)], fontsize=7)
+    ax1.set_yticklabels([f"C{i+1}" for i in range(n_cands)], fontsize=8)
     ax1.set_title("A. Pairwise Overlap Jaccard Similarity", fontsize=10.5, weight="bold")
     fig.colorbar(im, ax=ax1, fraction=0.046, pad=0.04, label="Jaccard Similarity")
 
@@ -1030,11 +1052,16 @@ def plot_fig12_hotspot_overlap(
     ax2.set_title("B. Candidate Union Representation", fontsize=10.5, weight="bold")
     ax2.legend(loc="upper right", fontsize=8.5)
     ax2.grid(axis="y", linestyle=":", alpha=0.6)
-    ax2.set_ylim(0, max(inside_vals[0], outside_vals[0]) * 1.15)
+    ax2.set_ylim(0, max(inside_vals[0], outside_vals[0]) * 1.12)
 
-    fig.suptitle(f"{spec["title"]}\n{n_cands} candidate subgroups; {union_n} distinct employees in union ({union_pct_wf:.1f}% of workforce, {union_pct_lv:.1f}% of leavers)", fontsize=12, weight="bold", y=1.02)
+    # Key list below figure
+    col1_text = "Hotspot Candidate Definitions:\n" + "\n".join([f"C{i+1}: {candidates[i]}" for i in range(8)])
+    col2_text = "\n" + "\n".join([f"C{i+1}: {candidates[i]}" for i in range(8, 16)])
+    ax_key.text(0.02, 0.95, col1_text, va="top", ha="left", fontsize=7.5, fontfamily="sans-serif")
+    ax_key.text(0.52, 0.95, col2_text, va="top", ha="left", fontsize=7.5, fontfamily="sans-serif")
+
+    fig.suptitle(f"{spec["title"]}\n{n_cands} candidate subgroups; {union_n} distinct employees in union ({union_pct_wf:.1f}% of workforce, {union_pct_lv:.1f}% of leavers)", fontsize=11, weight="bold", y=0.97)
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.04, 1, 0.95])
 
     return fig, overlap_df
 
@@ -1083,30 +1110,28 @@ def plot_fig13_numeric_distributions(
                 capsize=6,
                 markersize=8,
             )
-            ha_val = "right" if idx == 0 else "left"
-            offset_x = -12 if idx == 0 else 12
             ax.annotate(
                 f"Median: {medians[idx]:.0f}\nIQR: [{medians[idx]-err_low[idx]:.0f}, {medians[idx]+err_high[idx]:.0f}]",
                 xy=(idx, medians[idx]),
-                xytext=(offset_x, 0),
+                xytext=(10, 0),
                 textcoords="offset points",
-                ha=ha_val,
+                ha="left",
                 va="center",
                 fontsize=7.5,
                 weight="bold",
                 bbox=dict(boxstyle="round,pad=0.25", facecolor="white", edgecolor="#D1D5DB", alpha=0.9, linewidth=0.6),
             )
 
-        ax.set_xlim(-0.7, 1.7)
+        ax.set_xlim(-0.5, 2.0)
         ax.set_xticks([0, 1])
         ax.set_xticklabels(outcomes, fontsize=8.5)
         ax.set_title(metric, fontsize=10.5, weight="bold")
         ax.grid(axis="y", linestyle=":", alpha=0.6)
 
     axes[0].set_ylabel("Metric Value (Median & IQR)", fontsize=10, weight="bold")
-    fig.suptitle(f"{spec["title"]}\nn = {total_n:,} (Retained: {n_retained:,}, Left: {n_left:,}); points show medians, bars show IQR", fontsize=12, weight="bold", y=1.02)
-    plt.tight_layout(rect=[0, 0.08, 1, 0.93])
+    fig.suptitle(f"{spec["title"]}\nn = {total_n:,} (Retained: {n_retained:,}, Left: {n_left:,}); points show medians, bars show IQR", fontsize=11, weight="bold", y=0.97)
     _add_footnote(fig, spec["footnote"], y=0.01)
+    plt.tight_layout(rect=[0, 0.08, 1, 0.93])
 
     return fig, df
 
@@ -1178,24 +1203,35 @@ def plot_fig14_demographics_background(
             annot = f"{h:.1f}%\n(n={n_val})"
             if style["annotation"]:
                 annot += f"\n[{style['annotation']}]"
-
-            ax.annotate(
-                annot,
-                xy=(rect.get_x() + rect.get_width() / 2, 1.8),
-                ha="center",
-                va="bottom",
-                color="white" if not style["hatch"] else "#111827",
-                weight="bold",
-                fontsize=7.5,
-            )
+                ax.annotate(
+                    annot,
+                    xy=(rect.get_x() + rect.get_width() / 2, data["ci95_high_pct"].iloc[idx] + 2.0),
+                    ha="center",
+                    va="bottom",
+                    color="#111827",
+                    weight="bold",
+                    fontsize=7.5,
+                    bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="#D1D5DB", alpha=0.9, linewidth=0.6),
+                )
+            else:
+                ax.annotate(
+                    annot,
+                    xy=(rect.get_x() + rect.get_width() / 2, 1.8),
+                    ha="center",
+                    va="bottom",
+                    color="white",
+                    weight="bold",
+                    fontsize=7.5,
+                )
 
         ax.set_xticks(x)
         ax.set_xticklabels([textwrap.fill(str(s), width=11, break_long_words=False) for s in data[col_lbl]], fontsize=8)
         ax.set_ylabel("% who left", fontsize=8.5, weight="bold")
-        ax.set_title(panel_title, fontsize=9.0, weight="bold")
+        ax.set_title(panel_title, fontsize=8.5, weight="bold")
         ax.grid(axis="y", linestyle=":", alpha=0.6)
+        ax.set_ylim(0, max(data["ci95_high_pct"]) + 14)
 
-    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=1.01)
+    fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=0.98)
     _add_footnote(fig, spec["footnote"], y=0.01)
     plt.tight_layout(rect=[0, 0.06, 1, 0.93])
 
