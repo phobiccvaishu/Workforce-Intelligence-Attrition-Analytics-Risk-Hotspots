@@ -35,7 +35,6 @@ from workforce_intel.features import (
     derive_role_tenure_band,
     derive_role_tenure_share,
     derive_promotion_analysis_cohort,
-    derive_stagnation_cohort,
     derive_tenure_band,
 )
 from workforce_intel.validation import (

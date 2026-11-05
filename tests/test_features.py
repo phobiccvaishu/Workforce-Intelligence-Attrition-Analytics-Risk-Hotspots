@@ -27,7 +27,6 @@ from workforce_intel.features import (
     derive_promotion_gap_share,
     derive_role_tenure_band,
     derive_role_tenure_share,
-    derive_stagnation_cohort,
     derive_tenure_band,
 )
 

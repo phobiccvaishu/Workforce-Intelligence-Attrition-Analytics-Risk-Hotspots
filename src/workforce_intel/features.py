@@ -366,7 +366,6 @@ def derive_promotion_analysis_cohort(
 
 
 # Backward compatibility alias
-derive_stagnation_cohort = derive_promotion_analysis_cohort
 
 
 def derive_outstanding_rating(performance_rating: pd.Series) -> pd.Series:

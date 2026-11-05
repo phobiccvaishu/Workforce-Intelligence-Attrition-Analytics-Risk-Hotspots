@@ -225,11 +225,37 @@ def build_findings(
                 # Confounding note
                 confounding = ""
                 if dim == "PromotionGapBand":
-                    confounding = "Promotion gap progression is confounded by tenure in pooled workforce; isolated within PromotionAnalysisCohort (YearsAtCompany >= 5)."
+                    confounding = "Tenure conditioning caveat: pooled table does not condition on YearsAtCompany; evaluated within PromotionAnalysisCohort (YearsAtCompany >= 5)."
                 elif dim == "OverTime":
-                    confounding = "OverTime leaver rates remain elevated across job levels, with highest rates in early career (Job Level 1)."
+                    tw_jl = tables.get("two_way_overtime_x_joblevel.csv")
+                    if tw_jl is None:
+                        tw_jl = tables.get("two_way_overtime_x_joblevel")
+                    if tw_jl is not None and "JobLevel" in tw_jl.columns:
+                        higher_levels = []
+                        for jl_val in sorted(tw_jl["JobLevel"].unique()):
+                            sub_yes = tw_jl[(tw_jl["JobLevel"] == jl_val) & (tw_jl["OverTime"] == "Yes")]
+                            sub_no = tw_jl[(tw_jl["JobLevel"] == jl_val) & (tw_jl["OverTime"] == "No")]
+                            if len(sub_yes) > 0 and len(sub_no) > 0:
+                                n_yes = int(sub_yes["n"].iloc[0])
+                                n_no = int(sub_no["n"].iloc[0])
+                                rate_yes = float(sub_yes["attrition_rate_pct"].iloc[0])
+                                rate_no = float(sub_no["attrition_rate_pct"].iloc[0])
+                                if n_yes >= min_n and n_no >= min_n and rate_yes > rate_no:
+                                    higher_levels.append(str(int(jl_val)))
+                        if higher_levels:
+                            levels_str = ", ".join(higher_levels)
+                            if seg_val == "Yes":
+                                confounding = f"OverTime rate exceeds non-overtime rate at job levels {levels_str} (both n >= {min_n})."
+                            elif seg_val == "No":
+                                confounding = f"Non-overtime rate is lower than overtime rate at job levels {levels_str} (both n >= {min_n})."
+                            else:
+                                confounding = f"Rate differs between overtime and non-overtime across job levels {levels_str} (both n >= {min_n})."
+                        else:
+                            confounding = "Workload interaction caveat: stratified by JobLevel in two-way evaluation (FIG-10)."
+                    else:
+                        confounding = "Workload interaction caveat: stratified by JobLevel in two-way evaluation (FIG-10)."
                 elif dim in ["TenureBand", "EarlyTenure", "AgeGroup"]:
-                    confounding = "Tenure and age bands share substantial overlap; early tenure and younger age cohorts both exhibit elevated attrition."
+                    confounding = "Collinearity caveat: company tenure, career stage, and employee age exhibit structural correlation."
 
                 protected_note = (
                     "Protected demographic attribute; descriptive only, not for individual scoring."
@@ -488,7 +514,8 @@ def render_register_markdown(
     lines.append(f"- **Subgroups Flagged Above Baseline:** {summary['segments_flagged_above']}")
     lines.append(f"- **Subgroups Flagged Below Baseline:** {summary['segments_flagged_below']}")
     lines.append(f"- **Dimensions with Zero Flagged Segments:** {summary['dimensions_no_separation_count']} ({', '.join(summary['dimensions_no_separation'])})")
-    lines.append(f"- **Rough Count Expected by Chance Alone:** {summary['expected_chance_flags']} (stated as: flags are not statistical tests)")
+    lines.append(f"- **Rough Count Expected by Random Variation Alone:** {summary['expected_chance_flags']} (0.05 x {summary['segments_evaluated_min_n']} segments evaluated)")
+    lines.append(f"- **Interpretation Caveat:** Subgroup flags represent descriptive interval comparisons against baseline, not formal statistical hypothesis tests.")
     lines.append(f"- **Chance Comparison Statement:** {total_flagged} segments flagged against roughly {summary['expected_chance_flags']} expected by chance alone.")
     lines.append("")
     lines.append("---")

@@ -21,7 +21,8 @@
 - **Subgroups Flagged Above Baseline:** 26
 - **Subgroups Flagged Below Baseline:** 26
 - **Dimensions with Zero Flagged Segments:** 4 (Gender, Education, HasPriorExperience, PerformanceRating)
-- **Rough Count Expected by Chance Alone:** 5.8 (stated as: flags are not statistical tests)
+- **Rough Count Expected by Random Variation Alone:** 5.8 (0.05 x 115 segments evaluated)
+- **Interpretation Caveat:** Subgroup flags represent descriptive interval comparisons against baseline, not formal statistical hypothesis tests.
 - **Chance Comparison Statement:** 52 segments flagged against roughly 5.8 expected by chance alone.
 
 ---
@@ -55,9 +56,9 @@ Across 58 scanned two-way interaction cells, exactly 16 subgroups met the pre-sp
 | `FIND-09` | JobLevel | 2 | 534 | 52 | 9.7% | [7.5%, 12.5%] | 16.1% | `below baseline` | not assessed | `FIG-10` | None |
 | `FIND-10` | JobLevel | 4 | 106 | 5 | 4.7% | [2.0%, 10.6%] | 16.1% | `below baseline` | not assessed | `FIG-10` | None |
 | `FIND-11` | JobLevel | 5 | 69 | 5 | 7.2% | [3.1%, 15.9%] | 16.1% | `below baseline` | not assessed | `FIG-10` | None |
-| `FIND-12` | AgeGroup | 18-25 | 123 | 44 | 35.8% | [27.9%, 44.6%] | 16.1% | `above baseline` | same across cut points | `FIG-05` | Protected demographic attribute; descriptive only, not for individual scoring. Tenure and age bands share substantial overlap; early tenure and younger age cohorts both exhibit elevated attrition. |
-| `FIND-13` | AgeGroup | 26-35 | 606 | 116 | 19.1% | [16.2%, 22.5%] | 16.1% | `above baseline` | not assessed | `FIG-05` | Protected demographic attribute; descriptive only, not for individual scoring. Tenure and age bands share substantial overlap; early tenure and younger age cohorts both exhibit elevated attrition. |
-| `FIND-14` | AgeGroup | 36-45 | 468 | 43 | 9.2% | [6.9%, 12.1%] | 16.1% | `below baseline` | not assessed | `FIG-05` | Protected demographic attribute; descriptive only, not for individual scoring. Tenure and age bands share substantial overlap; early tenure and younger age cohorts both exhibit elevated attrition. |
+| `FIND-12` | AgeGroup | 18-25 | 123 | 44 | 35.8% | [27.9%, 44.6%] | 16.1% | `above baseline` | same across cut points | `FIG-05` | Protected demographic attribute; descriptive only, not for individual scoring. Collinearity caveat: company tenure, career stage, and employee age exhibit structural correlation. |
+| `FIND-13` | AgeGroup | 26-35 | 606 | 116 | 19.1% | [16.2%, 22.5%] | 16.1% | `above baseline` | not assessed | `FIG-05` | Protected demographic attribute; descriptive only, not for individual scoring. Collinearity caveat: company tenure, career stage, and employee age exhibit structural correlation. |
+| `FIND-14` | AgeGroup | 36-45 | 468 | 43 | 9.2% | [6.9%, 12.1%] | 16.1% | `below baseline` | not assessed | `FIG-05` | Protected demographic attribute; descriptive only, not for individual scoring. Collinearity caveat: company tenure, career stage, and employee age exhibit structural correlation. |
 | `FIND-15` | Gender | None (all segments within baseline interval) | 1470 | 237 | - | - | 16.1% | `no separation` | not assessed | `FIG-14` | Protected demographic attribute; descriptive only, not for individual scoring. |
 | `FIND-16` | MaritalStatus | Divorced | 327 | 33 | 10.1% | [7.3%, 13.8%] | 16.1% | `below baseline` | not assessed | `FIG-14` | Protected demographic attribute; descriptive only, not for individual scoring. |
 | `FIND-17` | MaritalStatus | Married | 673 | 84 | 12.5% | [10.2%, 15.2%] | 16.1% | `below baseline` | not assessed | `FIG-14` | Protected demographic attribute; descriptive only, not for individual scoring. |
@@ -65,11 +66,11 @@ Across 58 scanned two-way interaction cells, exactly 16 subgroups met the pre-sp
 | `FIND-19` | Education | None (all segments within baseline interval) | 1470 | 237 | - | - | 16.1% | `no separation` | not assessed | `FIG-14` | None |
 | `FIND-20` | EducationField | Marketing | 159 | 35 | 22.0% | [16.3%, 29.1%] | 16.1% | `above baseline` | not assessed | `FIG-14` | None |
 | `FIND-21` | EducationField | Technical Degree | 132 | 32 | 24.2% | [17.7%, 32.2%] | 16.1% | `above baseline` | not assessed | `FIG-14` | None |
-| `FIND-22` | TenureBand | 0-1 | 215 | 75 | 34.9% | [28.8%, 41.5%] | 16.1% | `above baseline` | same across cut points | `FIG-06` | Tenure and age bands share substantial overlap; early tenure and younger age cohorts both exhibit elevated attrition. |
-| `FIND-23` | TenureBand | 6-10 | 448 | 55 | 12.3% | [9.6%, 15.6%] | 16.1% | `below baseline` | not assessed | `FIG-06` | Tenure and age bands share substantial overlap; early tenure and younger age cohorts both exhibit elevated attrition. |
-| `FIND-24` | TenureBand | 11+ | 246 | 20 | 8.1% | [5.3%, 12.2%] | 16.1% | `below baseline` | not assessed | `FIG-06` | Tenure and age bands share substantial overlap; early tenure and younger age cohorts both exhibit elevated attrition. |
-| `FIND-25` | EarlyTenure | 0 | 1255 | 162 | 12.9% | [11.2%, 14.9%] | 16.1% | `below baseline` | not assessed | `FIG-06` | Tenure and age bands share substantial overlap; early tenure and younger age cohorts both exhibit elevated attrition. |
-| `FIND-26` | EarlyTenure | 1 | 215 | 75 | 34.9% | [28.8%, 41.5%] | 16.1% | `above baseline` | same across cut points | `FIG-06` | Tenure and age bands share substantial overlap; early tenure and younger age cohorts both exhibit elevated attrition. |
+| `FIND-22` | TenureBand | 0-1 | 215 | 75 | 34.9% | [28.8%, 41.5%] | 16.1% | `above baseline` | same across cut points | `FIG-06` | Collinearity caveat: company tenure, career stage, and employee age exhibit structural correlation. |
+| `FIND-23` | TenureBand | 6-10 | 448 | 55 | 12.3% | [9.6%, 15.6%] | 16.1% | `below baseline` | not assessed | `FIG-06` | Collinearity caveat: company tenure, career stage, and employee age exhibit structural correlation. |
+| `FIND-24` | TenureBand | 11+ | 246 | 20 | 8.1% | [5.3%, 12.2%] | 16.1% | `below baseline` | not assessed | `FIG-06` | Collinearity caveat: company tenure, career stage, and employee age exhibit structural correlation. |
+| `FIND-25` | EarlyTenure | 0 | 1255 | 162 | 12.9% | [11.2%, 14.9%] | 16.1% | `below baseline` | not assessed | `FIG-06` | Collinearity caveat: company tenure, career stage, and employee age exhibit structural correlation. |
+| `FIND-26` | EarlyTenure | 1 | 215 | 75 | 34.9% | [28.8%, 41.5%] | 16.1% | `above baseline` | same across cut points | `FIG-06` | Collinearity caveat: company tenure, career stage, and employee age exhibit structural correlation. |
 | `FIND-27` | CareerStage | 0-5 | 316 | 91 | 28.8% | [24.1%, 34.0%] | 16.1% | `above baseline` | not assessed | `FIG-06` | None |
 | `FIND-28` | CareerStage | 11-20 | 340 | 39 | 11.5% | [8.5%, 15.3%] | 16.1% | `below baseline` | not assessed | `FIG-06` | None |
 | `FIND-29` | CareerStage | 21+ | 207 | 16 | 7.7% | [4.8%, 12.2%] | 16.1% | `below baseline` | not assessed | `FIG-06` | None |
@@ -78,13 +79,13 @@ Across 58 scanned two-way interaction cells, exactly 16 subgroups met the pre-sp
 | `FIND-32` | RoleTenureBand | 8+ | 263 | 20 | 7.6% | [5.0%, 11.5%] | 16.1% | `below baseline` | not assessed | `FIG-06` | None |
 | `FIND-33` | ManagerTenureBand | 0-1 | 339 | 96 | 28.3% | [23.8%, 33.3%] | 16.1% | `above baseline` | not assessed | `FIG-06` | None |
 | `FIND-34` | ManagerTenureBand | 8+ | 271 | 22 | 8.1% | [5.4%, 12.0%] | 16.1% | `below baseline` | not assessed | `FIG-06` | None |
-| `FIND-35` | PromotionGapBand | 3-5 | 158 | 16 | 10.1% | [6.3%, 15.8%] | 16.1% | `below baseline` | not assessed | `FIG-07` | Promotion gap progression is confounded by tenure in pooled workforce; isolated within PromotionAnalysisCohort (YearsAtCompany >= 5). |
+| `FIND-35` | PromotionGapBand | 3-5 | 158 | 16 | 10.1% | [6.3%, 15.8%] | 16.1% | `below baseline` | not assessed | `FIG-07` | Tenure conditioning caveat: pooled table does not condition on YearsAtCompany; evaluated within PromotionAnalysisCohort (YearsAtCompany >= 5). |
 | `FIND-36` | PromotionGapEqualsTenure | 1 | 135 | 33 | 24.4% | [18.0%, 32.3%] | 16.1% | `above baseline` | not assessed | `FIG-07` | None |
 | `FIND-37` | HasPriorExperience | None (all segments within baseline interval) | 1470 | 237 | - | - | 16.1% | `no separation` | not assessed | `FIG-14` | None |
 | `FIND-38` | NumCompaniesWorked | 3 | 159 | 16 | 10.1% | [6.3%, 15.7%] | 16.1% | `below baseline` | not assessed | `FIG-06` | None |
 | `FIND-39` | NumCompaniesWorked | 5 | 63 | 16 | 25.4% | [16.3%, 37.3%] | 16.1% | `above baseline` | not assessed | `FIG-06` | None |
-| `FIND-40` | OverTime | No | 1054 | 110 | 10.4% | [8.7%, 12.4%] | 16.1% | `below baseline` | not assessed | `FIG-08` | OverTime leaver rates remain elevated across job levels, with highest rates in early career (Job Level 1). |
-| `FIND-41` | OverTime | Yes | 416 | 127 | 30.5% | [26.3%, 35.1%] | 16.1% | `above baseline` | not assessed | `FIG-08` | OverTime leaver rates remain elevated across job levels, with highest rates in early career (Job Level 1). |
+| `FIND-40` | OverTime | No | 1054 | 110 | 10.4% | [8.7%, 12.4%] | 16.1% | `below baseline` | not assessed | `FIG-08` | Non-overtime rate is lower than overtime rate at job levels 1, 2, 3, 4 (both n >= 30). |
+| `FIND-41` | OverTime | Yes | 416 | 127 | 30.5% | [26.3%, 35.1%] | 16.1% | `above baseline` | not assessed | `FIG-08` | OverTime rate exceeds non-overtime rate at job levels 1, 2, 3, 4 (both n >= 30). |
 | `FIND-42` | BusinessTravel | Non-Travel | 150 | 12 | 8.0% | [4.6%, 13.5%] | 16.1% | `below baseline` | not assessed | `FIG-08` | None |
 | `FIND-43` | BusinessTravel | Travel_Frequently | 277 | 69 | 24.9% | [20.2%, 30.3%] | 16.1% | `above baseline` | not assessed | `FIG-08` | None |
 | `FIND-44` | DistanceBand | 21-29 | 204 | 45 | 22.1% | [16.9%, 28.2%] | 16.1% | `above baseline` | same across cut points | `FIG-08` | None |

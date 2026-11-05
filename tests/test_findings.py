@@ -261,3 +261,16 @@ def test_findings_provenance_synthetic_data():
     ]
     for seg in real_segment_names:
         assert seg not in syn_md, f"Real segment name '{seg}' leaked into synthetic markdown render."
+
+    # (c) Sentence-level non-numeric finding phrase cross-check
+    # Real finding-specific phrases describing real segments or rate comparisons must not appear in synthetic render
+    real_finding_phrases = [
+        "OverTime rate exceeds non-overtime rate at job levels 1, 2, 3, 4",
+        "Non-overtime rate is lower than overtime rate at job levels 1, 2, 3, 4",
+        "| MaritalStatus | Single |",
+        "| EducationField | Technical Degree |",
+        "| JobRole | Sales Representative |",
+        "| JobRole | Laboratory Technician |",
+    ]
+    for phrase in real_finding_phrases:
+        assert phrase not in syn_md, f"Real finding phrase '{phrase}' leaked into synthetic markdown render."
