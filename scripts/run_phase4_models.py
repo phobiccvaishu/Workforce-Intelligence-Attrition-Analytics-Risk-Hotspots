@@ -460,10 +460,10 @@ def main() -> None:
             "notes": f"Set A ({br_lr_a_pt:.4f}) vs Set B ({br_lr_pt:.4f})",
         },
         {
-            "comparison": "15-Fold CV: LR (Set A - Set B)",
+            "comparison": "3x5 repeated CV (15 resamples): LR (Set A - Set B)",
             "metric": "PR-AUC",
             "point_diff": float(mean_cv_diff),
-            "bootstrap_mean_diff": float(mean_cv_diff),
+            "bootstrap_mean_diff": np.nan,
             "ci95_low": float(nb_ci_low),
             "ci95_high": float(nb_ci_high),
             "ci_includes_zero": bool(nb_ci_low <= 0.0 <= nb_ci_high),
