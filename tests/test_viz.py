@@ -262,6 +262,27 @@ def test_color_coded_figures_agree_with_findings_flags(loaded_tables):
                 assert fc == FIGURE_PALETTE["primary"].lower()
     plt.close(fig)
 
+    # 4. FIG-03: Funnel Plot markers match FIG-02 bar colors
+    fig_f2, df_f2 = viz.plot_fig02_jobrole_attrition(loaded_tables)
+    fig_f3, df_f3 = viz.plot_fig03_funnel_plot(loaded_tables)
+    ax_f2 = fig_f2.axes[0]
+    ax_f3 = fig_f3.axes[0]
+
+    f2_colors = {}
+    for patch, role in zip(ax_f2.patches, df_f2["segment"]):
+        f2_colors[role] = mcolors.to_hex(patch.get_facecolor()[:3]).lower()
+
+    plot_df_f3 = df_f3[df_f3["dimension"] == "JobRole"].sort_values("attrition_rate_pct", ascending=False).reset_index(drop=True)
+    f3_collections = [c for c in ax_f3.collections if isinstance(c, plt.matplotlib.collections.PathCollection)]
+    assert len(f3_collections) == len(plot_df_f3), f"Expected {len(plot_df_f3)} scatter collections, got {len(f3_collections)}"
+
+    for coll, role in zip(f3_collections, plot_df_f3["segment"]):
+        sc_col = mcolors.to_hex(coll.get_facecolors()[0][:3]).lower()
+        assert sc_col == f2_colors[role], f"FIG-03 marker color {sc_col} does not match FIG-02 bar color {f2_colors[role]} for {role}"
+
+    plt.close(fig_f2)
+    plt.close(fig_f3)
+
 
 def test_figures_with_whiskers_in_subtitle_have_errorbars(loaded_tables):
     """Verify that any figure whose title or subtitle mentions whiskers draws errorbar artists."""

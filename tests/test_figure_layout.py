@@ -4,7 +4,11 @@ Validates that all 14 figures satisfy presentation invariants:
 (a) every text bounding box is within the figure boundary;
 (b) no two text bounding boxes overlap;
 (c) legend bounding boxes overlap no text artists;
-(d) rate/sample-size annotations intersect neither errorbar segments nor baseline lines.
+(d) rate/sample-size annotations intersect neither errorbar segments nor baseline lines;
+(e) whisker endpoints are inside axes ylim/xlim (no clipping);
+(f) legend bounding boxes overlap no errorbar whisker segments;
+(g) text annotations do not leave their own axes bounds;
+(h) light/white text is backed by a dark patch.
 Also validates that every baseline value stated in a colour key equals an axhline/axvline value drawn in that figure.
 """
 
@@ -12,6 +16,7 @@ import re
 from typing import Dict, List, Tuple
 import matplotlib
 matplotlib.use("Agg")
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -59,6 +64,15 @@ def line_intersects_box(p1: np.ndarray, p2: np.ndarray, box: Bbox) -> bool:
         return True
 
     return False
+
+
+def _luminance(color) -> float:
+    """Return perceptual luminance of a colour (0=black, 1=white)."""
+    try:
+        rgba = mcolors.to_rgba(color)
+        return 0.2126 * rgba[0] + 0.7152 * rgba[1] + 0.0722 * rgba[2]
+    except Exception:
+        return 0.5
 
 
 def collect_figure_layout_violations(fig: plt.Figure, fid: str) -> List[str]:
@@ -121,7 +135,6 @@ def collect_figure_layout_violations(fig: plt.Figure, fid: str) -> List[str]:
                 texts.append((at, f"ax[{ax_idx}]_annot", at.get_text().strip().replace("\n", " ")[:25]))
 
     # (a) Check every text bbox is inside figure bbox
-    # Allow 1.5px tolerance for border rounding
     tol = 1.5
     for t_obj, kind, label in texts:
         bb = t_obj.get_window_extent(renderer)
@@ -154,38 +167,108 @@ def collect_figure_layout_violations(fig: plt.Figure, fid: str) -> List[str]:
                         violations.append(f"{fid} [LEGEND_OVERLAP]: {leg_name} overlaps {kind} '{label}' area={ox*oy:.1f}px^2")
 
     # (d) Rate/n annotations intersect no errorbar segment and no baseline line
+    # (e) Whisker endpoints inside axes limits (not clipped)
+    # (f) Legend does not overlap whisker segments
+    # (g) Annotations do not leave their own axes bounds
+    # (h) Light text is backed by a dark patch
     for ax_idx, ax in enumerate(fig.axes):
-        # Baseline dashed lines
+        ax_bb = ax.get_window_extent(renderer)
         baseline_lines = [l for l in ax.lines if l.get_linestyle() == "--"]
 
-        # Collect errorbar segments in display coordinates
-        err_segments: List[np.ndarray] = []
+        # Collect errorbar segments in display coordinates and raw data coordinates
+        err_segments_disp: List[np.ndarray] = []
+        raw_segments_data: List[np.ndarray] = []
+
         for c in ax.containers:
             eb = getattr(c, "errorbar", None)
-            target = eb if eb is not None else (c if hasattr(c, "lines") and len(getattr(c, "lines", [])) > 1 else None)
-            if target is not None:
-                for line in target.lines[1:]:
-                    if hasattr(line, "get_segments"):
-                        for seg in line.get_segments():
-                            err_segments.append(ax.transData.transform(seg))
-                    elif hasattr(line, "get_data"):
-                        d = line.get_data()
-                        if len(d[0]) == 2:
-                            pts = np.column_stack(d)
-                            err_segments.append(ax.transData.transform(pts))
+            if eb is None and isinstance(c, plt.matplotlib.container.ErrorbarContainer):
+                eb = c
+            if eb is not None:
+                for item in eb.lines:
+                    items = item if isinstance(item, tuple) else [item]
+                    for sub in items:
+                        if hasattr(sub, "get_segments"):
+                            for seg in sub.get_segments():
+                                raw_segments_data.append(seg)
+                                err_segments_disp.append(ax.transData.transform(seg))
+                        elif hasattr(sub, "get_data"):
+                            d = sub.get_data()
+                            if len(d) == 2 and len(d[0]) == 2:
+                                pts = np.column_stack([d[0], d[1]])
+                                raw_segments_data.append(pts)
+                                err_segments_disp.append(ax.transData.transform(pts))
 
+        # Check whisker clipped outside axes limits
+        ylim = ax.get_ylim()
+        xlim = ax.get_xlim()
+        for seg in raw_segments_data:
+            for pt in seg:
+                x_val, y_val = float(pt[0]), float(pt[1])
+                if x_val < min(xlim) - 1e-3 or x_val > max(xlim) + 1e-3:
+                    violations.append(f"{fid} [WHISKER_CLIPPED]: ax[{ax_idx}] whisker x={x_val:.2f} exceeds xlim [{min(xlim):.2f}, {max(xlim):.2f}]")
+                if y_val < min(ylim) - 1e-3 or y_val > max(ylim) + 1e-3:
+                    violations.append(f"{fid} [WHISKER_CLIPPED]: ax[{ax_idx}] whisker y={y_val:.2f} exceeds ylim [{min(ylim):.2f}, {max(ylim):.2f}]")
+
+        # Check legend overlapping whiskers
+        ax_leg = ax.get_legend()
+        if ax_leg and ax_leg.get_visible():
+            leg_bb = ax_leg.get_window_extent(renderer)
+            for seg in err_segments_disp:
+                if line_intersects_box(seg[0], seg[1], leg_bb):
+                    violations.append(f"{fid} [LEGEND_WHISKER_OVERLAP]: ax[{ax_idx}] legend overlaps errorbar whisker segment")
+                    break
+
+        # Check annotations inside this axis
         for at in ax.texts:
-            if at.get_visible() and ("%" in at.get_text() or "n=" in at.get_text() or "leavers=" in at.get_text() or "l=" in at.get_text()):
-                tb = at.get_window_extent(renderer)
-                txt_lbl = at.get_text().strip().replace("\n", " ")[:20]
+            if not at.get_visible() or not at.get_text().strip() or at in legend_text_objs:
+                continue
+            tb = at.get_window_extent(renderer)
+            txt_lbl = at.get_text().strip().replace("\n", " ")[:20]
 
-                # Intersect errorbar segments
-                for seg in err_segments:
-                    if line_intersects_box(seg[0], seg[1], tb):
-                        violations.append(f"{fid} [WHISKER_INTERSECTION]: ax[{ax_idx}] annotation '{txt_lbl}' intersects errorbar whisker segment")
-                        break
+            # Text leaving axes (skip under-axis text tables deliberately positioned below panel)
+            is_under_axes_table = (at.get_transform() == ax.transAxes and at.get_position()[1] < 0)
+            if not is_under_axes_table:
+                if tb.x0 < ax_bb.x0 - 2.0 or tb.x1 > ax_bb.x1 + 2.0 or tb.y0 < ax_bb.y0 - 2.0 or tb.y1 > ax_bb.y1 + 2.0:
+                    violations.append(f"{fid} [OUTSIDE_AXES]: ax[{ax_idx}] annotation '{txt_lbl}' bbox leaves axes bounds")
 
-                # Intersect baseline lines
+            # Light text on light background
+            col = at.get_color()
+            lum = _luminance(col)
+            if lum > 0.8:
+                cx = (tb.x0 + tb.x1) / 2
+                cy = (tb.y0 + tb.y1) / 2
+                covered = False
+                if len(ax.images) > 0:
+                    # Heatmap cell background provides contrast
+                    covered = True
+                for p in ax.patches:
+                    p_bb = p.get_window_extent(renderer)
+                    if p_bb.contains(cx, cy):
+                        p_lum = _luminance(p.get_facecolor())
+                        if p_lum < 0.5:
+                            covered = True
+                            break
+                for coll in ax.collections:
+                    offsets = coll.get_offsets()
+                    if len(offsets) > 0:
+                        disp_offsets = ax.transData.transform(offsets)
+                        for pt in disp_offsets:
+                            if np.hypot(pt[0] - cx, pt[1] - cy) < 14.0:
+                                fcs = coll.get_facecolors()
+                                if len(fcs) > 0 and _luminance(fcs[0]) < 0.5:
+                                    covered = True
+                                    break
+                if not covered:
+                    violations.append(f"{fid} [INVISIBLE_TEXT]: ax[{ax_idx}] light text '{txt_lbl}' (lum={lum:.2f}) not backed by dark patch")
+
+            # Whisker intersection (whisker through label)
+            for seg in err_segments_disp:
+                if line_intersects_box(seg[0], seg[1], tb):
+                    violations.append(f"{fid} [WHISKER_INTERSECTION]: ax[{ax_idx}] annotation '{txt_lbl}' intersects errorbar whisker segment")
+                    break
+
+            # Baseline intersection (only for rate/n annotations as specified)
+            if "%" in at.get_text() or "n=" in at.get_text() or "leavers=" in at.get_text() or "l=" in at.get_text():
                 for bl in baseline_lines:
                     d = bl.get_data()
                     pts = np.column_stack(d)
@@ -237,6 +320,51 @@ def test_figure_layout_geometry(loaded_tables):
         pytest.fail(msg)
 
 
+def test_all_whiskers_inside_axes(loaded_tables):
+    """Assert every whisker endpoint is inside the axes ylim/xlim."""
+    fig_funcs = [
+        ("FIG-01", viz.plot_fig01_department_overview),
+        ("FIG-02", viz.plot_fig02_jobrole_attrition),
+        ("FIG-03", viz.plot_fig03_funnel_plot),
+        ("FIG-04", viz.plot_fig04_leaver_concentration),
+        ("FIG-05", viz.plot_fig05_age_sensitivity),
+        ("FIG-06", viz.plot_fig06_tenure_sensitivity),
+        ("FIG-07", viz.plot_fig07_promotion_gap_cohort),
+        ("FIG-08", viz.plot_fig08_workload_mobility),
+        ("FIG-09", viz.plot_fig09_satisfaction_small_multiples),
+        ("FIG-10", viz.plot_fig10_overtime_interactions),
+        ("FIG-11", viz.plot_fig11_hotspot_candidates),
+        ("FIG-12", viz.plot_fig12_hotspot_overlap),
+        ("FIG-13", viz.plot_fig13_numeric_distributions),
+        ("FIG-14", viz.plot_fig14_demographics_background),
+    ]
+
+    clipping_violations = []
+    for fid, func in fig_funcs:
+        fig, _ = func(loaded_tables)
+        for ax_idx, ax in enumerate(fig.axes):
+            xlim = ax.get_xlim()
+            ylim = ax.get_ylim()
+            for c in ax.containers:
+                eb = getattr(c, "errorbar", None)
+                if eb is None and isinstance(c, plt.matplotlib.container.ErrorbarContainer):
+                    eb = c
+                if eb is not None:
+                    for item in eb.lines:
+                        items = item if isinstance(item, tuple) else [item]
+                        for sub in items:
+                            if hasattr(sub, "get_segments"):
+                                for seg in sub.get_segments():
+                                    for pt in seg:
+                                        if pt[0] < min(xlim) - 1e-3 or pt[0] > max(xlim) + 1e-3:
+                                            clipping_violations.append(f"{fid} ax[{ax_idx}] whisker x={pt[0]:.2f} outside xlim {xlim}")
+                                        if pt[1] < min(ylim) - 1e-3 or pt[1] > max(ylim) + 1e-3:
+                                            clipping_violations.append(f"{fid} ax[{ax_idx}] whisker y={pt[1]:.2f} outside ylim {ylim}")
+        plt.close(fig)
+
+    assert not clipping_violations, "Found clipped whiskers:\n" + "\n".join(clipping_violations)
+
+
 def test_baseline_values_in_colour_key_match_lines(loaded_tables):
     """Assert every baseline value stated in a figure's colour key equals an axhline or axvline value drawn in that figure."""
     fig_funcs = [
@@ -279,3 +407,72 @@ def test_baseline_values_in_colour_key_match_lines(loaded_tables):
                     f"{fid}: baseline value {val}% in key does not match any axhline/axvline in drawn lines {drawn_lines}"
                 )
         plt.close(fig)
+
+
+# =============================================================================
+# MUTATION TESTS
+# =============================================================================
+
+def test_mutation_whisker_through_label(loaded_tables):
+    """Mutation (a): in-bar label deliberately placed across a whisker."""
+    fig, _ = viz.plot_fig01_department_overview(loaded_tables)
+    ax = fig.axes[0]
+    # Bar 0 is Sales, rate ~20.6%, CI ~17-24%. Place annotation at y=20 (right through whisker)
+    ax.annotate("MUTATION_LABEL", xy=(0, 20.0), ha="center", va="center")
+    violations = collect_figure_layout_violations(fig, "MUTATION-A")
+    plt.close(fig)
+    caught = [v for v in violations if "WHISKER_INTERSECTION" in v]
+    assert len(caught) > 0, "Mutation (a) not caught!"
+    print("\nMutation (a) caught:", caught[0])
+
+
+def test_mutation_legend_over_whisker(loaded_tables):
+    """Mutation (b): legend deliberately placed over a whisker."""
+    fig, _ = viz.plot_fig01_department_overview(loaded_tables)
+    ax = fig.axes[0]
+    # Place legend directly over bar 0 whisker in data coordinates
+    ax.legend(["Test"], loc="center", bbox_to_anchor=(0, 20), bbox_transform=ax.transData)
+    violations = collect_figure_layout_violations(fig, "MUTATION-B")
+    plt.close(fig)
+    caught = [v for v in violations if "LEGEND_WHISKER_OVERLAP" in v]
+    assert len(caught) > 0, "Mutation (b) not caught!"
+    print("\nMutation (b) caught:", caught[0])
+
+
+def test_mutation_text_outside_axes(loaded_tables):
+    """Mutation (c): text deliberately placed outside axes."""
+    fig, _ = viz.plot_fig01_department_overview(loaded_tables)
+    ax = fig.axes[0]
+    # Annotation at x=-2.0 is outside axes bounds
+    ax.annotate("MUTATION_OUTSIDE", xy=(-2.0, 15.0), ha="center", va="center")
+    violations = collect_figure_layout_violations(fig, "MUTATION-C")
+    plt.close(fig)
+    caught = [v for v in violations if "OUTSIDE_AXES" in v]
+    assert len(caught) > 0, "Mutation (c) not caught!"
+    print("\nMutation (c) caught:", caught[0])
+
+
+def test_mutation_whisker_clipped(loaded_tables):
+    """Mutation (d): whisker end outside axes ylim."""
+    fig, _ = viz.plot_fig01_department_overview(loaded_tables)
+    ax = fig.axes[0]
+    # Set ylim to 10 (bar 0 whisker reaches >20)
+    ax.set_ylim(0, 10)
+    violations = collect_figure_layout_violations(fig, "MUTATION-D")
+    plt.close(fig)
+    caught = [v for v in violations if "WHISKER_CLIPPED" in v]
+    assert len(caught) > 0, "Mutation (d) not caught!"
+    print("\nMutation (d) caught:", caught[0])
+
+
+def test_mutation_invisible_text(loaded_tables):
+    """Mutation (e): light text with no dark bar patch behind it."""
+    fig, _ = viz.plot_fig01_department_overview(loaded_tables)
+    ax = fig.axes[0]
+    # White text placed in empty area of axes (e.g. y=28, above all bars)
+    ax.annotate("MUTATION_WHITE", xy=(1, 28.0), ha="center", va="center", color="white")
+    violations = collect_figure_layout_violations(fig, "MUTATION-E")
+    plt.close(fig)
+    caught = [v for v in violations if "INVISIBLE_TEXT" in v]
+    assert len(caught) > 0, "Mutation (e) not caught!"
+    print("\nMutation (e) caught:", caught[0])

@@ -109,32 +109,16 @@ def plot_fig01_department_overview(
 
     ax1.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5, label=f"Workforce Baseline ({baseline_rate:.1f}%)")
 
-    for idx, rect in enumerate(bars1):
-        height = rect.get_height()
-        n_val = df["n"].iloc[idx]
-        l_val = df["leavers"].iloc[idx]
-        style = styles[idx]
-        annot = f"{height:.1f}%\n(n={n_val}, leavers={l_val})"
-        if style["annotation"]:
-            annot += f"\n[{style['annotation']}]"
-
-        ax1.annotate(
-            annot,
-            xy=(rect.get_x() + rect.get_width() / 2, 1.8),
-            xytext=(0, 0),
-            textcoords="offset points",
-            ha="center",
-            va="bottom",
-            fontsize=8.0,
-            color="white" if not style["hatch"] else "#111827",
-            weight="bold",
-        )
-
+    t1_labels = [
+        f"{textwrap.fill(s, width=14, break_long_words=False)}\n{r:.1f}%\n(n={n:,}, l={l:,})"
+        for s, r, n, l in zip(df["segment"], df["attrition_rate_pct"], df["n"], df["leavers"])
+    ]
     ax1.set_xticks(x)
-    ax1.set_xticklabels([textwrap.fill(s, width=14, break_long_words=False) for s in df["segment"]], fontsize=9)
+    ax1.set_xticklabels(t1_labels, fontsize=8.5)
     ax1.set_ylabel("% who left", fontsize=10, weight="bold")
     ax1.set_title("A. Department Attrition Rate (95% Wilson CI)", fontsize=11, weight="bold")
-    ax1.set_ylim(0, 32)
+    max_ci1 = float(max(df["ci95_high_pct"]))
+    ax1.set_ylim(0, max_ci1 * 1.25)
     ax1.legend(loc="upper right", fontsize=8.5)
     ax1.grid(axis="y", linestyle=":", alpha=0.6)
 
@@ -158,7 +142,7 @@ def plot_fig01_department_overview(
 
     fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=0.97)
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.06, 1, 0.93])
+    plt.tight_layout(rect=[0, 0.12, 1, 0.93])
 
     return fig, df
 
@@ -222,7 +206,8 @@ def plot_fig02_jobrole_attrition(
     ax.set_title(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=10.0, weight="bold", pad=12)
     ax.legend(loc="lower right", fontsize=8.5)
     ax.grid(axis="x", linestyle=":", alpha=0.6)
-    ax.set_xlim(0, 60)
+    ax.set_xlim(0, 65)
+    ax.set_xticks(range(0, 61, 10))
 
     _add_footnote(fig, spec["footnote"], y=0.01)
     plt.tight_layout(rect=[0, 0.05, 0.98, 0.94])
@@ -272,14 +257,21 @@ def plot_fig03_funnel_plot(
     ax.plot(n_grid, lb_95, "b--", linewidth=1.2)
     ax.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5, label=f"Workforce Baseline ({baseline_rate:.1f}%)")
 
+    jr_df = _get_table(tables, "jobrole_attrition.csv")
+    jr_map = jr_df.set_index("segment")[["ci95_low_pct", "ci95_high_pct"]].to_dict("index")
+
     for idx, row in plot_df.iterrows():
         n_val = row["n"]
         rate = row["attrition_rate_pct"]
-        style = get_segment_style(int(n_val), float(row["lower_95_pct"]), float(row["upper_95_pct"]), baseline_rate)
+        role = row["segment"]
+        ci_l = jr_map[role]["ci95_low_pct"]
+        ci_h = jr_map[role]["ci95_high_pct"]
+        style = get_segment_style(int(n_val), float(ci_l), float(ci_h), baseline_rate)
         color = style["color"]
 
         ax.scatter(n_val, rate, color=color, s=140, zorder=5, edgecolor="#111827", linewidth=1.0)
-        ax.annotate(str(idx + 1), xy=(n_val, rate), ha="center", va="center", color="white", fontsize=8.5, weight="bold", zorder=6)
+        txt_col = "white" if style["flag"] != "low_n" else "#111827"
+        ax.annotate(str(idx + 1), xy=(n_val, rate), ha="center", va="center", color=txt_col, fontsize=8.5, weight="bold", zorder=6)
 
     key_lines = [f"{idx+1}. {row['segment']} ({row['attrition_rate_pct']:.1f}%)" for idx, row in plot_df.iterrows()]
     key_text = "Job Roles:\n" + "\n".join(key_lines)
@@ -321,14 +313,12 @@ def plot_fig04_leaver_concentration(
     x = np.arange(len(df))
     bars = ax1.bar(x, df["leavers"], color=FIGURE_PALETTE["primary"], alpha=0.85, edgecolor="#111827", linewidth=0.8, label="Leavers Count")
     ax2.plot(x, df["cumulative_share_of_leavers_pct"], color=FIGURE_PALETTE["highlight"], marker="o", linewidth=2.2, label="Cumulative Leaver %")
-    ax2.axhline(80, color="#6B7280", linestyle=":", linewidth=1.5, label="80% Threshold")
+    ax2.axhline(80, color="#6B7280", linestyle=":", linewidth=1.5, label="80% of leavers")
     ax2.xaxis.set_visible(False)
     for tl in ax2.get_xticklabels():
         tl.set_visible(False)
 
-    for idx, rect in enumerate(bars):
-        l_cnt = df["leavers"].iloc[idx]
-        ax1.annotate(str(l_cnt), xy=(rect.get_x() + rect.get_width() / 2, 4.0), ha="center", va="bottom", color="white", weight="bold", fontsize=9)
+    ax1.bar_label(bars, labels=[str(l) for l in df["leavers"]], padding=3, fontsize=8.5, color="#111827", weight="bold")
 
     for idx in range(len(df)):
         cum = df["cumulative_share_of_leavers_pct"].iloc[idx]
@@ -343,16 +333,20 @@ def plot_fig04_leaver_concentration(
         )
 
     ax1.set_xticks(x)
-    ax1.set_xticklabels([textwrap.fill(s, 11) for s in df["segment"]], rotation=45, ha="right", fontsize=8.0)
+    ax1.set_xticklabels([textwrap.fill(s, width=12, break_long_words=False) for s in df["segment"]], rotation=30, ha="right", fontsize=8.0)
     ax1.set_ylabel("Leavers Count", fontsize=10, weight="bold", color=FIGURE_PALETTE["primary"])
     ax2.set_ylabel("Cumulative Share of Total Leavers (%)", fontsize=10, weight="bold", color=FIGURE_PALETTE["highlight"])
     ax2.set_ylim(0, 115)
+
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc="center right", fontsize=8.5)
 
     ax1.set_title(f"{spec["title"]}\nTotal leavers = {total_leavers:,}; cumulative percentage of departures across job roles", fontsize=11, weight="bold", pad=12)
     ax1.grid(axis="y", linestyle=":", alpha=0.5)
 
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.16, 1, 0.94])
+    plt.tight_layout(rect=[0, 0.08, 1, 0.94])
 
     return fig, df
 
@@ -403,25 +397,21 @@ def plot_fig05_age_sensitivity(
 
         ax.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.2)
 
-        for idx, rect in enumerate(bars):
-            h = rect.get_height()
-            n_val = sub["n"].iloc[idx]
-            style = styles[idx]
-            annot = f"{h:.1f}%\n(n={n_val})"
-            if style["annotation"]:
-                annot += f"\n[{style['annotation']}]"
-            ax.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, 1.8), ha="center", va="bottom", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=7.5)
-
+        tick_labels = [
+            f"{b}\n{r:.1f}%\n(n={n:,})"
+            for b, r, n in zip(sub["band"], sub["attrition_rate_pct"], sub["n"])
+        ]
         ax.set_xticks(x)
-        ax.set_xticklabels(sub["band"], fontsize=8.5)
+        ax.set_xticklabels(tick_labels, fontsize=8.0)
         ax.set_title(p_title, fontsize=10.5, weight="bold")
         ax.grid(axis="y", linestyle=":", alpha=0.6)
-        ax.set_ylim(0, 48)
 
+    max_ci_all = float(max(ag_sens["ci95_high_pct"]))
+    axes[0].set_ylim(0, max_ci_all * 1.15)
     axes[0].set_ylabel("% who left", fontsize=10, weight="bold")
     fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=0.97)
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.05, 1, 0.93])
+    plt.tight_layout(rect=[0, 0.12, 1, 0.93])
 
     return fig, ag_sens
 
@@ -467,22 +457,18 @@ def plot_fig06_tenure_sensitivity(
 
     ax1.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5, label=f"Workforce Baseline ({baseline_rate:.1f}%)")
 
-    for idx, rect in enumerate(bars1):
-        h = rect.get_height()
-        n_val = tb_df["n"].iloc[idx]
-        style = styles1[idx]
-        annot = f"{h:.1f}%\n(n={n_val})"
-        if style["annotation"]:
-            annot += f"\n[{style['annotation']}]"
-        ax1.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, 1.8), ha="center", va="bottom", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=8)
-
+    t1_labels = [
+        f"{s}\n{r:.1f}%\n(n={n:,})"
+        for s, r, n in zip(tb_df["segment"], tb_df["attrition_rate_pct"], tb_df["n"])
+    ]
     ax1.set_xticks(x1)
-    ax1.set_xticklabels(tb_df["segment"], fontsize=9)
+    ax1.set_xticklabels(t1_labels, fontsize=8.5)
     ax1.set_ylabel("% who left", fontsize=10, weight="bold")
     ax1.set_title("A. Tenure Band Attrition (Years at Company)", fontsize=11, weight="bold")
     ax1.legend(loc="upper right", fontsize=8.5)
     ax1.grid(axis="y", linestyle=":", alpha=0.6)
-    ax1.set_ylim(0, 48)
+    max_ci1 = float(max(tb_df["ci95_high_pct"]))
+    ax1.set_ylim(0, max_ci1 * 1.18)
 
     # Panel B: Early Tenure Sensitivity (<=1, <=2, <=3)
     et_sub = et_sens[et_sens["band"].str.startswith("<=")].copy().reset_index(drop=True)
@@ -505,26 +491,22 @@ def plot_fig06_tenure_sensitivity(
 
     ax2.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5, label=f"Workforce Baseline ({baseline_rate:.1f}%)")
 
-    for idx, rect in enumerate(bars2):
-        h = rect.get_height()
-        n_val = et_sub["n"].iloc[idx]
-        style = styles2[idx]
-        annot = f"{h:.1f}%\n(n={n_val})"
-        if style["annotation"]:
-            annot += f"\n[{style['annotation']}]"
-        ax2.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, 1.8), ha="center", va="bottom", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=8.5)
-
+    t2_labels = [
+        f"Years <= {b.replace('<= ', '')}\n{r:.1f}%\n(n={n:,})"
+        for b, r, n in zip(et_sub["band"], et_sub["attrition_rate_pct"], et_sub["n"])
+    ]
     ax2.set_xticks(x2)
-    ax2.set_xticklabels([f"Years <= {b.replace('<= ', '')}" for b in et_sub["band"]], fontsize=9)
+    ax2.set_xticklabels(t2_labels, fontsize=8.5)
     ax2.set_ylabel("% who left", fontsize=10, weight="bold")
     ax2.set_title("B. Early Tenure Threshold Sensitivity", fontsize=11, weight="bold")
     ax2.legend(loc="upper right", fontsize=8.5)
     ax2.grid(axis="y", linestyle=":", alpha=0.6)
-    ax2.set_ylim(0, 48)
+    max_ci2 = float(max(et_sub["ci95_high_pct"]))
+    ax2.set_ylim(0, max_ci2 * 1.18)
 
     fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=0.97)
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.05, 1, 0.93])
+    plt.tight_layout(rect=[0, 0.12, 1, 0.93])
 
     plotted_df = pd.concat([tb_df, et_sens], ignore_index=True)
     return fig, plotted_df
@@ -577,20 +559,14 @@ def plot_fig07_promotion_gap_cohort(
             bar.set_hatch(h)
     ax1.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5, label=f"Workforce Baseline ({baseline_rate:.1f}%)")
 
-    for idx, rect in enumerate(bars1):
-        h = rect.get_height()
-        n_val = pooled_df["n"].iloc[idx]
-        style = styles1[idx]
-        annot = f"{h:.1f}%\n(n={n_val})"
-        if style["annotation"]:
-            annot += f"\n[{style['annotation']}]"
-        ax1.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, 1.8), ha="center", va="bottom", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=7.5)
-
+    ax1_labels = [
+        f"{s}\n{r:.1f}%\n(n={n:,})"
+        for s, r, n in zip(pooled_df["segment"], pooled_df["attrition_rate_pct"], pooled_df["n"])
+    ]
     ax1.set_xticks(x1)
-    ax1.set_xticklabels([textwrap.fill(str(s), width=12, break_long_words=False) for s in pooled_df["segment"]], fontsize=8.5)
+    ax1.set_xticklabels(ax1_labels, fontsize=8.0)
     ax1.set_ylabel("% who left", fontsize=10, weight="bold")
     ax1.set_title(f"A. Pooled Workforce (n={total_pooled_n:,})\nConfounded by Tenure", fontsize=10, weight="bold")
-    ax1.legend(loc="upper right", fontsize=8)
     ax1.grid(axis="y", linestyle=":", alpha=0.6)
 
     # Panel 2: Cohort (PromotionAnalysisCohort)
@@ -609,21 +585,15 @@ def plot_fig07_promotion_gap_cohort(
     for bar, h in zip(bars2, hatches2):
         if h:
             bar.set_hatch(h)
-    ax2.axhline(cohort_baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5, label=f"Cohort Baseline ({cohort_baseline_rate:.1f}%)")
+    ax2.axhline(cohort_baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5)
 
-    for idx, rect in enumerate(bars2):
-        h = rect.get_height()
-        n_val = cohort_df["n"].iloc[idx]
-        style = styles2[idx]
-        annot = f"{h:.1f}%\n(n={n_val})"
-        if style["annotation"]:
-            annot += f"\n[{style['annotation']}]"
-        ax2.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, 1.8), ha="center", va="bottom", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=7.5)
-
+    ax2_labels = [
+        f"{s}\n{r:.1f}%\n(n={n:,})"
+        for s, r, n in zip(cohort_df["segment"], cohort_df["attrition_rate_pct"], cohort_df["n"])
+    ]
     ax2.set_xticks(x1)
-    ax2.set_xticklabels([textwrap.fill(str(s), width=12, break_long_words=False) for s in cohort_df["segment"]], fontsize=8.5)
+    ax2.set_xticklabels(ax2_labels, fontsize=8.0)
     ax2.set_title(f"B. Promotion Cohort (n={total_cohort_n:,})\nTenure >= 5 Years", fontsize=10, weight="bold")
-    ax2.legend(loc="upper right", fontsize=8)
     ax2.grid(axis="y", linestyle=":", alpha=0.6)
 
     # Panel 3: Cohort Alternative Bins
@@ -644,26 +614,23 @@ def plot_fig07_promotion_gap_cohort(
         if h:
             bar.set_hatch(h)
 
-    ax3.axhline(cohort_baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5, label=f"Cohort Baseline ({cohort_baseline_rate:.1f}%)")
+    ax3.axhline(cohort_baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.5)
 
-    for idx, rect in enumerate(bars3):
-        h = rect.get_height()
-        n_val = alt_df["n"].iloc[idx]
-        style = styles3[idx]
-        annot = f"{h:.1f}%\n(n={n_val})"
-        if style["annotation"]:
-            annot += f"\n[{style['annotation']}]"
-        ax3.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, 1.8), ha="center", va="bottom", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=7.5)
-
+    ax3_labels = [
+        f"{s}\n{r:.1f}%\n(n={n:,})"
+        for s, r, n in zip(alt_df["band"], alt_df["attrition_rate_pct"], alt_df["n"])
+    ]
     ax3.set_xticks(x3)
-    ax3.set_xticklabels([textwrap.fill(str(s), width=12, break_long_words=False) for s in alt_df["band"]], fontsize=8.5)
+    ax3.set_xticklabels(ax3_labels, fontsize=8.0)
     ax3.set_title("C. Cohort Alternative Bins\n(0-1, 2-3, 4-6, 7+)", fontsize=10, weight="bold")
-    ax3.legend(loc="upper right", fontsize=8)
     ax3.grid(axis="y", linestyle=":", alpha=0.6)
+
+    max_ci_all = float(max(max(pooled_df["ci95_high_pct"]), max(cohort_df["ci95_high_pct"]), max(alt_df["ci95_high_pct"])))
+    ax1.set_ylim(0, max_ci_all * 1.18)
 
     fig.suptitle(f"{spec["title"]}\nWhiskers are 95% Wilson intervals; cohort baseline {cohort_baseline_rate:.1f}% (n = {total_cohort_n:,})\n{_get_colour_key(baseline_rate, custom_baseline_str=f'panel A baseline {baseline_rate:.1f}%, panels B and C baseline {cohort_baseline_rate:.1f}%')}", fontsize=11, weight="bold", y=0.97)
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.05, 1, 0.93])
+    plt.tight_layout(rect=[0, 0.12, 1, 0.93])
 
     plotted_df = pd.concat([sbs_df, pg_sens], ignore_index=True)
     return fig, plotted_df
@@ -718,24 +685,21 @@ def plot_fig08_workload_mobility(
 
         ax.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.2)
 
-        for idx, rect in enumerate(bars):
-            h = rect.get_height()
-            n_val = data["n"].iloc[idx]
-            style = styles[idx]
-            annot = f"{h:.1f}%\n(n={n_val})"
-            if style["annotation"]:
-                annot += f"\n[{style['annotation']}]"
-            ax.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, 1.8), ha="center", va="bottom", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=7.5)
-
+        tick_labels = [
+            f"{textwrap.fill(str(s), width=10, break_long_words=False)}\n{r:.1f}%\n(n={n:,})"
+            for s, r, n in zip(data[col_lbl], data["attrition_rate_pct"], data["n"])
+        ]
         ax.set_xticks(x)
-        ax.set_xticklabels([textwrap.fill(str(s), width=10, break_long_words=False) for s in data[col_lbl]], fontsize=8.5)
+        ax.set_xticklabels(tick_labels, fontsize=7.5)
         ax.set_title(title, fontsize=10, weight="bold")
         ax.grid(axis="y", linestyle=":", alpha=0.6)
 
+    max_ci_all = float(max(max(ot_df["ci95_high_pct"]), max(bt_df["ci95_high_pct"]), max(db_df["ci95_high_pct"]), max(db_sens["ci95_high_pct"])))
+    axes[0].set_ylim(0, max_ci_all * 1.15)
     axes[0].set_ylabel("% who left", fontsize=10, weight="bold")
     fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=0.97)
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.06, 1, 0.93])
+    plt.tight_layout(rect=[0, 0.14, 1, 0.93])
 
     plotted_df = pd.concat([ot_df, bt_df, db_df, db_sens], ignore_index=True)
     return fig, plotted_df
@@ -791,24 +755,21 @@ def plot_fig09_satisfaction_small_multiples(
 
         ax.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.2)
 
-        for idx, rect in enumerate(bars):
-            h = rect.get_height()
-            n_val = data["n"].iloc[idx]
-            style = styles[idx]
-            annot = f"{h:.1f}%\n(n={n_val})"
-            if style["annotation"]:
-                annot += f"\n[{style['annotation']}]"
-            ax.annotate(annot, xy=(rect.get_x() + rect.get_width() / 2, 1.8), ha="center", va="bottom", color="white" if not style["hatch"] else "#111827", weight="bold", fontsize=7.5)
-
+        tick_labels = [
+            f"Level {s}\n{r:.1f}%\n(n={n:,})"
+            for s, r, n in zip(data["segment"], data["attrition_rate_pct"], data["n"])
+        ]
         ax.set_xticks(x)
-        ax.set_xticklabels([f"Level {s}" for s in data["segment"]], fontsize=8)
+        ax.set_xticklabels(tick_labels, fontsize=7.5)
         ax.set_title(title, fontsize=9.5, weight="bold")
         ax.grid(axis="y", linestyle=":", alpha=0.6)
 
+    max_ci_all = float(max(d["ci95_high_pct"].max() for d in [wlb, js, es, rs, ji]))
+    axes[0].set_ylim(0, max_ci_all * 1.15)
     axes[0].set_ylabel("% who left", fontsize=10, weight="bold")
     fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals; 4-point rating scales\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=0.97)
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.06, 1, 0.93])
+    plt.tight_layout(rect=[0, 0.13, 1, 0.93])
 
     plotted_df = pd.concat([wlb, js, es, rs, ji], ignore_index=True)
     return fig, plotted_df
@@ -1054,9 +1015,9 @@ def plot_fig12_hotspot_overlap(
     ax2.grid(axis="y", linestyle=":", alpha=0.6)
     ax2.set_ylim(0, max(inside_vals[0], outside_vals[0]) * 1.12)
 
-    # Key list below figure
+    # Key list below figure - both aligned to top y=0.95
     col1_text = "Hotspot Candidate Definitions:\n" + "\n".join([f"C{i+1}: {candidates[i]}" for i in range(8)])
-    col2_text = "\n" + "\n".join([f"C{i+1}: {candidates[i]}" for i in range(8, 16)])
+    col2_text = "Candidate Definitions (cont.):\n" + "\n".join([f"C{i+1}: {candidates[i]}" for i in range(8, 16)])
     ax_key.text(0.02, 0.95, col1_text, va="top", ha="left", fontsize=7.5, fontfamily="sans-serif")
     ax_key.text(0.52, 0.95, col2_text, va="top", ha="left", fontsize=7.5, fontfamily="sans-serif")
 
@@ -1085,7 +1046,7 @@ def plot_fig13_numeric_distributions(
     if "low_n_flag" not in df.columns:
         df["low_n_flag"] = df["n"] < 30
 
-    fig, axes = plt.subplots(1, 5, figsize=(16, 4.5), dpi=FIGURE_DPI)
+    fig, axes = plt.subplots(1, 5, figsize=(16, 5.5), dpi=FIGURE_DPI)
 
     for ax, metric in zip(axes, target_metrics):
         sub = df[df["metric"] == metric].copy()
@@ -1110,19 +1071,28 @@ def plot_fig13_numeric_distributions(
                 capsize=6,
                 markersize=8,
             )
-            ax.annotate(
-                f"Median: {medians[idx]:.0f}\nIQR: [{medians[idx]-err_low[idx]:.0f}, {medians[idx]+err_high[idx]:.0f}]",
-                xy=(idx, medians[idx]),
-                xytext=(10, 0),
-                textcoords="offset points",
-                ha="left",
-                va="center",
-                fontsize=7.5,
-                weight="bold",
-                bbox=dict(boxstyle="round,pad=0.25", facecolor="white", edgecolor="#D1D5DB", alpha=0.9, linewidth=0.6),
+
+        if metric == "MonthlyIncome":
+            table_text = (
+                f"Retained: {medians[0]:,.0f} [{medians[0]-err_low[0]:,.0f}–{medians[0]+err_high[0]:,.0f}]\n"
+                f"Left:         {medians[1]:,.0f} [{medians[1]-err_low[1]:,.0f}–{medians[1]+err_high[1]:,.0f}]"
+            )
+        else:
+            table_text = (
+                f"Retained: {medians[0]:.0f} [{medians[0]-err_low[0]:.0f}–{medians[0]+err_high[0]:.0f}]\n"
+                f"Left:         {medians[1]:.0f} [{medians[1]-err_low[1]:.0f}–{medians[1]+err_high[1]:.0f}]"
             )
 
-        ax.set_xlim(-0.5, 2.0)
+        ax.text(
+            0.5, -0.28, table_text,
+            transform=ax.transAxes,
+            ha="center", va="top",
+            fontsize=7.5,
+            fontfamily="sans-serif",
+            bbox=dict(boxstyle="round,pad=0.25", facecolor="#F8FAFC", edgecolor="#CBD5E1", alpha=0.95),
+        )
+
+        ax.set_xlim(-0.5, 1.5)
         ax.set_xticks([0, 1])
         ax.set_xticklabels(outcomes, fontsize=8.5)
         ax.set_title(metric, fontsize=10.5, weight="bold")
@@ -1131,7 +1101,7 @@ def plot_fig13_numeric_distributions(
     axes[0].set_ylabel("Metric Value (Median & IQR)", fontsize=10, weight="bold")
     fig.suptitle(f"{spec["title"]}\nn = {total_n:,} (Retained: {n_retained:,}, Left: {n_left:,}); points show medians, bars show IQR", fontsize=11, weight="bold", y=0.97)
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.08, 1, 0.93])
+    plt.tight_layout(rect=[0, 0.18, 1, 0.93])
 
     return fig, df
 
@@ -1196,44 +1166,25 @@ def plot_fig14_demographics_background(
 
         ax.axhline(baseline_rate, color=FIGURE_PALETTE["baseline"], linestyle="--", linewidth=1.2)
 
-        for idx, rect in enumerate(bars):
-            h = rect.get_height()
-            n_val = data["n"].iloc[idx]
-            style = styles[idx]
-            annot = f"{h:.1f}%\n(n={n_val})"
-            if style["annotation"]:
-                annot += f"\n[{style['annotation']}]"
-                ax.annotate(
-                    annot,
-                    xy=(rect.get_x() + rect.get_width() / 2, data["ci95_high_pct"].iloc[idx] + 2.0),
-                    ha="center",
-                    va="bottom",
-                    color="#111827",
-                    weight="bold",
-                    fontsize=7.5,
-                    bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="#D1D5DB", alpha=0.9, linewidth=0.6),
-                )
+        tick_labels = []
+        for s, r, n in zip(data[col_lbl], data["attrition_rate_pct"], data["n"]):
+            s_wrapped = textwrap.fill(str(s), width=10, break_long_words=False)
+            if n < 30:
+                tick_labels.append(f"{s_wrapped}\n{r:.1f}%\n(n={n:,})\n[n<30]")
             else:
-                ax.annotate(
-                    annot,
-                    xy=(rect.get_x() + rect.get_width() / 2, 1.8),
-                    ha="center",
-                    va="bottom",
-                    color="white",
-                    weight="bold",
-                    fontsize=7.5,
-                )
+                tick_labels.append(f"{s_wrapped}\n{r:.1f}%\n(n={n:,})")
 
         ax.set_xticks(x)
-        ax.set_xticklabels([textwrap.fill(str(s), width=11, break_long_words=False) for s in data[col_lbl]], fontsize=8)
+        ax.set_xticklabels(tick_labels, fontsize=7.0)
         ax.set_ylabel("% who left", fontsize=8.5, weight="bold")
         ax.set_title(panel_title, fontsize=8.5, weight="bold")
         ax.grid(axis="y", linestyle=":", alpha=0.6)
-        ax.set_ylim(0, max(data["ci95_high_pct"]) + 14)
+        max_ci_pan = float(max(data["ci95_high_pct"]))
+        ax.set_ylim(0, max_ci_pan * 1.25)
 
     fig.suptitle(f"{spec["title"]}\nn = {total_n:,}; whiskers are 95% Wilson intervals\n{_get_colour_key(baseline_rate)}", fontsize=11, weight="bold", y=0.98)
     _add_footnote(fig, spec["footnote"], y=0.01)
-    plt.tight_layout(rect=[0, 0.06, 1, 0.93])
+    plt.tight_layout(rect=[0, 0.09, 1, 0.94])
 
     plotted_df = pd.concat([gen, mar, edu, edf, pe, pr], ignore_index=True)
     return fig, plotted_df
