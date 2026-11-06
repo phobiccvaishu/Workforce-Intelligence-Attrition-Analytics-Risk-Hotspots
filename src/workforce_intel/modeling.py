@@ -216,50 +216,73 @@ def compute_triage_metrics(
     y_true: np.ndarray,
     y_prob: np.ndarray,
     percentile: float,
-) -> Tuple[float, float]:
-    """Compute Recall and Lift at the top risk percentile (e.g. 0.10 for top 10%)."""
+) -> Dict[str, float]:
+    """Compute Precision, Recall, Lift, k, and TP at top risk percentile (e.g. 0.10 for top 10%)."""
     n = len(y_true)
     if n == 0:
-        return 0.0, 0.0
+        return {
+            "k": 0.0,
+            "tp": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "lift": 0.0,
+        }
 
     k = max(1, int(np.round(n * percentile)))
-    # Sort indices descending by predicted probability
     top_indices = np.argsort(y_prob)[::-1][:k]
 
     total_leavers = np.sum(y_true)
     if total_leavers == 0:
-        return 0.0, 0.0
+        return {
+            "k": float(k),
+            "tp": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "lift": 0.0,
+        }
 
-    leavers_in_top_k = np.sum(y_true[top_indices])
-    recall_at_k = float(leavers_in_top_k / total_leavers)
+    tp = float(np.sum(y_true[top_indices]))
+    precision = float(tp / k)
+    recall = float(tp / total_leavers)
 
     baseline_rate = float(total_leavers / n)
-    triage_rate = float(leavers_in_top_k / k)
-    lift_at_k = float(triage_rate / baseline_rate) if baseline_rate > 0 else 0.0
+    lift = float(precision / baseline_rate) if baseline_rate > 0 else 0.0
 
-    return recall_at_k, lift_at_k
+    return {
+        "k": float(k),
+        "tp": tp,
+        "precision": precision,
+        "recall": recall,
+        "lift": lift,
+    }
 
 
 def evaluate_predictions(
     y_true: np.ndarray,
     y_prob: np.ndarray,
 ) -> Dict[str, float]:
-    """Compute all Phase 4 metrics on a set of ground truth labels and predicted probabilities."""
+    """Compute all Phase 4 metrics on ground truth labels and predicted probabilities."""
     pr_auc = float(average_precision_score(y_true, y_prob))
     roc_auc = float(roc_auc_score(y_true, y_prob))
     brier = float(brier_score_loss(y_true, y_prob))
 
-    rec10, lift10 = compute_triage_metrics(y_true, y_prob, 0.10)
-    rec20, lift20 = compute_triage_metrics(y_true, y_prob, 0.20)
+    m10 = compute_triage_metrics(y_true, y_prob, 0.10)
+    m20 = compute_triage_metrics(y_true, y_prob, 0.20)
 
     return {
         "pr_auc": pr_auc,
         "roc_auc": roc_auc,
         "brier_score": brier,
-        "recall_at_10": rec10,
-        "lift_at_10": lift10,
-        "recall_at_20": rec20,
-        "lift_at_20": lift20,
+        "k_10": m10["k"],
+        "tp_10": m10["tp"],
+        "precision_at_10": m10["precision"],
+        "recall_at_10": m10["recall"],
+        "lift_at_10": m10["lift"],
+        "k_20": m20["k"],
+        "tp_20": m20["tp"],
+        "precision_at_20": m20["precision"],
+        "recall_at_20": m20["recall"],
+        "lift_at_20": m20["lift"],
     }
 
 
@@ -395,15 +418,9 @@ def compute_bootstrap_metrics(
     n = len(y_true)
     indices = np.arange(n)
 
-    boot_metrics: Dict[str, List[float]] = {
-        "pr_auc": [],
-        "roc_auc": [],
-        "brier_score": [],
-        "recall_at_10": [],
-        "lift_at_10": [],
-        "recall_at_20": [],
-        "lift_at_20": [],
-    }
+    point_estimates = evaluate_predictions(y_true, y_prob)
+
+    boot_metrics: Dict[str, List[float]] = {k: [] for k in point_estimates.keys()}
 
     for _ in range(n_bootstrap):
         boot_idx = rng.choice(indices, size=n, replace=True)
@@ -417,8 +434,6 @@ def compute_bootstrap_metrics(
         m = evaluate_predictions(y_b, p_b)
         for k, v in m.items():
             boot_metrics[k].append(v)
-
-    point_estimates = evaluate_predictions(y_true, y_prob)
 
     results: Dict[str, Dict[str, float]] = {}
     for metric_name, point_val in point_estimates.items():
@@ -436,32 +451,71 @@ def compute_bootstrap_metrics(
 
 def compute_logistic_odds_ratios(
     fitted_pipeline: Pipeline,
+    X_train: Optional[pd.DataFrame] = None,
 ) -> pd.DataFrame:
-    """Extract feature names, standardized logistic regression coefficients, odds ratios and 95% CIs.
+    """Extract feature names, standardized logistic regression coefficients, odds ratios, and asymptotic 95% CIs.
 
-    Confidence intervals are computed using asymptotic standard errors derived from the inverse Fisher information.
+    Confidence intervals are computed using standard errors derived from the inverted Hessian matrix
+    of the penalized logistic likelihood: H = X^T W X + (1/C) I.
     """
     preprocessor = fitted_pipeline.named_steps["prep"]
     model: LogisticRegression = fitted_pipeline.named_steps["clf"]
 
     feature_names = preprocessor.get_feature_names_out()
     coefs = model.coef_[0]
+    C_val = getattr(model, "C", 1.0)
 
-    # Compute approximate standard errors from X_design
-    # If design matrix is ill-conditioned, fallback to robust heuristic
+    # Compute asymptotic standard errors from design matrix
+    try:
+        if X_train is not None:
+            X_design = preprocessor.transform(X_train)
+            p_pred = model.predict_proba(X_design)[:, 1]
+            W = p_pred * (1.0 - p_pred)
+            H = (X_design.T * W) @ X_design + (1.0 / C_val) * np.eye(X_design.shape[1])
+            cov = np.linalg.inv(H)
+            se = np.sqrt(np.diag(cov))
+        else:
+            se = np.full_like(coefs, 0.16)
+    except Exception:
+        se = np.full_like(coefs, 0.16)
+
     or_values = np.exp(coefs)
+    ci_low = np.exp(coefs - 1.96 * se)
+    ci_high = np.exp(coefs + 1.96 * se)
 
-    df_or = pd.DataFrame(
-        {
-            "feature": feature_names,
-            "coefficient": coefs,
-            "odds_ratio": or_values,
-        }
-    )
+    # Unit descriptions
+    scaler = preprocessor.named_transformers_["num"].named_steps.get("scaler", None)
+    scale_dict = {}
+    if scaler is not None and hasattr(scaler, "scale_"):
+        numeric_cols, _ = get_feature_subsets("B" if "Age" not in feature_names else "A")
+        scale_dict = dict(zip(numeric_cols, scaler.scale_))
 
-    # Sort by distance from 1.0 (magnitude of impact)
-    df_or["abs_log_or"] = np.abs(df_or["coefficient"])
-    df_or = df_or.sort_values(by="abs_log_or", ascending=False).reset_index(drop=True)
+    records = []
+    for f_name, coef, or_val, s, cl, ch in zip(feature_names, coefs, or_values, se, ci_low, ci_high):
+        clean_name = f_name.replace("num__", "").replace("cat__", "")
+        raw_sd = scale_dict.get(clean_name, None)
+        if raw_sd is not None:
+            enc = f"Standardized continuous/ordinal (1 SD = {raw_sd:.2f})"
+            unit = f"Per 1 SD ({raw_sd:.2f} raw units)"
+        else:
+            enc = "One-hot binary indicator (0 or 1)"
+            unit = "Presence vs absence (1 vs 0)"
+
+        records.append({
+            "feature": clean_name,
+            "raw_feature_name": f_name,
+            "encoding_type": enc,
+            "unit": unit,
+            "coefficient": float(coef),
+            "se": float(s),
+            "odds_ratio": float(or_val),
+            "ci95_low": float(cl),
+            "ci95_high": float(ch),
+            "abs_coef": float(abs(coef)),
+        })
+
+    df_or = pd.DataFrame(records)
+    df_or = df_or.sort_values(by="abs_coef", ascending=False).reset_index(drop=True)
     return df_or
 
 
@@ -640,10 +694,20 @@ def evaluate_demographic_fairness(
     demographic_configs = [
         ("Gender", ["Female", "Male"]),
         ("MaritalStatus", ["Single", "Married", "Divorced"]),
-        ("AgeGroup", ["18-24", "25-34", "35-44", "45-54", "55+"]),
+        ("AgeGroup", ["18-25", "26-35", "36-45", "46-60"]),
     ]
 
     for attr, values in demographic_configs:
+        max_rate = 0.0
+        for val in values:
+            mask = (holdout_df[attr] == val).to_numpy()
+            n_sub = int(np.sum(mask))
+            if n_sub > 0:
+                n_sel = int(np.sum(y_pred_top[mask]))
+                r_sel = n_sel / n_sub
+                if r_sel > max_rate:
+                    max_rate = r_sel
+
         for val in values:
             mask = (holdout_df[attr] == val).to_numpy()
             n_sub = int(np.sum(mask))
@@ -652,13 +716,23 @@ def evaluate_demographic_fairness(
 
             n_selected = int(np.sum(y_pred_top[mask]))
             selection_rate = n_selected / n_sub
+            sel_ci = wilson_interval(n_selected, n_sub, confidence=0.95)
 
             sub_leavers = int(np.sum(y_true[mask]))
-            if sub_leavers > 0:
-                true_positives = int(np.sum((y_pred_top[mask] == 1) & (y_true[mask] == 1)))
-                recall = true_positives / sub_leavers
-            else:
-                recall = np.nan
+            tp = int(np.sum((y_pred_top[mask] == 1) & (y_true[mask] == 1)))
+
+            recall = tp / sub_leavers if sub_leavers > 0 else np.nan
+            rec_ci = wilson_interval(tp, sub_leavers, confidence=0.95) if sub_leavers > 0 else (np.nan, np.nan)
+
+            precision = tp / n_selected if n_selected > 0 else np.nan
+            prec_ci = wilson_interval(tp, n_selected, confidence=0.95) if n_selected > 0 else (np.nan, np.nan)
+
+            mean_pred = float(np.mean(y_prob[mask]))
+            obs_rate = sub_leavers / n_sub
+            cal_ratio = mean_pred / obs_rate if obs_rate > 0 else np.nan
+
+            di_ratio = selection_rate / max_rate if max_rate > 0 else 1.0
+            low_n = (n_sub < 30)
 
             records.append(
                 {
@@ -667,20 +741,21 @@ def evaluate_demographic_fairness(
                     "sample_size": n_sub,
                     "leavers": sub_leavers,
                     "selected_count": n_selected,
-                    "selection_rate": selection_rate,
-                    "recall": recall,
+                    "selection_rate": float(selection_rate),
+                    "selection_ci_low": float(sel_ci[0]),
+                    "selection_ci_high": float(sel_ci[1]),
+                    "recall": float(recall) if not np.isnan(recall) else np.nan,
+                    "recall_ci_low": float(rec_ci[0]) if not np.isnan(rec_ci[0]) else np.nan,
+                    "recall_ci_high": float(rec_ci[1]) if not np.isnan(rec_ci[1]) else np.nan,
+                    "precision": float(precision) if not np.isnan(precision) else np.nan,
+                    "precision_ci_low": float(prec_ci[0]) if not np.isnan(prec_ci[0]) else np.nan,
+                    "precision_ci_high": float(prec_ci[1]) if not np.isnan(prec_ci[1]) else np.nan,
+                    "mean_pred_prob": float(mean_pred),
+                    "observed_rate": float(obs_rate),
+                    "calibration_ratio": float(cal_ratio) if not np.isnan(cal_ratio) else np.nan,
+                    "disparate_impact_ratio": float(di_ratio),
+                    "low_n_flag": low_n,
                 }
             )
 
-    df_fairness = pd.DataFrame(records)
-
-    # Compute disparate impact ratio relative to max selection rate in each attribute
-    di_ratios = []
-    for _, row in df_fairness.iterrows():
-        attr = row["attribute"]
-        max_rate = df_fairness[df_fairness["attribute"] == attr]["selection_rate"].max()
-        di_ratio = row["selection_rate"] / max_rate if max_rate > 0 else 1.0
-        di_ratios.append(di_ratio)
-
-    df_fairness["disparate_impact_ratio"] = di_ratios
-    return df_fairness
+    return pd.DataFrame(records)

@@ -13,9 +13,17 @@ This document performs an exhaustive cross-check between all 57 exploratory find
 
 ### Consistency Summary:
 - **Total Findings Audited**: 57
-- **Agrees**: 49 findings (86.0%)
-- **Untestable in Recommended Model (Set B Demographics Excluded)**: 8 findings (14.0%)
+- **Agrees**: 50 findings (87.7%)
+- **Untestable in Recommended Model (Set B Demographics Excluded)**: 7 findings (12.3%)
 - **Disagrees**: 0 findings (0.0%)
+
+### Rule for "Agrees" Classification:
+A finding is classified as **"Agrees"** if the multivariable model's direction of effect aligns with the univariate/bivariate finding:
+1. For elevated attrition (`above baseline`), the multivariable coefficient is positive ($\beta > 0$, $\text{OR} > 1.0$), or for continuous protective scales (e.g. JobLevel, Satisfaction) where Level 1 defines the group, the negative continuous slope confirms that lower values yield elevated departure risk.
+2. For depressed attrition (`below baseline`), the multivariable coefficient is negative ($\beta < 0$, $\text{OR} < 1.0$).
+3. For baseline equivalence (`no separation`), the multivariable coefficient is near-zero ($|\beta| < 0.05$) and its 95% confidence interval spans 1.0.
+
+A finding is classified as **"Untestable in Set B"** if the underlying feature was deliberately removed from the feature candidate pool by pre-flight governance design to prevent demographic disparate treatment. Exactly 7 findings fall into this category: `FIND-12` (AgeGroup 18-25), `FIND-13` (AgeGroup 26-35), `FIND-14` (AgeGroup 36-45), `FIND-15` (Gender), `FIND-16` (MaritalStatus Divorced), `FIND-17` (MaritalStatus Married), and `FIND-18` (MaritalStatus Single). All 7 are protected demographic attributes. In auxiliary Model A (demographics included), Age and MaritalStatus directional effects fully agree with Phase 3.
 
 > [!IMPORTANT]
 > **Zero Structural Contradictions:** No exploratory finding from Phase 3 was contradicted by the Phase 4 multivariable model. The directional effects of operational drivers (overtime, job role, travel frequency, compensation, satisfaction surveys, and career stagnation) remain robust after adjusting for all covariates simultaneously. Demographic findings are untestable in the recommended operational model (Set B) by conscious governance design to prevent disparate treatment.
@@ -94,3 +102,17 @@ This document performs an exhaustive cross-check between all 57 exploratory find
    The Phase 4 model confirms that operational factors under management control—specifically **OverTime (OR = 2.00)**, **Business Travel (OR = 1.73)**, **Stock Options (OR = 0.64)**, and **Workplace Environment Satisfaction (OR = 0.67)**—dominate personal demographic traits. This justifies the deployment of Feature Set B as the primary operational tool, eliminating demographic attributes while preserving 96% of full model discriminative power.
 3. **Out-of-Sample Holdout Confirmation**:
    Screened hotspots such as `OverTime=Yes & JobLevel=1` (Holdout rate 55.0%, CI [39.8%, 69.3%]) and `OverTime=Yes & BusinessTravel=Travel_Rarely` (Holdout rate 38.5%, CI [26.5%, 52.0%]) firmly generalized out-of-sample, maintaining Wilson confidence intervals strictly above the holdout baseline (15.99%).
+
+4. **Coefficient Sign Stability Across 500 Bootstrap Refits**:
+   To assess parameter stability under collinearity, the Set B regularised logistic regression model was refitted across 500 bootstrap training resamples:
+
+   | Feature | Scale / Unit | Mean $\beta$ | 95% Bootstrap CI | Predominant Sign | Sign Stability (% Refits) | Positive Refits (%) | Negative Refits (%) |
+   | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+   | **YearsAtCompany** | Continuous (1 SD = 6.13 yrs) | -0.0163 | $[-0.2340, +0.2026]$ | Negative (-) | 55.2% | 44.8% | 55.2% |
+   | **YearsInCurrentRole** | Continuous (1 SD = 3.63 yrs) | +0.0437 | $[-0.1936, +0.2495]$ | Positive (+) | 64.6% | 64.6% | 35.4% |
+   | **YearsWithCurrManager** | Continuous (1 SD = 3.57 yrs) | -0.1388 | $[-0.3695, +0.0931]$ | Negative (-) | **88.2%** | 11.8% | 88.2% |
+   | **YearsSinceLastPromotion** | Continuous (1 SD = 3.22 yrs) | +0.1944 | $[-0.0210, +0.4173]$ | Positive (+) | **94.6%** | 94.6% | 5.4% |
+   | **TenureBand_0-1** | Binary Indicator | +0.0834 | $[+0.0254, +0.1460]$ | Positive (+) | **99.6%** | 99.6% | 0.4% |
+   | **TenureBand_11+** | Binary Indicator | -0.1271 | $[-0.3136, +0.0642]$ | Negative (-) | **89.6%** | 10.4% | 89.6% |
+
+   *Observation*: When both continuous tenure and discrete bands enter the model simultaneously, `TenureBand_0-1` (+99.6% stability, CI excludes 0) and `YearsSinceLastPromotion` (+94.6% stability) capture the strongest independent signals. `YearsWithCurrManager` is robustly protective (88.2% negative refits). Continuous `YearsAtCompany` fluctuates in sign (55.2% negative / 44.8% positive) due to structural collinearity with career stage and role tenure.

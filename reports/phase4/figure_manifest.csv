@@ -2,6 +2,6 @@ figure_id,filename,title,width_in,height_in,dpi,file_size_bytes,plotted_data_sha
 FIG-15,fig15_precision_recall_curves.png,FIG-15: Precision-Recall Curves across Attrition Risk Models,8.0,5.8,150,142696,7dd6067851fe0caf080c9ff856a0ca7980fdd27508b64ebc7f2a7672926f66ba
 FIG-16,fig16_calibration_curves.png,FIG-16: Probability Reliability Diagram (Calibration Curve),8.0,6.8,150,132023,a96367cbdd8b46d5fdca0dcfbf2dfbed7ac56005261c30635106d381ed75429c
 FIG-17,fig17_risk_tier_attrition.png,FIG-17: Holdout Attrition Yield Across Model-Prioritized Risk Tiers,7.8,5.5,150,88524,7ad300fed19ea7ff9cb488a576c676060567f2f0bb09e4c7ea4151fa9fb3b2f4
-FIG-18,fig18_feature_odds_ratios.png,FIG-18: Top Predictors in Regularised Logistic Regression,8.0,6.2,150,120421,f2e56f475ce507a62c55e3fcf4f0804e89e220ea801b3ee350882f594b3dc8ff
-FIG-19,fig19_hotspot_validation.png,FIG-19: Out-of-Sample Validation of Candidate Attrition Hotspots,8.2,6.2,150,118491,de8c073c0bef3b7e4c7bc486ebe6262f5d5ad7220be012c565cca8203fc069cf
-FIG-20,fig20_demographic_fairness.png,FIG-20: Demographic Fairness Audit at Operational 20% Triage Threshold,8.8,5.2,150,99282,d8ec31269277826cbade3d5378c61c3484b11583889ff18993c666fcef372693
+FIG-18,fig18_feature_odds_ratios.png,FIG-18: Top Predictors in Regularised Logistic Regression,8.0,6.2,150,120499,1d4d7e69c07604fa87bbd4980710424b96b5af1765a9f4af2ac0e2186ba1b362
+FIG-19,fig19_hotspot_validation.png,FIG-19: Out-of-Sample Validation of Candidate Attrition Hotspots,8.2,6.2,150,118491,9bad2f1661c427a0a8be859f33998f59c459c4c6b6a2d5334a0393da61ee27db
+FIG-20,fig20_demographic_fairness.png,FIG-20: Demographic Fairness Audit at Operational 20% Triage Threshold,8.8,5.2,150,113011,b3aa3a39d7de0d9125b8ffdde2a53b8c90725d77b21f111a461162405156f8be

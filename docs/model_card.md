@@ -54,53 +54,73 @@ Due to substantial target class imbalance (16.0% holdout departure prevalence), 
 
 ### 3.2 Comprehensive Holdout Performance Summary ($n = 294$, 47 Departures)
 
-| Evaluation Metric | Holdout Point Estimate | 95% Bootstrap CI | Operational Interpretation |
-| :--- | :---: | :---: | :--- |
-| **PR-AUC (Average Precision)** | **0.5690** | $[0.4258, 0.6986]$ | High discriminative precision across operational triage thresholds. |
-| **ROC-AUC** | **0.8099** | $[0.7353, 0.8774]$ | Strong ranking separation between leavers and stayers. |
-| **Brier Score** | **0.1006** | $[0.0764, 0.1253]$ | Well-calibrated probability predictions (squared error). |
-| **Recall @ Top 10% Triage** | **0.3830** | $[0.2923, 0.5250]$ | Captures 38.3% of all departures by reviewing only top 10% ($n = 29$). |
-| **Lift @ Top 10% Triage** | **3.88** | $[2.96, 5.32]$ | Attrition rate in top 10% is 3.88x higher than workforce baseline. |
-| **Recall @ Top 20% Triage** | **0.5745** | $[0.4375, 0.6977]$ | Captures 57.5% of all departures by reviewing top 20% ($n = 59$). |
-| **Lift @ Top 20% Triage** | **2.86** | $[2.18, 3.48]$ | Attrition rate in top 20% is 2.86x higher than workforce baseline. |
+Both calibrated and uncalibrated performance are presented to reconcile triage yields:
+
+| Model Specification | Triage Tier | Cutoff ($k$) | True Positives (TP) | False Positives (FP) | Precision (Yield) | Recall | Lift vs Base (15.99%) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Calibrated Logistic Regression** | Top 10% | 29 | 18 | 11 | **62.07%** | **38.30%** | **3.88x** |
+| **Calibrated Logistic Regression** | Top 20% | 59 | 27 | 32 | **45.76%** | **57.45%** | **2.86x** |
+| *Uncalibrated Logistic Regression* | Top 10% | 29 | 19 | 10 | 65.52% | 40.43% | 4.10x |
+| *Uncalibrated Logistic Regression* | Top 20% | 59 | 27 | 32 | 45.76% | 57.45% | 2.86x |
+
+#### Metric Bootstrap Summary (Calibrated Logistic Regression - Set B)
+- **PR-AUC**: 0.5690 ($95\% \text{ CI } [0.4258, 0.6986]$)
+- **ROC-AUC**: 0.8099 ($95\% \text{ CI } [0.7353, 0.8774]$)
+- **Brier Score**: 0.1006 ($95\% \text{ CI } [0.0764, 0.1253]$)
+- **Recall @ Top 10%**: 0.3830 ($95\% \text{ CI } [0.2923, 0.5250]$)
+- **Lift @ Top 10%**: 3.8826 ($95\% \text{ CI } [2.9632, 5.3224]$)
+- **Recall @ Top 20%**: 0.5745 ($95\% \text{ CI } [0.4375, 0.6977]$)
+- **Lift @ Top 20%**: 2.8626 ($95\% \text{ CI } [2.1801, 3.4768]$)
 
 ### 3.3 Feature Set Selection & Materiality Governance
 - **Feature Set A**: Full set including demographic attributes (`Age`, `Gender`, `MaritalStatus`, `AgeGroup`).
 - **Feature Set B**: Demographic attributes excluded.
-- **Materiality Rule**: Feature Set A is adopted only if its CV PR-AUC exceeds Set B by $> 0.0300$ and bootstrap CIs do not overlap.
-- **Audit Outcome**: Set A achieved CV PR-AUC of 0.6550 vs Set B at 0.6304 (gain of $+0.0246 \le 0.0300$). Under the governance protocol, **Feature Set B was selected and locked as the operational model**.
+- **Materiality Rule**: Feature Set A is adopted only if its CV PR-AUC exceeds Set B by $> 0.0300$ and bootstrap CIs do not overlap. This rule was specified pre-flight in `docs/phase4_spec.md`.
+- **Audit Outcome**: Set A achieved mean CV PR-AUC of 0.6555 vs Set B at 0.6304 (gain of $+0.0251 \le 0.0300$). Across 15 paired folds, mean difference was $+0.0251$ (SD $0.0263$). Under the pre-flight governance protocol, **Feature Set B was selected and locked as the operational model**.
 
 ---
 
 ## 4. Key Predictive Drivers (Odds Ratios)
 
-Top risk and protective drivers from the locked regularised logistic regression model (Set B):
-- **OverTime (`Yes`)**: Odds Ratio $\approx 2.00$ ($95\% \text{ CI } [1.46, 2.74]$) — single largest operational risk factor.
-- **BusinessTravel (`Travel_Frequently`)**: Odds Ratio $\approx 1.73$ ($95\% \text{ CI } [1.26, 2.37]$).
-- **JobRole (`Laboratory Technician`)**: Odds Ratio $\approx 1.68$ ($95\% \text{ CI } [1.23, 2.30]$).
-- **StockOptionLevel**: Odds Ratio $\approx 0.64$ ($95\% \text{ CI } [0.47, 0.88]$) — strong protective retention factor.
-- **EnvironmentSatisfaction & JobInvolvement**: Odds Ratio $\approx 0.67 - 0.71$ — strong protective retention factors.
+Coefficients are estimated from L2-regularised logistic regression ($C=0.10$) fitted on the training split ($n=1,176$). Standard errors and 95% confidence intervals are derived asymptotically from the penalized Fisher information Hessian $H = X^T W X + (1/C) I$:
+
+| Feature | Feature Type | Scale / Unit | Coefficient ($\beta$) | SE | Odds Ratio | 95% Asymptotic CI |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
+| **OverTime (`Yes`)** | Binary Indicator | Presence vs Absence (1 vs 0) | +0.6928 | 0.225 | **1.999** | $[1.284, 3.110]$ |
+| **OverTime (`No`)** | Binary Indicator | Presence vs Absence (1 vs 0) | -0.6928 | 0.225 | **0.500** | $[0.322, 0.777]$ |
+| **BusinessTravel (`Travel_Frequently`)** | Binary Indicator | Presence vs Absence (1 vs 0) | +0.5460 | 0.222 | **1.726** | $[1.118, 2.666]$ |
+| **JobRole (`Laboratory Technician`)** | Binary Indicator | Presence vs Absence (1 vs 0) | +0.5197 | 0.220 | **1.682** | $[1.093, 2.586]$ |
+| **NumCompaniesWorked** | Continuous | Per 1 SD (2.50 employers) | +0.4022 | 0.103 | **1.495** | $[1.222, 1.829]$ |
+| **JobRole (`Sales Representative`)** | Binary Indicator | Presence vs Absence (1 vs 0) | +0.3175 | 0.259 | **1.374** | $[0.827, 2.285]$ |
+| **EducationField (`Technical Degree`)** | Binary Indicator | Presence vs Absence (1 vs 0) | +0.2743 | 0.232 | **1.316** | $[0.835, 2.074]$ |
+| **JobRole (`Research Scientist`)** | Binary Indicator | Presence vs Absence (1 vs 0) | -0.2954 | 0.228 | **0.744** | $[0.476, 1.163]$ |
+| **Department (`Research & Development`)**| Binary Indicator | Presence vs Absence (1 vs 0) | -0.3129 | 0.237 | **0.731** | $[0.460, 1.163]$ |
+| **PriorExperienceYears** | Continuous | Per 1 SD (5.26 years) | -0.3175 | 0.210 | **0.728** | $[0.483, 1.098]$ |
+| **JobSatisfaction** | Ordinal (1-4) | Per 1 SD (1.10 rating units) | -0.3444 | 0.091 | **0.709** | $[0.593, 0.847]$ |
+| **JobInvolvement** | Ordinal (1-4) | Per 1 SD (0.71 rating units) | -0.3458 | 0.089 | **0.708** | $[0.594, 0.843]$ |
+| **EnvironmentSatisfaction** | Ordinal (1-4) | Per 1 SD (1.09 rating units) | -0.3951 | 0.091 | **0.674** | $[0.564, 0.806]$ |
+| **BusinessTravel (`Non-Travel`)** | Binary Indicator | Presence vs Absence (1 vs 0) | -0.4447 | 0.250 | **0.641** | $[0.393, 1.045]$ |
+| **StockOptionLevel** | Ordinal (0-3) | Per 1 SD (0.85 grant tiers) | -0.4497 | 0.102 | **0.638** | $[0.522, 0.779]$ |
 
 ---
 
 ## 5. Demographic Fairness & Disparate Impact Audit
 
-Even though demographic features were excluded from model training (Set B), the resulting model risk scores were audited across protected groups on the holdout split at the operational 20% triage threshold:
+Even though demographic features were excluded from model training (Set B), the resulting model risk scores were audited across protected groups on the holdout split ($n=294$) at the operational 20% triage threshold ($k=59$):
 
-### 5.1 Subgroup Audit Summary ($n = 294$)
+### 5.1 Subgroup Audit Summary ($n = 294$, Holdout Split)
 
-| Attribute | Subgroup | Sample Size | Leavers | Selected Count | Selection Rate | Leaver Recall | Disparate Impact Ratio |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Gender** | Female | 114 | 16 | 27 | 23.7% | 62.5% | 1.00 (Reference) |
-| **Gender** | Male | 180 | 31 | 32 | 17.8% | 54.8% | **0.75** |
-| **MaritalStatus** | Single | 96 | 25 | 32 | 33.3% | 64.0% | 1.00 (Reference) |
-| **MaritalStatus** | Married | 134 | 16 | 20 | 14.9% | 50.0% | **0.45** |
-| **MaritalStatus** | Divorced | 64 | 6 | 7 | 10.9% | 50.0% | **0.33** |
-| **AgeGroup** | 18-24 | 20 | 9 | 9 | 45.0% | 66.7% | 1.00 (Reference) |
-| **AgeGroup** | 25-34 | 126 | 24 | 33 | 26.2% | 62.5% | 0.58 |
-| **AgeGroup** | 35-44 | 93 | 9 | 12 | 12.9% | 44.4% | 0.29 |
-| **AgeGroup** | 45-54 | 45 | 4 | 5 | 11.1% | 25.0% | 0.25 |
-| **AgeGroup** | 55+ | 10 | 1 | 0 | 0.0% | 0.0% | 0.00 |
+| Attribute | Subgroup | Sample Size ($n$) | Leavers | Flagged ($k$) | Selection Rate (95% Wilson CI) | Recall (95% Wilson CI) | Precision (95% Wilson CI) | Disparate Impact Ratio | Low-$n$ Flag |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Gender** | Female | 116 | 16 | 26 | 22.41% [15.8%, 30.8%] | 62.50% [38.6%, 81.5%] | 38.46% [22.4%, 57.5%] | 1.0000 | False |
+| **Gender** | Male | 178 | 31 | 33 | 18.54% [13.5%, 24.9%] | 54.84% [37.8%, 70.8%] | 51.52% [35.2%, 67.5%] | 0.8271 | False |
+| **MaritalStatus** | Single | 97 | 25 | 32 | 32.99% [24.4%, 42.8%] | 64.00% [44.5%, 79.8%] | 50.00% [33.6%, 66.4%] | 1.0000 | False |
+| **MaritalStatus** | Married | 133 | 18 | 20 | 15.04% [10.0%, 22.1%] | 50.00% [29.0%, 71.0%] | 45.00% [25.8%, 65.8%] | 0.4558 | False |
+| **MaritalStatus** | Divorced | 64 | 4 | 7 | 10.94% [5.4%, 20.9%] | 50.00% [15.0%, 85.0%] | 28.57% [8.2%, 64.1%] | 0.3315 | False |
+| **AgeGroup** | 18-25 | 27 | 7 | 16 | 59.26% [40.7%, 75.5%] | 85.71% [48.7%, 97.4%] | 37.50% [18.5%, 61.4%] | 1.0000 | **True ($n<30$)** |
+| **AgeGroup** | 26-35 | 121 | 20 | 20 | 16.53% [11.0%, 24.2%] | 55.00% [34.2%, 74.2%] | 55.00% [34.2%, 74.2%] | 0.2789 | False |
+| **AgeGroup** | 36-45 | 98 | 11 | 15 | 15.31% [9.5%, 23.7%] | 63.64% [35.4%, 84.8%] | 46.67% [24.8%, 69.9%] | 0.2583 | False |
+| **AgeGroup** | 46-60 | 48 | 9 | 8 | 16.67% [8.7%, 29.6%] | 33.33% [12.1%, 64.6%] | 37.50% [13.7%, 69.4%] | 0.2812 | False |
 
 ### 5.2 Fairness Findings & Governance Controls
 - **Disparate Impact Notice**: Because operational factors (overtime, entry-level job role, lower tenure) correlate in practice with younger age and single marital status, the demographic-free model selects younger and single employees at higher rates.

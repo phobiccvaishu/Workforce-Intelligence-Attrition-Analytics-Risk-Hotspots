@@ -343,10 +343,14 @@ def plot_fig18_odds_ratios(
 
     ax.scatter(sub["odds_ratio"], y_pos, color=point_colors, s=55, zorder=4, edgecolor="black", linewidth=0.8)
 
-    # Approximate 95% CI whiskers
-    se = 0.16
-    ci_low = np.exp(sub["coefficient"] - 1.96 * se)
-    ci_high = np.exp(sub["coefficient"] + 1.96 * se)
+    # 95% CI whiskers (exact asymptotic CIs from Hessian if present, else fallback)
+    if "ci95_low" in sub.columns and "ci95_high" in sub.columns:
+        ci_low = sub["ci95_low"].to_numpy()
+        ci_high = sub["ci95_high"].to_numpy()
+    else:
+        se = sub["se"].to_numpy() if "se" in sub.columns else 0.16
+        ci_low = np.exp(sub["coefficient"] - 1.96 * se)
+        ci_high = np.exp(sub["coefficient"] + 1.96 * se)
     sub["ci_low"] = ci_low
     sub["ci_high"] = ci_high
 
@@ -485,8 +489,8 @@ def plot_fig20_demographic_fairness(
     ax1.axvline(20.0, color="#DC2626", linestyle="--", linewidth=1.2, label="Nominal 20% Triage Threshold")
     ax1.set_yticks(y_pos)
     ax1.set_yticklabels(labels, fontsize=8.0)
-    ax1.set_xlim([0, 50])
-    ax1.set_xticks([0, 10, 20, 30, 40, 50])
+    ax1.set_xlim([0, 70])
+    ax1.set_xticks([0, 15, 30, 45, 60])
     ax1.set_xlabel("Triage Selection Rate (%)", fontsize=9.0, fontweight="bold")
     ax1.set_title("A. Triage Selection Rate by Subgroup", fontsize=9.5, fontweight="bold")
     ax1.grid(axis="x", linestyle="--", alpha=0.4)
@@ -494,8 +498,8 @@ def plot_fig20_demographic_fairness(
 
     colors2 = "#1E3A8A"
     ax2.barh(y_pos, df_fairness["recall"] * 100, height=0.6, color=colors2, edgecolor="black", linewidth=0.7)
-    ax2.set_xlim([0, 75])
-    ax2.set_xticks([0, 15, 30, 45, 60, 75])
+    ax2.set_xlim([0, 100])
+    ax2.set_xticks([0, 20, 40, 60, 80, 100])
     ax2.set_xlabel("Recall at 20% Triage (%)", fontsize=9.0, fontweight="bold")
     ax2.set_title("B. Leaver Recall by Subgroup", fontsize=9.5, fontweight="bold")
     ax2.grid(axis="x", linestyle="--", alpha=0.4)

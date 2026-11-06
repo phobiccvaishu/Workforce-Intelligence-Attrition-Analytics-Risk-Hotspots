@@ -189,20 +189,22 @@ def main() -> None:
     # 7. Hotspot Candidate Out-of-Sample Validation
     print("\nExecuting candidate hotspot screening and holdout validation...")
     screened_train_hotspots = screen_hotspots_on_train(train_df, min_n=30)
+    train_segments_set = set(h["segment"] for h in screened_train_hotspots)
     print(f"Screened {len(screened_train_hotspots)} candidate hotspot segments on Training Split.")
 
     # Also load Phase 3 candidates
     phase3_cand_path = PROJECT_ROOT / "reports" / "phase3" / "tables" / "hotspot_candidates.csv"
+    p3_segments_set = set()
     if phase3_cand_path.exists():
         df_p3_cand = pd.read_csv(phase3_cand_path)
+        p3_segments_set = set(df_p3_cand["subgroup"])
         for _, r in df_p3_cand.iterrows():
             seg_str = r["subgroup"]
-            # Avoid duplicate if already screened
-            if not any(h["segment"] == seg_str for h in screened_train_hotspots):
+            if seg_str not in train_segments_set:
                 screened_train_hotspots.append(
                     {
                         "segment": seg_str,
-                        "source": "Phase 3 Scan",
+                        "source": "Optimistic: holdout was used to select",
                         "train_n": int(r["n"]),
                         "train_leavers": int(r["leavers"]),
                         "train_rate": float(r["attrition_rate_pct"]) / 100.0,
@@ -213,6 +215,11 @@ def main() -> None:
                 )
 
     df_hotspot_val = evaluate_hotspots_on_holdout(screened_train_hotspots, holdout_df)
+    df_hotspot_val["in_p3_16_candidates"] = df_hotspot_val["segment"].isin(p3_segments_set)
+    df_hotspot_val["in_training_screened"] = df_hotspot_val["segment"].isin(train_segments_set)
+    df_hotspot_val["above_baseline_point"] = df_hotspot_val["holdout_rate"] > holdout_baseline
+    df_hotspot_val["above_baseline_ci_lower"] = df_hotspot_val["holdout_ci_low"] > holdout_baseline
+    df_hotspot_val["holdout_low_n_flag"] = df_hotspot_val["holdout_n"] < 30
     print(f"Validated {len(df_hotspot_val)} candidate segments against Holdout Split.")
 
     # 8. Demographic Fairness Audit
@@ -221,7 +228,7 @@ def main() -> None:
 
     # 9. Feature Importance / Odds Ratios
     print("\nExtracting feature odds ratios from regularised Logistic Regression...")
-    df_odds_ratios = compute_logistic_odds_ratios(pipe_lr)
+    df_odds_ratios = compute_logistic_odds_ratios(pipe_lr, X_train=X_train)
 
     # 10. Save Tables
     print("\nSaving reporting tables to reports/phase4/tables/...")
