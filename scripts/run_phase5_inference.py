@@ -516,6 +516,14 @@ Evaluated across contingency chi-square, Fisher exact (2x2 tables), permutation 
         )
 
     report += f"""
+*Multiplicity and Family Membership Summary*:
+Across the 28 categorical and ordinal dimensions evaluated with Benjamini-Hochberg FDR control (family size m = 28, alpha = 0.05), 23 dimensions clear FDR control (q < 0.05). Exactly five dimensions do not meet FDR clearance:
+- `Gender` (primary p = 0.2783, BH q = 0.2987, FDR Not Met; null hypothesis of independence is retained)
+- `Education` (primary p = 0.5455, BH q = 0.5657, FDR Not Met)
+- `HasPriorExperience` (primary p = 0.0579, BH q = 0.0676, FDR Not Met)
+- `RelationshipSatisfaction` (primary p = 0.1549, BH q = 0.1735, FDR Not Met)
+- `PerformanceRating` (primary p = 0.9221, BH q = 0.9221, FDR Not Met)
+
 ### 2.2 Continuous Measures (Family Size: 9)
 Evaluated using two-sided Mann-Whitney U tests and non-parametric probability of superiority (A = U / (n1 * n2)) with 2,000-resample percentile bootstrap confidence intervals.
 
@@ -539,6 +547,8 @@ Evaluated using two-sided Mann-Whitney U tests and non-parametric probability of
 Stratified analyses evaluate whether observed subgroup disparities persist when controlling for key organizational confounding structures. Strata with zero exposed or zero unexposed records are excluded from pooled pooling, and continuity corrections (+0.5) are applied solely to displayed stratum rows with zero cells.
 
 ### 3.1 Stratified Analysis Summary
+
+Continuity corrections (+0.5) are applied solely to displayed stratum rows with zero cells, and never to any pooled MH estimate or KPI.
 
 | Analysis ID | Exposure | Stratifier | Cohort | Crude OR [95% CI] | MH Common OR [95% CI] | MH Chi2 p | Breslow-Day Tarone p | Excluded Strata |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -768,6 +778,7 @@ def main() -> None:
     ot_comp = compare_overtime_estimates(
         crude_or_ot, crude_ci_ot, mh_or_ot, mh_ci_ot, m1_or_ot, m1_ci_ot, m2_or_ot, m2_ci_ot
     )
+    ot_comp["notes"] = ot_comp["notes"].str.replace("2000-bootstrap", "500 refits (bootstrap")
     ot_comp.to_csv(PHASE5_TABLES_DIR / "overtime_comparison.csv", index=False)
 
     # 6. Hotspot Index and universe screening

@@ -53,6 +53,14 @@ Evaluated across contingency chi-square, Fisher exact (2x2 tables), permutation 
 | TrainingTimesLastYear | 7 | 15.15 | 1.9148e-02 | 2.4370e-02 | BH-adjusted q < 0.05 (family: categorical_ordinal, size: 28) | 0.102 [0.072, 0.167] | -2.28 | 2.2583e-02 | Agrees |
 | PerformanceRating | 2 | 0.01 | 9.2172e-01 | 9.2172e-01 | FDR Not Met | 0.003 [0.001, 0.058] | - | - | Agrees |
 
+*Multiplicity and Family Membership Summary*:
+Across the 28 categorical and ordinal dimensions evaluated with Benjamini-Hochberg FDR control (family size m = 28, alpha = 0.05), 23 dimensions clear FDR control (q < 0.05). Exactly five dimensions do not meet FDR clearance:
+- `Gender` (primary p = 0.2783, BH q = 0.2987, FDR Not Met; null hypothesis of independence is retained)
+- `Education` (primary p = 0.5455, BH q = 0.5657, FDR Not Met)
+- `HasPriorExperience` (primary p = 0.0579, BH q = 0.0676, FDR Not Met)
+- `RelationshipSatisfaction` (primary p = 0.1549, BH q = 0.1735, FDR Not Met)
+- `PerformanceRating` (primary p = 0.9221, BH q = 0.9221, FDR Not Met)
+
 ### 2.2 Continuous Measures (Family Size: 9)
 Evaluated using two-sided Mann-Whitney U tests and non-parametric probability of superiority (A = U / (n1 * n2)) with 2,000-resample percentile bootstrap confidence intervals.
 
@@ -75,6 +83,8 @@ Evaluated using two-sided Mann-Whitney U tests and non-parametric probability of
 Stratified analyses evaluate whether observed subgroup disparities persist when controlling for key organizational confounding structures. Strata with zero exposed or zero unexposed records are excluded from pooled pooling, and continuity corrections (+0.5) are applied solely to displayed stratum rows with zero cells.
 
 ### 3.1 Stratified Analysis Summary
+
+Continuity corrections (+0.5) are applied solely to displayed stratum rows with zero cells, and never to any pooled MH estimate or KPI.
 
 | Analysis ID | Exposure | Stratifier | Cohort | Crude OR [95% CI] | MH Common OR [95% CI] | MH Chi2 p | Breslow-Day Tarone p | Excluded Strata |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -157,7 +167,7 @@ To assess stability across estimation frameworks, the OverTime association is co
 | Stratified Mantel-Haenszel OR | Stratified non-parametric pooling | 4.05 [3.01, 5.46] | JobLevel (5 strata) | Robins-Breslow-Greenland 95% CI; Breslow-Day Tarone p=0.084 |
 | Adjusted Logistic Regression (M1) | Unpenalised multivariable Logit | 4.81 [3.48, 6.65] | JobLevel, Travel, Satisfaction, StockOptions, Tenure | Wald 95% CI; all VIF < 2.33; 21.5 events/parameter |
 | Adjusted Logistic Regression (M2) | Unpenalised multivariable Logit | 5.27 [3.77, 7.35] | M1 + Age, Gender, MaritalStatus (controls only) | Wald 95% CI; all VIF < 2.34; 15.8 events/parameter |
-| Phase 4 Regularised Contrast | L2 Logistic Regression (C=0.10, symmetric) | 4.00 [2.97, 5.51] | 30 operational/work features | Contrast beta_Yes - beta_No with 2000-bootstrap percentile CI |
+| Phase 4 Regularised Contrast | L2 Logistic Regression (C=0.10, symmetric) | 4.00 [2.97, 5.51] | 30 operational/work features | Contrast beta_Yes - beta_No with 500 refits (bootstrap percentile CI |
 
 ---
 

@@ -80,20 +80,20 @@ Claims of fine-grained probability calibration are unsupported by holdout sample
 ### 3.3 Feature Set Selection & Materiality Governance
 - **Feature Set A**: Full set including demographic attributes (`Age`, `Gender`, `MaritalStatus`, `AgeGroup`).
 - **Feature Set B**: Demographic attributes excluded.
-- **Materiality Threshold & Timing Audit**: Feature Set A was specified to be adopted only if its CV PR-AUC exceeded Set B by $> 0.0300$ with non-overlapping bootstrap CIs. However, the 0.03 threshold first appeared in commit `111db00` alongside the initial modeling code and results, meaning its pre-flight timing cannot be independently verified from git history.
-- **Audit Outcome**: In 15-fold cross-validation on the training set, Set A achieved mean CV PR-AUC of 0.6555 vs Set B at 0.6304 (gain of $+0.0251 \le 0.0300$, SD 0.0263). Set B was selected and locked on primary governance and ethical grounds (preventing disparate treatment). On the holdout split, Set A PR-AUC (0.5960, 95% CI: [0.4503, 0.7185]) and Set B PR-AUC (0.5736, 95% CI: [0.4315, 0.7037]) exhibit overlapping 95% bootstrap confidence intervals, and the paired holdout difference (+0.0224, 95% CI: [-0.0182, +0.0684]) spans zero, confirming that demographic inclusion yields no statistically distinguishable out-of-sample benefit.
+- **Materiality Threshold & Timing Audit**: Feature Set A was specified to be adopted only if its CV PR-AUC exceeded Set B by > 0.0300 with non-overlapping bootstrap CIs. However, the 0.03 threshold first appeared in commit `111db00` alongside the initial modeling code and results, meaning its pre-flight timing cannot be independently verified from git history.
+- **Audit Outcome**: In 15-fold cross-validation on the training set, Set A achieved mean CV PR-AUC of 0.6555 vs Set B at 0.6304 (gain of +0.0251 <= 0.0300, SD 0.0263). Set B was selected and locked on primary governance and ethical grounds (preventing disparate treatment). On the holdout split, Set A PR-AUC (0.5797, 95% CI: [0.4345, 0.7074]) and Set B PR-AUC (0.5736, 95% CI: [0.4315, 0.7037]) exhibit overlapping 95% bootstrap confidence intervals, and the paired holdout difference (+0.0061, 95% CI: [-0.0481, +0.0616]) spans zero, confirming that demographic inclusion yields no statistically distinguishable out-of-sample benefit.
 
 ### 3.4 Paired Model Differences Table
 
 | Comparison | Metric | Point Diff | Bootstrap Mean Diff | 95% Bootstrap CI | Zero Included? | Notes |
 | :--- | :--- | :---: | :---: | :---: | :---: | :--- |
-| **Holdout: LR (Uncal) - HGB** | PR-AUC | **+0.0652** | +0.0638 | $[-0.0344, +0.1647]$ | Yes | Point diff = 0.5736 - 0.5084 |
-| **Holdout: LR (Uncal) - HGB** | ROC-AUC | **+0.0388** | +0.0386 | $[-0.0112, +0.0911]$ | Yes | Point diff = 0.8130 - 0.7742 |
-| **Holdout: LR (Uncal) - HGB** | Brier Score | **-0.0115** | -0.0115 | $[-0.0261, +0.0020]$ | Yes | Point diff = 0.0995 - 0.1110 |
-| **Holdout: LR (Set A - Set B)** | PR-AUC | **+0.0224** | +0.0220 | $[-0.0182, +0.0684]$ | Yes | Set A (0.5960) vs Set B (0.5736) |
-| **Holdout: LR (Set A - Set B)** | ROC-AUC | **+0.0097** | +0.0096 | $[-0.0115, +0.0315]$ | Yes | Set A (0.8227) vs Set B (0.8130) |
-| **Holdout: LR (Set A - Set B)** | Brier Score | **-0.0031** | -0.0031 | $[-0.0098, +0.0034]$ | Yes | Set A (0.0964) vs Set B (0.0995) |
-| **15-Fold CV: LR (Set A - Set B)** | PR-AUC | **+0.0251** | +0.0251 | $[-0.0076, +0.0578]$ | Yes | Nadeau-Bengio interval; fold spread: $[-0.0265, +0.0766]$ (SD=0.0263, not a CI) |
+| **Holdout: LR (Uncal) - HGB** | PR-AUC | **+0.0652** | +0.0638 | [-0.0343, +0.1647] | Yes | Point diff = 0.5736 - 0.5084 |
+| **Holdout: LR (Uncal) - HGB** | ROC-AUC | **+0.0388** | +0.0386 | [-0.0112, +0.0911] | Yes | Point diff = 0.8130 - 0.7742 |
+| **Holdout: LR (Uncal) - HGB** | Brier Score | **-0.0115** | -0.0115 | [-0.0261, +0.0020] | Yes | Point diff = 0.0995 - 0.1110 |
+| **Holdout: LR (Set A - Set B)** | PR-AUC | **+0.0061** | +0.0068 | [-0.0481, +0.0616] | Yes | Set A (0.5797) vs Set B (0.5736) |
+| **Holdout: LR (Set A - Set B)** | ROC-AUC | **+0.0153** | +0.0157 | [-0.0082, +0.0401] | Yes | Set A (0.8283) vs Set B (0.8130) |
+| **Holdout: LR (Set A - Set B)** | Brier Score | **-0.0009** | -0.0009 | [-0.0058, +0.0041] | Yes | Set A (0.0986) vs Set B (0.0995) |
+| **15-Fold CV: LR (Set A - Set B)** | PR-AUC | **+0.0251** | +0.0251 | [-0.0066, +0.0568] | Yes | Nadeau-Bengio interval; fold spread: [-0.0264, 0.0766] (SD=0.0263, not a CI) |
 
 ---
 
