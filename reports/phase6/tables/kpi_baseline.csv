@@ -1,0 +1,11 @@
+kpi_id,name,kpi_class,value_summary,n,ci_low,ci_high,ci_display,reliability,source
+KPI-01,Attrition Rate,LIVE,16.12%,1470,0.1433125454143761,0.1809024208297155,"[0.1433, 0.1809]",reliable,src.workforce_intel.kpis.kpi_01_attrition_rate
+KPI-02,Headcount and Leavers Breakdown,LIVE,"n=1470, leavers=237 (100.0% headcount, 100.0% leavers)",1470,,,-,reliable,src.workforce_intel.kpis.kpi_02_headcount_leavers
+KPI-03,Relative Attrition vs Baseline,LIVE,"diff=+0.00 pp, ratio=1.00x, flag=no_separation",1470,0.1433125454143761,0.1809024208297155,"[0.1433, 0.1809]",reliable,src.workforce_intel.kpis.kpi_03_relative_attrition
+KPI-04,OverTime Association Within Filter,LIVE,"OR=3.77, OT share=28.3% (a=127, b=289, c=110, d=944)",1470,2.829564975592941,5.026326586568541,"[2.8296, 5.0263]",reliable,src.workforce_intel.kpis.kpi_04_overtime_association
+KPI-05,Promotion-Gap Cohort Rate,LIVE,"Cohort rate=10.79% (n=890), 6+ vs 0-5 OR=1.96",890,0.08914435221965099,0.12995653741583438,"[0.0891, 0.1300]",reliable,src.workforce_intel.kpis.kpi_05_promotion_gap_cohort
+KPI-06,Adjusted OverTime Association,STATIC,"MH (JobLevel) OR=4.05 [3.01, 5.46]; M1 OR=4.81; M2 OR=5.27; P4 OR=4.00",1470,3.0119460462226493,5.45578972581376,"[3.0119, 5.4558]","workforce-level, not filterable",reports/phase5/tables/overtime_comparison.csv
+KPI-07,Hotspot Universe Summary,STATIC,"Universe=104 segments (98 with n>=30); Tier 1=25; Tier 2=2; Prior m: 1-way=29.55, 2-way=8.65",104,,,-,"workforce-level, not filterable",reports/phase5/tables/hotspot_universe.csv
+KPI-08,Hotspot Holdout Validation,STATIC,Screened Tier 1=25; Holdout n>=30: 14/25; Above point: 12/14; Above lower bound: 7/14,25,,,-,"workforce-level, not filterable",reports/phase5/tables/hotspot_split_validation.csv
+KPI-09,Hotspot Greedy Coverage,STATIC,"Steps=8; Step 5: 30.7% workforce, 67.5% leavers; Final: 57.9% workforce, 87.3% leavers",1470,,,-,"workforce-level, not filterable",reports/phase5/tables/greedy_coverage.csv
+KPI-10,Model Triage Yield,STATIC,"Base rate=15.99%; Top 10%: k=29, TP=18, Prec=62.1%, Rec=38.3%, Lift=3.88x; Top 20%: k=59, TP=27, Prec=45.8%, Rec=57.4%, Lift=2.86x",294,,,-,"workforce-level, not filterable",reports/phase4/tables/holdout_metrics.csv

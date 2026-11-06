@@ -1082,4 +1082,148 @@ N_PERMUTATIONS_INFERENCE: int = 10000
 PRIOR_STRENGTH_SENSITIVITY: List[int] = [10, 30, 100]
 MAX_GREEDY_STEPS: int = 10
 
+# -----------------------------------------------------------------------------
+# Phase 6 Paths, Registries, and Checksums
+# -----------------------------------------------------------------------------
+PHASE6_REPORTS_DIR = REPORTS_DIR / "phase6"
+PHASE6_TABLES_DIR = PHASE6_REPORTS_DIR / "tables"
+PHASE6_REPORT_MD = PHASE6_REPORTS_DIR / "kpi_report.md"
+KPI_DEFINITIONS_MD = DOCS_DIR / "kpi_definitions.md"
+
+# Allowed filter dimensions for live KPI evaluation
+ALLOWED_FILTER_DIMENSIONS: List[str] = [
+    "Department",
+    "JobRole",
+    "JobLevel",
+    "Education",
+    "EducationField",
+    "EnvironmentSatisfaction",
+    "JobSatisfaction",
+    "RelationshipSatisfaction",
+    "JobInvolvement",
+    "WorkLifeBalance",
+    "StockOptionLevel",
+    "OverTime",
+    "BusinessTravel",
+    "TrainingTimesLastYear",
+    "NumCompaniesWorked",
+    "PerformanceRating",
+    "AgeGroup",
+    "Gender",
+    "MaritalStatus",
+    "TenureBand",
+    "EarlyTenure",
+    "CareerStage",
+    "RoleTenureBand",
+    "ManagerTenureBand",
+    "PromotionGapBand",
+    "DistanceBand",
+    "HasPriorExperience",
+    "PromotionGapEqualsTenure",
+]
+
+# Static source table checksums for integrity verification
+STATIC_TABLE_CHECKSUMS: Dict[str, str] = {
+    "reports/phase5/tables/overtime_comparison.csv": "6dcd5f089e2ffb8f43cb4be6f493c19f05e31318c859c512ef5d1cccbd19b9a1",
+    "reports/phase5/tables/hotspot_universe.csv": "de84d7e43344af0e99291560674d0e20b094e86f10d600f9f6ea07147d16316e",
+    "reports/phase5/tables/hotspot_split_validation.csv": "dd5afbe814aefedee267a386d05228ab8a059ad2ce55e52d3bca1b0014a625ee",
+    "reports/phase5/tables/greedy_coverage.csv": "b5b693aad2ad35d8c830c4eb5ad4baea6f16139edb3b792bd08b634ff196e2bc",
+    "reports/phase4/tables/holdout_metrics.csv": "f95470b11c4503e6e6c209a4276146cd8c7d6c0761f3eb673fe05576d647e073",
+}
+
+# Master KPI Registry (10 KPIs: 5 LIVE, 5 STATIC)
+KPI_REGISTRY: List[Dict[str, str]] = [
+    {
+        "kpi_id": "KPI-01",
+        "name": "Attrition Rate",
+        "kpi_class": "LIVE",
+        "definition": "Proportion of workforce who departed (leavers / headcount) accompanied by Wilson 95% score interval.",
+        "source": "src.workforce_intel.kpis.kpi_01_attrition_rate",
+        "unit": "% (proportion)",
+        "reliability_rule": "Flagged as 'low_n' when headcount n < 30; flagged as 'no_data' when n = 0; otherwise 'reliable'.",
+    },
+    {
+        "kpi_id": "KPI-02",
+        "name": "Headcount and Leavers Breakdown",
+        "kpi_class": "LIVE",
+        "definition": "Filtered population counts (headcount, leavers) alongside share of overall workforce headcount and total leavers.",
+        "source": "src.workforce_intel.kpis.kpi_02_headcount_leavers",
+        "unit": "Counts & %",
+        "reliability_rule": "Flagged as 'low_n' when headcount n < 30; flagged as 'no_data' when n = 0; otherwise 'reliable'.",
+    },
+    {
+        "kpi_id": "KPI-03",
+        "name": "Relative Attrition vs Baseline",
+        "kpi_class": "LIVE",
+        "definition": "Absolute percentage-point difference and ratio relative to overall workforce baseline (16.12%), evaluated via Wilson interval separation rule.",
+        "source": "src.workforce_intel.kpis.kpi_03_relative_attrition",
+        "unit": "Percentage points & Ratio",
+        "reliability_rule": "Flagged as 'low_n' when headcount n < 30; flagged as 'no_data' when n = 0; otherwise 'reliable'.",
+    },
+    {
+        "kpi_id": "KPI-04",
+        "name": "OverTime Association Within Filter",
+        "kpi_class": "LIVE",
+        "definition": "Crude odds ratio for OverTime (Yes vs No) within filtered subpopulation, with Woolf 95% confidence interval and OverTime exposure share.",
+        "source": "src.workforce_intel.kpis.kpi_04_overtime_association",
+        "unit": "Odds Ratio & %",
+        "reliability_rule": "Flagged as 'unreliable_zero_cell' if any 2x2 contingency cell equals zero (continuity correction +0.5 applied); flagged as 'low_n' if any cell < 30; flagged as 'no_data' if n = 0; otherwise 'reliable'.",
+    },
+    {
+        "kpi_id": "KPI-05",
+        "name": "Promotion-Gap Cohort Rate",
+        "kpi_class": "LIVE",
+        "definition": "Attrition rate and crude odds ratio for long promotion gap (6+ vs 0-5 years) restricted to PromotionAnalysisCohort (TotalWorkingYears >= 6, YearsAtCompany >= 6, non-executive).",
+        "source": "src.workforce_intel.kpis.kpi_05_promotion_gap_cohort",
+        "unit": "% & Odds Ratio",
+        "reliability_rule": "Flagged as 'low_n' when cohort headcount n < 30; flagged as 'no_data' when n = 0; otherwise 'reliable'.",
+    },
+    {
+        "kpi_id": "KPI-06",
+        "name": "Adjusted OverTime Association",
+        "kpi_class": "STATIC",
+        "definition": "Workforce-level OverTime association across adjustment frameworks: Mantel-Haenszel common OR stratified by JobLevel, multivariable Model M1 (operational controls), and Model M2 (with demographic controls).",
+        "source": "reports/phase5/tables/overtime_comparison.csv",
+        "unit": "Odds Ratio [95% CI]",
+        "reliability_rule": "Workforce-level static benchmark; verified via SHA-256 integrity check. Rejects ad-hoc filters.",
+    },
+    {
+        "kpi_id": "KPI-07",
+        "name": "Hotspot Universe Summary",
+        "kpi_class": "STATIC",
+        "definition": "Structured summary of pre-registered 104 candidate segments: segments meeting sample size floor (n >= 30), Tier 1 priority hotspots, Tier 2 secondary hotspots, and fitted empirical Bayes prior strengths.",
+        "source": "reports/phase5/tables/hotspot_universe.csv",
+        "unit": "Segment counts & fitted m",
+        "reliability_rule": "Workforce-level static benchmark; verified via SHA-256 integrity check. Rejects ad-hoc filters.",
+    },
+    {
+        "kpi_id": "KPI-08",
+        "name": "Hotspot Holdout Validation",
+        "kpi_class": "STATIC",
+        "definition": "Out-of-sample replication summary for candidate hotspots screened on training partition (n = 1,176) and evaluated on sequestered holdout partition (n = 294).",
+        "source": "reports/phase5/tables/hotspot_split_validation.csv",
+        "unit": "Replicated segment counts",
+        "reliability_rule": "Workforce-level static benchmark; verified via SHA-256 integrity check. Rejects ad-hoc filters.",
+    },
+    {
+        "kpi_id": "KPI-09",
+        "name": "Hotspot Greedy Coverage",
+        "kpi_class": "STATIC",
+        "definition": "Cumulative marginal workforce and leaver coverage progression across greedy non-redundant segment selection steps.",
+        "source": "reports/phase5/tables/greedy_coverage.csv",
+        "unit": "Cumulative %",
+        "reliability_rule": "Workforce-level static benchmark; verified via SHA-256 integrity check. Rejects ad-hoc filters.",
+    },
+    {
+        "kpi_id": "KPI-10",
+        "name": "Model Triage Yield",
+        "kpi_class": "STATIC",
+        "definition": "Out-of-sample decision-support yield for calibrated regularised logistic regression at top-10% and top-20% risk triage cutoffs on sequestered holdout partition.",
+        "source": "reports/phase4/tables/holdout_metrics.csv",
+        "unit": "Precision, Recall, Lift",
+        "reliability_rule": "Workforce-level static benchmark; verified via SHA-256 integrity check. Rejects ad-hoc filters. Labeled advisory decision support; no automated adverse actions.",
+    },
+]
+
+
 

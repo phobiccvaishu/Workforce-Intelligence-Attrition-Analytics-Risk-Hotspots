@@ -486,3 +486,82 @@ def test_phase5_section_6_reference_checkpoints():
     assert mh_c["breslow_day_p"] == pytest.approx(0.61, abs=0.02)
 
 
+def test_phase6_kpi_reference_checkpoints():
+    """Verify Section 6 hand-derived reference checkpoints for Phase 6 KPI module."""
+    from workforce_intel.kpis import (
+        evaluate_all_kpis,
+        kpi_01_attrition_rate,
+        kpi_02_headcount_leavers,
+        kpi_03_relative_attrition,
+        kpi_04_overtime_association,
+        kpi_05_promotion_gap_cohort,
+        kpi_06_adjusted_overtime,
+        kpi_07_hotspot_universe_summary,
+        kpi_08_hotspot_holdout_validation,
+        kpi_09_hotspot_coverage,
+        kpi_10_model_triage_yield,
+    )
+
+    df = pd.read_csv("data/processed/workforce_attrition_processed.csv")
+
+    # Overall 237/1470 = 16.12% (tolerance 0.0005)
+    k1 = kpi_01_attrition_rate(df)
+    assert k1["n"] == 1470
+    assert k1["value"] == pytest.approx(237 / 1470, abs=0.0005)
+    assert k1["ci_low"] == pytest.approx(0.1433, abs=0.001)
+    assert k1["ci_high"] == pytest.approx(0.1809, abs=0.001)
+    assert k1["reliability"] == "reliable"
+
+    # Cohort 96/890 = 10.79% (tolerance 0.0005)
+    k5 = kpi_05_promotion_gap_cohort(df)
+    assert k5["n"] == 890
+    assert k5["value"]["cohort_headcount"] == 890
+    assert k5["value"]["cohort_leavers"] == 96
+    assert k5["value"]["cohort_attrition_rate"] == pytest.approx(96 / 890, abs=0.0005)
+    assert k5["value"]["crude_or_6plus_vs_0to5"] == pytest.approx(1.96, abs=0.02)
+
+    # OverTime crude OR 3.77 (tolerance 0.02)
+    k4 = kpi_04_overtime_association(df)
+    assert k4["n"] == 1470
+    assert k4["value"]["odds_ratio"] == pytest.approx(3.77, abs=0.02)
+    assert k4["value"]["overtime_share"] == pytest.approx(416 / 1470, abs=0.001)
+
+    # MH by JobLevel 4.05 [3.01, 5.46]; M1 OverTime 4.81, M2 5.27
+    k6 = kpi_06_adjusted_overtime()
+    v6 = k6["value"]
+    assert v6["mantel_haenszel_joblevel"]["odds_ratio"] == pytest.approx(4.05, abs=0.02)
+    assert v6["mantel_haenszel_joblevel"]["ci_low"] == pytest.approx(3.01, abs=0.05)
+    assert v6["mantel_haenszel_joblevel"]["ci_high"] == pytest.approx(5.46, abs=0.05)
+    assert v6["multivariable_m1"]["odds_ratio"] == pytest.approx(4.81, abs=0.02)
+    assert v6["multivariable_m2"]["odds_ratio"] == pytest.approx(5.27, abs=0.02)
+
+    # Hotspot 104 / 98 / 25 / 2
+    k7 = kpi_07_hotspot_universe_summary()
+    v7 = k7["value"]
+    assert v7["universe_size"] == 104
+    assert v7["segments_n_ge_30"] == 98
+    assert v7["tier1_priority_hotspots"] == 25
+    assert v7["tier2_secondary_hotspots"] == 2
+
+    # Split-sample 25 screened, 14 with holdout n >= 30, 7 above by lower bound
+    k8 = kpi_08_hotspot_holdout_validation()
+    v8 = k8["value"]
+    assert v8["screened_training_tier1"] == 25
+    assert v8["holdout_sample_floor_met"] == 14
+    assert v8["holdout_above_baseline_lower_bound"] == 7
+    assert v8["sample_floor_proportion"] == "14/25"
+    assert v8["lower_bound_replication_proportion"] == "7/14"
+
+    # Triage top-10% 18 of 29 and top-20% 27 of 59 (47 holdout leavers)
+    k10 = kpi_10_model_triage_yield()
+    v10 = k10["value"]
+    assert v10["holdout_total_headcount"] == 294
+    assert v10["holdout_total_leavers"] == 47
+    assert v10["holdout_base_rate"] == pytest.approx(47 / 294, abs=0.0005)
+    assert v10["top_10_percent"]["k"] == 29
+    assert v10["top_10_percent"]["tp"] == 18
+    assert v10["top_20_percent"]["k"] == 59
+    assert v10["top_20_percent"]["tp"] == 27
+
+
+
