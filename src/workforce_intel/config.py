@@ -1167,7 +1167,7 @@ KPI_REGISTRY: List[Dict[str, str]] = [
         "definition": "Crude odds ratio for OverTime (Yes vs No) within filtered subpopulation, with Woolf 95% confidence interval and OverTime exposure share.",
         "source": "src.workforce_intel.kpis.kpi_04_overtime_association",
         "unit": "Odds Ratio & %",
-        "reliability_rule": "Flagged as 'unreliable_zero_cell' if any 2x2 contingency cell equals zero (continuity correction +0.5 applied); flagged as 'low_n' if any cell < 30; flagged as 'no_data' if n = 0; otherwise 'reliable'.",
+        "reliability_rule": "Flagged as 'exposure_fixed_by_filter' returning OR=None if active filter fixes a single exposure level; flagged as 'unreliable_zero_cell' returning OR=None if any 2x2 cell equals zero; flagged as 'low_n' if any cell < 30; flagged as 'no_data' if n = 0; otherwise 'reliable'.",
     },
     {
         "kpi_id": "KPI-05",

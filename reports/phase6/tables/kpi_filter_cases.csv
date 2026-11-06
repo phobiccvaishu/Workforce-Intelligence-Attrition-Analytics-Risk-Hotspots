@@ -18,7 +18,7 @@ CASE-04,Department: Human Resources,"{""Department"": ""Human Resources""}",KPI-
 CASE-04,Department: Human Resources,"{""Department"": ""Human Resources""}",KPI-02,Headcount and Leavers Breakdown,"n=63, leavers=12 (4.3% headcount, 5.1% leavers)",63,,,-,reliable
 CASE-04,Department: Human Resources,"{""Department"": ""Human Resources""}",KPI-03,Relative Attrition vs Baseline,"diff=+2.93 pp, ratio=1.18x, flag=no_separation",63,0.11246191872292464,0.3040678714987455,"[0.1125, 0.3041]",reliable
 CASE-04,Department: Human Resources,"{""Department"": ""Human Resources""}",KPI-04,OverTime Association Within Filter,"OR=2.32, OT share=27.0% (a=5, b=12, c=7, d=39)",63,0.621714731802969,8.66801176902587,"[0.6217, 8.6680]",low_n
-CASE-04,Department: Human Resources,"{""Department"": ""Human Resources""}",KPI-05,Promotion-Gap Cohort Rate,"Cohort rate=7.89% (n=38), 6+ vs 0-5 OR=0.79",38,0.02721459550698772,0.20799371457771457,"[0.0272, 0.2080]",unreliable_zero_cell
+CASE-04,Department: Human Resources,"{""Department"": ""Human Resources""}",KPI-05,Promotion-Gap Cohort Rate,"Cohort rate=7.89% (n=38), 6+ vs 0-5 OR=None",38,0.02721459550698772,0.20799371457771457,"[0.0272, 0.2080]",unreliable_zero_cell
 CASE-05,JobLevel: Entry-Level 1,"{""JobLevel"": 1}",KPI-01,Attrition Rate,26.34%,543,0.22806066884273646,0.3019676495034249,"[0.2281, 0.3020]",reliable
 CASE-05,JobLevel: Entry-Level 1,"{""JobLevel"": 1}",KPI-02,Headcount and Leavers Breakdown,"n=543, leavers=143 (36.9% headcount, 60.3% leavers)",543,,,-,reliable
 CASE-05,JobLevel: Entry-Level 1,"{""JobLevel"": 1}",KPI-03,Relative Attrition vs Baseline,"diff=+10.21 pp, ratio=1.63x, flag=above_baseline",543,0.22806066884273646,0.3019676495034249,"[0.2281, 0.3020]",reliable
@@ -27,12 +27,12 @@ CASE-05,JobLevel: Entry-Level 1,"{""JobLevel"": 1}",KPI-05,Promotion-Gap Cohort 
 CASE-06,OverTime: Yes (Exposed),"{""OverTime"": ""Yes""}",KPI-01,Attrition Rate,30.53%,416,0.26298229805816975,0.3511577622039899,"[0.2630, 0.3512]",reliable
 CASE-06,OverTime: Yes (Exposed),"{""OverTime"": ""Yes""}",KPI-02,Headcount and Leavers Breakdown,"n=416, leavers=127 (28.3% headcount, 53.6% leavers)",416,,,-,reliable
 CASE-06,OverTime: Yes (Exposed),"{""OverTime"": ""Yes""}",KPI-03,Relative Attrition vs Baseline,"diff=+14.41 pp, ratio=1.89x, flag=above_baseline",416,0.26298229805816975,0.3511577622039899,"[0.2630, 0.3512]",reliable
-CASE-06,OverTime: Yes (Exposed),"{""OverTime"": ""Yes""}",KPI-04,OverTime Association Within Filter,"OR=None, OT share=100.0% (a=127, b=289, c=0, d=0)",416,,,-,unreliable_zero_cell
+CASE-06,OverTime: Yes (Exposed),"{""OverTime"": ""Yes""}",KPI-04,OverTime Association Within Filter,"OR=None (exposure fixed by filter), OT share=100.0%",416,,,-,exposure_fixed_by_filter
 CASE-06,OverTime: Yes (Exposed),"{""OverTime"": ""Yes""}",KPI-05,Promotion-Gap Cohort Rate,"Cohort rate=21.49% (n=242), 6+ vs 0-5 OR=2.09",242,0.1677950884685465,0.27086753311697265,"[0.1678, 0.2709]",low_n
 CASE-07,OverTime: No (Unexposed),"{""OverTime"": ""No""}",KPI-01,Attrition Rate,10.44%,1054,0.08732129555122461,0.12428078995432713,"[0.0873, 0.1243]",reliable
 CASE-07,OverTime: No (Unexposed),"{""OverTime"": ""No""}",KPI-02,Headcount and Leavers Breakdown,"n=1054, leavers=110 (71.7% headcount, 46.4% leavers)",1054,,,-,reliable
 CASE-07,OverTime: No (Unexposed),"{""OverTime"": ""No""}",KPI-03,Relative Attrition vs Baseline,"diff=-5.69 pp, ratio=0.65x, flag=below_baseline",1054,0.08732129555122461,0.12428078995432713,"[0.0873, 0.1243]",reliable
-CASE-07,OverTime: No (Unexposed),"{""OverTime"": ""No""}",KPI-04,OverTime Association Within Filter,"OR=None, OT share=0.0% (a=0, b=0, c=110, d=944)",1054,,,-,unreliable_zero_cell
+CASE-07,OverTime: No (Unexposed),"{""OverTime"": ""No""}",KPI-04,OverTime Association Within Filter,"OR=None (exposure fixed by filter), OT share=0.0%",1054,,,-,exposure_fixed_by_filter
 CASE-07,OverTime: No (Unexposed),"{""OverTime"": ""No""}",KPI-05,Promotion-Gap Cohort Rate,"Cohort rate=6.79% (n=648), 6+ vs 0-5 OR=1.91",648,0.050967666838332565,0.08992772663181109,"[0.0510, 0.0899]",low_n
 CASE-08,TenureBand: 0-1 Years,"{""TenureBand"": ""0-1""}",KPI-01,Attrition Rate,34.88%,215,0.2882898617783159,0.4146914638339521,"[0.2883, 0.4147]",reliable
 CASE-08,TenureBand: 0-1 Years,"{""TenureBand"": ""0-1""}",KPI-02,Headcount and Leavers Breakdown,"n=215, leavers=75 (14.6% headcount, 31.6% leavers)",215,,,-,reliable
@@ -42,12 +42,12 @@ CASE-08,TenureBand: 0-1 Years,"{""TenureBand"": ""0-1""}",KPI-05,Promotion-Gap C
 CASE-09,Multi-Attribute: Sales AND OverTime=Yes,"{""Department"": ""Sales"", ""OverTime"": ""Yes""}",KPI-01,Attrition Rate,37.50%,128,0.2959242909764656,0.4613599480919115,"[0.2959, 0.4614]",reliable
 CASE-09,Multi-Attribute: Sales AND OverTime=Yes,"{""Department"": ""Sales"", ""OverTime"": ""Yes""}",KPI-02,Headcount and Leavers Breakdown,"n=128, leavers=48 (8.7% headcount, 20.3% leavers)",128,,,-,reliable
 CASE-09,Multi-Attribute: Sales AND OverTime=Yes,"{""Department"": ""Sales"", ""OverTime"": ""Yes""}",KPI-03,Relative Attrition vs Baseline,"diff=+21.38 pp, ratio=2.33x, flag=above_baseline",128,0.2959242909764656,0.4613599480919115,"[0.2959, 0.4614]",reliable
-CASE-09,Multi-Attribute: Sales AND OverTime=Yes,"{""Department"": ""Sales"", ""OverTime"": ""Yes""}",KPI-04,OverTime Association Within Filter,"OR=None, OT share=100.0% (a=48, b=80, c=0, d=0)",128,,,-,unreliable_zero_cell
+CASE-09,Multi-Attribute: Sales AND OverTime=Yes,"{""Department"": ""Sales"", ""OverTime"": ""Yes""}",KPI-04,OverTime Association Within Filter,"OR=None (exposure fixed by filter), OT share=100.0%",128,,,-,exposure_fixed_by_filter
 CASE-09,Multi-Attribute: Sales AND OverTime=Yes,"{""Department"": ""Sales"", ""OverTime"": ""Yes""}",KPI-05,Promotion-Gap Cohort Rate,"Cohort rate=26.25% (n=80), 6+ vs 0-5 OR=2.18",80,0.17857401488509358,0.36818959664428175,"[0.1786, 0.3682]",low_n
 CASE-10,Low-n Boundary: Manager AND OverTime=Yes (n=27 < 30),"{""JobRole"": ""Manager"", ""OverTime"": ""Yes""}",KPI-01,Attrition Rate,14.81%,27,0.05915927776244328,0.32478685427812976,"[0.0592, 0.3248]",low_n
 CASE-10,Low-n Boundary: Manager AND OverTime=Yes (n=27 < 30),"{""JobRole"": ""Manager"", ""OverTime"": ""Yes""}",KPI-02,Headcount and Leavers Breakdown,"n=27, leavers=4 (1.8% headcount, 1.7% leavers)",27,,,-,low_n
 CASE-10,Low-n Boundary: Manager AND OverTime=Yes (n=27 < 30),"{""JobRole"": ""Manager"", ""OverTime"": ""Yes""}",KPI-03,Relative Attrition vs Baseline,"diff=-1.31 pp, ratio=0.92x, flag=no_separation",27,0.05915927776244328,0.32478685427812976,"[0.0592, 0.3248]",low_n
-CASE-10,Low-n Boundary: Manager AND OverTime=Yes (n=27 < 30),"{""JobRole"": ""Manager"", ""OverTime"": ""Yes""}",KPI-04,OverTime Association Within Filter,"OR=None, OT share=100.0% (a=4, b=23, c=0, d=0)",27,,,-,unreliable_zero_cell
+CASE-10,Low-n Boundary: Manager AND OverTime=Yes (n=27 < 30),"{""JobRole"": ""Manager"", ""OverTime"": ""Yes""}",KPI-04,OverTime Association Within Filter,"OR=None (exposure fixed by filter), OT share=100.0%",27,,,-,exposure_fixed_by_filter
 CASE-10,Low-n Boundary: Manager AND OverTime=Yes (n=27 < 30),"{""JobRole"": ""Manager"", ""OverTime"": ""Yes""}",KPI-05,Promotion-Gap Cohort Rate,"Cohort rate=17.39% (n=23), 6+ vs 0-5 OR=2.17",23,0.06978653563062566,0.37137647640226135,"[0.0698, 0.3714]",low_n
 CASE-11,Descriptive Protected Filter: Female AND Single,"{""Gender"": ""Female"", ""MaritalStatus"": ""Single""}",KPI-01,Attrition Rate,23.62%,199,0.18251363841840815,0.29984070565670073,"[0.1825, 0.2998]",reliable
 CASE-11,Descriptive Protected Filter: Female AND Single,"{""Gender"": ""Female"", ""MaritalStatus"": ""Single""}",KPI-02,Headcount and Leavers Breakdown,"n=199, leavers=47 (13.5% headcount, 19.8% leavers)",199,,,-,reliable

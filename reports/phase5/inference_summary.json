@@ -9,6 +9,38 @@
   "multiplicity_counts": {
     "categorical_ordinal_family_size": 28,
     "categorical_ordinal_fdr_cleared": 23,
+    "categorical_ordinal_cleared_dimensions": [
+      "Department",
+      "JobRole",
+      "JobLevel",
+      "AgeGroup",
+      "MaritalStatus",
+      "EducationField",
+      "TenureBand",
+      "EarlyTenure",
+      "CareerStage",
+      "RoleTenureBand",
+      "ManagerTenureBand",
+      "PromotionGapBand",
+      "PromotionGapEqualsTenure",
+      "NumCompaniesWorked",
+      "OverTime",
+      "BusinessTravel",
+      "DistanceBand",
+      "WorkLifeBalance",
+      "JobSatisfaction",
+      "EnvironmentSatisfaction",
+      "JobInvolvement",
+      "StockOptionLevel",
+      "TrainingTimesLastYear"
+    ],
+    "categorical_ordinal_non_cleared_dimensions": [
+      "Gender",
+      "Education",
+      "HasPriorExperience",
+      "RelationshipSatisfaction",
+      "PerformanceRating"
+    ],
     "numeric_measures_family_size": 9,
     "numeric_measures_fdr_cleared": 8
   },

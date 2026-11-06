@@ -485,6 +485,18 @@ def test_phase5_section_6_reference_checkpoints():
     assert mh_c["mh_ci_high"] == pytest.approx(3.92, abs=0.05)
     assert mh_c["breslow_day_p"] == pytest.approx(0.61, abs=0.02)
 
+    # 5. Hotspot split-sample validation checkpoints computed independently
+    val_df = pd.read_csv("reports/phase5/tables/hotspot_split_validation.csv")
+    screened_n = len(val_df)
+    n30_df = val_df[val_df["holdout_n_ge_30"]]
+    holdout_ge30_n = len(n30_df)
+    above_pt_n = int(n30_df["above_holdout_point"].sum())
+    above_lb_n = int(n30_df["above_holdout_ci_low"].sum())
+    assert screened_n == 25
+    assert holdout_ge30_n == 14
+    assert above_pt_n == 12
+    assert above_lb_n == 7
+
 
 def test_phase6_kpi_reference_checkpoints():
     """Verify Section 6 hand-derived reference checkpoints for Phase 6 KPI module."""
@@ -543,13 +555,15 @@ def test_phase6_kpi_reference_checkpoints():
     assert v7["tier1_priority_hotspots"] == 25
     assert v7["tier2_secondary_hotspots"] == 2
 
-    # Split-sample 25 screened, 14 with holdout n >= 30, 7 above by lower bound
+    # Split-sample 25 screened, 14 with holdout n >= 30, 12 above by point, 7 above by lower bound
     k8 = kpi_08_hotspot_holdout_validation()
     v8 = k8["value"]
     assert v8["screened_training_tier1"] == 25
     assert v8["holdout_sample_floor_met"] == 14
+    assert v8["holdout_above_baseline_point"] == 12
     assert v8["holdout_above_baseline_lower_bound"] == 7
     assert v8["sample_floor_proportion"] == "14/25"
+    assert v8["point_replication_proportion"] == "12/14"
     assert v8["lower_bound_replication_proportion"] == "7/14"
 
     # Triage top-10% 18 of 29 and top-20% 27 of 59 (47 holdout leavers)

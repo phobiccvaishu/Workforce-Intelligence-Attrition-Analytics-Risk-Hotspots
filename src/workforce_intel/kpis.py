@@ -308,24 +308,36 @@ def kpi_04_overtime_association(
             "n": n,
             "ci_low": None,
             "ci_high": None,
-            "reliability": "unreliable_zero_cell",
+            "reliability": "exposure_fixed_by_filter",
             "source": "src.workforce_intel.kpis.kpi_04_overtime_association",
             "as_of_filter": filter_dict,
         }
 
     has_zero_cell = (a == 0 or b == 0 or c == 0 or d == 0)
-    is_low_n_cell = min(a, b, c, d) < min_group_size or n < min_group_size
-
     if has_zero_cell:
-        # Continuity correction +0.5 per DL-38 for stratum row display
-        a_adj, b_adj, c_adj, d_adj = a + 0.5, b + 0.5, c + 0.5, d + 0.5
-        or_val = float((a_adj * d_adj) / (b_adj * c_adj))
-        se = float(math.sqrt(1 / a_adj + 1 / b_adj + 1 / c_adj + 1 / d_adj))
-        reliability = "unreliable_zero_cell"
-    else:
-        or_val = float((a * d) / (b * c))
-        se = float(math.sqrt(1 / a + 1 / b + 1 / c + 1 / d))
-        reliability = "low_n" if is_low_n_cell else "reliable"
+        return {
+            "kpi_id": "KPI-04",
+            "name": "OverTime Association Within Filter",
+            "value": {
+                "overtime_share": ot_share,
+                "odds_ratio": None,
+                "a_exposed_cases": a,
+                "b_exposed_noncases": b,
+                "c_unexposed_cases": c,
+                "d_unexposed_noncases": d,
+            },
+            "n": n,
+            "ci_low": None,
+            "ci_high": None,
+            "reliability": "unreliable_zero_cell",
+            "source": "src.workforce_intel.kpis.kpi_04_overtime_association",
+            "as_of_filter": filter_dict,
+        }
+
+    is_low_n_cell = min(a, b, c, d) < min_group_size or n < min_group_size
+    or_val = float((a * d) / (b * c))
+    se = float(math.sqrt(1 / a + 1 / b + 1 / c + 1 / d))
+    reliability = "low_n" if is_low_n_cell else "reliable"
 
     z = 1.959963984540054
     log_or = math.log(or_val)
@@ -399,25 +411,22 @@ def kpi_05_promotion_gap_cohort(
     if n_exp == 0 or n_unexp == 0:
         or_val = None
         or_ci_l, or_ci_h = None, None
-        reliability = "unreliable_zero_cell"
+        reliability = "exposure_fixed_by_filter" if (n_cohort >= min_group_size) else "low_n"
     else:
         has_zero_cell = (a == 0 or b == 0 or c == 0 or d == 0)
-        is_low_n_cell = min(a, b, c, d) < min_group_size or n_cohort < min_group_size
-
         if has_zero_cell:
-            a_adj, b_adj, c_adj, d_adj = a + 0.5, b + 0.5, c + 0.5, d + 0.5
-            or_val = float((a_adj * d_adj) / (b_adj * c_adj))
-            se = float(math.sqrt(1 / a_adj + 1 / b_adj + 1 / c_adj + 1 / d_adj))
+            or_val = None
+            or_ci_l, or_ci_h = None, None
             reliability = "unreliable_zero_cell"
         else:
+            is_low_n_cell = min(a, b, c, d) < min_group_size or n_cohort < min_group_size
             or_val = float((a * d) / (b * c))
             se = float(math.sqrt(1 / a + 1 / b + 1 / c + 1 / d))
             reliability = "low_n" if is_low_n_cell else "reliable"
-
-        z = 1.959963984540054
-        log_or = math.log(or_val)
-        or_ci_l = float(math.exp(log_or - z * se))
-        or_ci_h = float(math.exp(log_or + z * se))
+            z = 1.959963984540054
+            log_or = math.log(or_val)
+            or_ci_l = float(math.exp(log_or - z * se))
+            or_ci_h = float(math.exp(log_or + z * se))
 
     return {
         "kpi_id": "KPI-05",

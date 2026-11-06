@@ -80,6 +80,10 @@ def format_value_summary(kpi: Dict[str, Any]) -> str:
         ratio_str = f"{val['rate_ratio']:.2f}x" if val["rate_ratio"] is not None else "-"
         return f"diff={diff_str}, ratio={ratio_str}, flag={val['separation_flag']}"
     elif kid == "KPI-04":
+        if kpi["reliability"] == "exposure_fixed_by_filter":
+            return f"OR=None (exposure fixed by filter), OT share={val['overtime_share']*100:.1f}%"
+        elif kpi["reliability"] == "unreliable_zero_cell":
+            return f"OR=None (zero cell in 2x2), OT share={val['overtime_share']*100:.1f}%"
         or_str = f"OR={val['odds_ratio']:.2f}" if val["odds_ratio"] is not None else "OR=None"
         share_str = f"OT share={val['overtime_share']*100:.1f}%"
         return f"{or_str}, {share_str} (a={val['a_exposed_cases']}, b={val['b_exposed_noncases']}, c={val['c_unexposed_cases']}, d={val['d_unexposed_noncases']})"
@@ -196,7 +200,8 @@ The KPI module exposes 10 standardized performance metrics divided into two dist
 - **`reliable`**: The evaluated subpopulation meets the sample size floor (\(n \ge 30\)) and all underlying contingency cells satisfy \(a, b, c, d \ge 30\).
 - **`low_n`**: Headcount \(0 < n < 30\) or one or more contingency cells fall below 30. Metric is returned for visibility but flagged as underpowered; ranking across low-n cells is prohibited.
 - **`no_data`**: The filter yields zero matching employees (\(n = 0\)). Returns `value = None` without raising an error.
-- **`unreliable_zero_cell`**: Contingency table contains a zero cell. A continuity correction of +0.5 is applied for displayed odds ratios per decision log protocol.
+- **`exposure_fixed_by_filter`**: The active filter fixes a single OverTime exposure level (e.g. OverTime=Yes), leaving zero unexposed employees and returning odds_ratio = None.
+- **`unreliable_zero_cell`**: Contingency table contains a zero cell. Returns odds_ratio = None in calculation paths; any continuity-corrected odds ratio is display-only and labeled 'continuity-corrected'.
 - **`workforce-level, not filterable`**: Benchmark applies to the full population or sequestered split and rejects ad-hoc filtering.
 
 ---
@@ -315,11 +320,49 @@ def append_decision_log() -> None:
 
     new_rows = """| `DL-39` | **Pure Function Architecture and Contract for Workforce KPI Engine** | 10 pre-registered KPIs (5 LIVE, 5 STATIC) evaluated across unfiltered baseline and 12 filter scenarios. Table: reports/phase6/tables/kpi_baseline.csv | Implement KPI engine as stateless pure functions returning contract: {kpi_id, name, value, n, ci_low, ci_high, reliability, source, as_of_filter}. Re-use Phase 3 and Phase 5 statistical utilities without re-implementing core math. | Stateful class architecture; ad-hoc Streamlit component computations; inconsistent return schemas. | `PROPOSED` | Phase 6 (KPI Module Architecture) |
 | `DL-40` | **Cryptographic SHA-256 Integrity Verification for Static Inferential Benchmarks** | 5 static benchmark tables verified against pre-registered checksums in config.py. Table: reports/phase6/tables/kpi_baseline.csv | Verify SHA-256 hashes of Phase 4 and Phase 5 static benchmark tables upon loading; strictly reject ad-hoc subpopulation filtering on static workforce benchmarks with an explicit ValueError. | Silently filter static tables; re-estimate multivariable models on small subsets without convergence guarantees; allow unverified file loading. | `PROPOSED` | Phase 6 (Static Benchmark Integrity) |
-| `DL-41` | **Standardized Reliability Flagging and Empty-Set Handling Policy** | Evaluated across empty filter (n=0), low-n boundary (n=27), and cell zero cases. Table: reports/phase6/tables/kpi_filter_cases.csv | Flag subpopulation metrics where base denominator n < MIN_GROUP_SIZE (30) as 'low_n', empty sets (n = 0) as 'no_data' returning None, and 2x2 contingency tables with zero cells as 'unreliable_zero_cell' (applying +0.5 Woolf continuity correction solely for displayed odds ratios). Never suppress or rank low-n metrics. | Suppress small cells from reporting; return 0.0% for empty filters; raise runtime exceptions on empty sets. | `PROPOSED` | Phase 6 (Reliability & Boundary Safeguards) |
+| `DL-41` | **Standardized Reliability Flagging and Empty-Set Handling Policy** | Evaluated across empty filter (n=0), low-n boundary (n=27), exposure fixed by filter, and zero-cell cases. Table: reports/phase6/tables/kpi_filter_cases.csv | Flag subpopulation metrics where base denominator n < MIN_GROUP_SIZE (30) as 'low_n', empty sets (n = 0) as 'no_data' returning None, and filters fixing single exposure levels as 'exposure_fixed_by_filter' returning None. 2x2 contingency tables with zero cells are flagged as 'unreliable_zero_cell' returning odds_ratio = None in calculation paths (continuity corrections with +0.5 are restricted to display-only contexts and labeled 'continuity-corrected'). Never suppress or rank low-n metrics. | Suppress small cells from reporting; return 0.0% for empty filters; raise runtime exceptions on empty sets; apply continuity corrections in calculation paths. | `PROPOSED` | Phase 6 (Reliability & Boundary Safeguards) |
 """
     updated_text = dl_text.rstrip() + "\n" + new_rows
     DECISION_LOG_FILE.write_text(updated_text, encoding="utf-8")
     print("Appended DL-39, DL-40, DL-41 to docs/decision_log.md as PROPOSED.")
+
+
+def generate_decision_status_markdown() -> None:
+    """Generate docs/decision_status.md from docs/decision_log.md for dashboard ingestion."""
+    if not DECISION_LOG_FILE.is_file():
+        raise FileNotFoundError(f"Decision log missing at: {DECISION_LOG_FILE}")
+    content = DECISION_LOG_FILE.read_text(encoding="utf-8")
+    lines = content.splitlines()
+
+    records = []
+    for line in lines:
+        line_clean = line.strip()
+        if not ("| `DL-" in line_clean or "| DL-" in line_clean):
+            continue
+        parts = [p.strip() for p in line_clean.split("|")[1:-1]]
+        if len(parts) >= 7:
+            dl_id = parts[0].replace("`", "")
+            title = parts[1].replace("**", "")
+            status = parts[5].replace("`", "")
+            phase = parts[6]
+            records.append((dl_id, title, status, phase))
+
+    out_lines = [
+        "# Workforce Intelligence: Decision Status Registry",
+        "",
+        "**Source**: `docs/decision_log.md` (Dynamically parsed by Phase 6 pipeline)  ",
+        f"**Scope**: Complete register of architectural decisions ({len(records)} entries)  ",
+        "**Ingestion Target**: Streamlit governance and methodology dashboard",
+        "",
+        "| ID | Title | Status | Phase |",
+        "| :--- | :--- | :--- | :--- |",
+    ]
+    for dl_id, title, status, phase in records:
+        out_lines.append(f"| `{dl_id}` | {title} | `{status}` | {phase} |")
+
+    out_path = PROJECT_ROOT / "docs" / "decision_status.md"
+    out_path.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
+    print(f"Written decision status table ({len(records)} entries) to: {out_path}")
 
 
 def main() -> None:
@@ -360,6 +403,9 @@ def main() -> None:
 
     print("\n6. Auditing decision log and appending DL-39+...")
     append_decision_log()
+
+    print("\n7. Generating docs/decision_status.md...")
+    generate_decision_status_markdown()
 
     print("\nPhase 6 pipeline completed successfully.")
 

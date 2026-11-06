@@ -485,14 +485,14 @@ This report establishes the formal inferential foundation for the Workforce Inte
 All reported metrics reflect observational associations. In accordance with organizational governance, demographic attributes are examined exclusively for baseline context and are excluded from hotspot index screening.
 
 ### Summary of Statistical Findings
-- **Categorical Associations**: Of 28 pre-specified organizational dimensions, 21 clear the multiplicity threshold of BH-adjusted q < 0.05 (family: categorical_ordinal, size: 28). Ordered trend evaluations corroborate monotonic associations across job levels, tenure bands, career stages, and satisfaction scales.
+- **Categorical Associations**: Of 28 pre-specified organizational dimensions, {int(cat_df["fdr_passes"].sum())} clear the multiplicity threshold of BH-adjusted q < 0.05 (family: categorical_ordinal, size: 28). Ordered trend evaluations corroborate monotonic associations across job levels, tenure bands, career stages, and satisfaction scales.
 - **Continuous Measures**: 8 of 9 numeric measures clear BH-adjusted q < 0.05 (family: numeric_measures, size: 9). PercentSalaryHike exhibits no observable separation between leavers and stayers (Mann-Whitney U p = 0.601, prob superiority = 0.508).
 - **Stratified Odds Ratios**: The association between OverTime and Attrition remains robust across organizational stratifications:
   - Stratified by JobLevel: Mantel-Haenszel common OR = 4.05 [3.01, 5.46], Breslow-Day Tarone p = 0.084.
   - Stratified by Department: Mantel-Haenszel common OR = 3.81 [2.85, 5.08], Breslow-Day Tarone p = 0.730.
   - Stratified by TenureBand: Mantel-Haenszel common OR = 3.85 [2.86, 5.18], Breslow-Day Tarone p = 0.280.
 - **Multivariable Adjustment**: In unpenalised multivariable logistic regression (Model M1), OverTime exhibits an adjusted odds ratio of 4.81 [3.48, 6.65]. With demographic controls added (Model M2), the adjusted odds ratio is 5.27 [3.77, 7.35]. Collinearity audits confirm all variance inflation factors remain below 2.34.
-- **Overlap-Aware Hotspot Screening**: From a 104-segment universe, 14 segments qualify for Tier 1 (n >= 30, Wilson lower bound > baseline, and BH q < 0.05). A 5-step greedy marginal coverage selects 5 non-redundant segments that encompass 50.14% of workforce leavers across 27.69% of total employees.
+- **Overlap-Aware Hotspot Screening**: From a 104-segment universe, {len(t1_segs)} segments qualify for Tier 1 (n >= 30, Wilson lower bound > baseline, and BH q < 0.05). A 5-step greedy marginal coverage selects 5 non-redundant segments that encompass 50.14% of workforce leavers across 27.69% of total employees.
 
 ---
 
@@ -679,7 +679,7 @@ To construct a non-redundant operational review set, an iterative greedy coverag
 
     report += """
 ### 5.5 Split-Sample Out-of-Sample Validation
-Candidate hotspots screened on the training partition (n = 1,176; leavers = 190) were evaluated on the held-out validation sample (n = 294; leavers = 47; holdout baseline = 15.99%).
+Candidate hotspots screened on the training partition (n = 1,176; leavers = 190) were evaluated on the held-out validation sample (n = 294; leavers = 47; holdout baseline = 15.99%). Across 25 Tier 1 candidate hotspots screened on the training partition, 14 meet the sample size floor (holdout n >= 30). Of these 14 segments, 12 replicate above the holdout baseline by point estimate (12/14 = 85.7%) and 7 replicate above the holdout baseline by Wilson 95% lower bound (7/14 = 50.0%).
 
 | Segment ID | Train n | Train Rate | Train Index | Holdout n | Holdout Leavers | Holdout Rate | Holdout Wilson CI | Holdout n >= 30 | Above Point | Above Lower Bound | In Full Tier 1 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -730,6 +730,9 @@ def main() -> None:
     print("\nRunning categorical association tests (family: 28 dimensions)...")
     cat_df = run_categorical_analyses(df)
     cat_df.to_csv(PHASE5_TABLES_DIR / "association_categorical.csv", index=False)
+    bh_audit = cat_df[["dimension", "num_levels", "chi2_stat", "primary_p", "q_bh", "fdr_passes"]].copy()
+    bh_audit.columns = ["dimension", "num_levels", "chi2_stat", "p_value", "q_value", "fdr_cleared"]
+    bh_audit.to_csv(PHASE5_TABLES_DIR / "bh_family_audit.csv", index=False)
     print(f"Categorical tests complete: {int(cat_df['fdr_passes'].sum())}/28 clear BH q < 0.05")
 
     print("\nRunning numeric measure tests (family: 9 continuous metrics)...")
@@ -880,6 +883,8 @@ def main() -> None:
         "multiplicity_counts": {
             "categorical_ordinal_family_size": len(cat_df),
             "categorical_ordinal_fdr_cleared": int(cat_df["fdr_passes"].sum()),
+            "categorical_ordinal_cleared_dimensions": cat_df.loc[cat_df["fdr_passes"], "dimension"].tolist(),
+            "categorical_ordinal_non_cleared_dimensions": cat_df.loc[~cat_df["fdr_passes"], "dimension"].tolist(),
             "numeric_measures_family_size": len(num_df),
             "numeric_measures_fdr_cleared": int(num_df["fdr_passes"].sum()),
         },

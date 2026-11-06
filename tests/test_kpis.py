@@ -106,7 +106,7 @@ def test_kpi_03_hand_computed_tiny_frame():
 
 
 def test_kpi_04_hand_computed_with_zero_cell():
-    """Verify KPI-04 handles zero cells with Woolf +0.5 continuity correction."""
+    """Verify KPI-04 handles zero cells returning None."""
     # a=2, b=3, c=0, d=5 -> cell c has zero
     df_zero = pd.DataFrame({
         "Attrition": [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -115,9 +115,27 @@ def test_kpi_04_hand_computed_with_zero_cell():
     res = kpi_04_overtime_association(df_zero)
     assert res["kpi_id"] == "KPI-04"
     assert res["reliability"] == "unreliable_zero_cell"
-    # Adjusted cells: a=2.5, b=3.5, c=0.5, d=5.5
-    exp_or = (2.5 * 5.5) / (3.5 * 0.5)
-    assert res["value"]["odds_ratio"] == pytest.approx(exp_or, abs=1e-4)
+    assert res["value"]["odds_ratio"] is None
+    assert res["ci_low"] is None
+    assert res["ci_high"] is None
+
+
+def test_kpi_04_exposure_fixed_by_filter():
+    """Verify KPI-04 returns exposure_fixed_by_filter when filter fixes OverTime."""
+    df_dummy = pd.DataFrame({
+        "Attrition": [1, 0, 0, 1],
+        "OverTime": ["Yes", "Yes", "No", "No"],
+    })
+    res_yes = kpi_04_overtime_association(df_dummy, filters={"OverTime": "Yes"})
+    assert res_yes["kpi_id"] == "KPI-04"
+    assert res_yes["reliability"] == "exposure_fixed_by_filter"
+    assert res_yes["value"]["odds_ratio"] is None
+    assert res_yes["ci_low"] is None
+    assert res_yes["ci_high"] is None
+
+    res_no = kpi_04_overtime_association(df_dummy, filters={"OverTime": "No"})
+    assert res_no["reliability"] == "exposure_fixed_by_filter"
+    assert res_no["value"]["odds_ratio"] is None
 
 
 def test_kpi_05_hand_computed_cohort_contrast():
@@ -435,6 +453,7 @@ def test_forbidden_words_on_every_line():
         KPI_DEFINITIONS_MD,
         PHASE6_TABLES_DIR / "kpi_baseline.csv",
         PHASE6_TABLES_DIR / "kpi_filter_cases.csv",
+        PROJECT_ROOT / "docs" / "decision_status.md",
     ]
 
     errors = []
@@ -459,6 +478,7 @@ def test_zero_dollar_signs_across_phase6():
         KPI_DEFINITIONS_MD,
         PHASE6_TABLES_DIR / "kpi_baseline.csv",
         PHASE6_TABLES_DIR / "kpi_filter_cases.csv",
+        PROJECT_ROOT / "docs" / "decision_status.md",
     ]
 
     errors = []
@@ -470,3 +490,18 @@ def test_zero_dollar_signs_across_phase6():
                 errors.append(f"{fpath.name}:{idx} contains dollar sign: {line.strip()}")
 
     assert not errors, "Dollar signs found in Phase 6 outputs:\n" + "\n".join(errors)
+
+
+def test_decision_status_file_contents():
+    """Verify docs/decision_status.md is correctly structured and contains DL-01 through DL-41."""
+    status_file = PROJECT_ROOT / "docs" / "decision_status.md"
+    assert status_file.is_file(), f"Missing decision status file: {status_file}"
+    lines = status_file.read_text(encoding="utf-8").splitlines()
+    data_rows = [l for l in lines if l.strip().startswith("| `DL-")]
+    assert len(data_rows) == 41, f"Expected 41 decision status rows, found {len(data_rows)}"
+    
+    # Check DL-05 and DL-06 statuses are PROPOSED
+    dl05_line = next(l for l in data_rows if "DL-05" in l)
+    dl06_line = next(l for l in data_rows if "DL-06" in l)
+    assert "`PROPOSED`" in dl05_line, f"DL-05 status not PROPOSED: {dl05_line}"
+    assert "`PROPOSED`" in dl06_line, f"DL-06 status not PROPOSED: {dl06_line}"
