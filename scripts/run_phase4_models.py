@@ -34,6 +34,7 @@ from workforce_intel.config import (
 from workforce_intel.io import load_processed
 from workforce_intel.modeling import (
     SEED,
+    _count_leavers,
     build_consistency_matrix,
     build_preprocessor,
     compute_bootstrap_metrics,
@@ -46,10 +47,12 @@ from workforce_intel.modeling import (
     evaluate_hotspots_on_holdout,
     evaluate_predictions,
     get_feature_sets,
+    parse_segment_mask,
     screen_hotspots_on_train,
     train_test_split_data,
     tune_hist_gradient_boosting,
     tune_logistic_regression,
+    wilson_interval,
 )
 from workforce_intel.viz_phase4 import (
     plot_fig15_pr_curves,
@@ -205,15 +208,20 @@ def main() -> None:
         for _, r in df_p3_cand.iterrows():
             seg_str = r["subgroup"]
             if seg_str not in train_segments_set:
+                tr_mask = parse_segment_mask(seg_str, train_df)
+                tr_n = int(tr_mask.sum())
+                tr_leavers = _count_leavers(train_df.loc[tr_mask])
+                tr_rate = tr_leavers / tr_n if tr_n > 0 else 0.0
+                tr_low, tr_high = wilson_interval(tr_leavers, tr_n, confidence=0.95)
                 screened_train_hotspots.append(
                     {
                         "segment": seg_str,
                         "source": "Optimistic: holdout was used to select",
-                        "train_n": int(r["n"]),
-                        "train_leavers": int(r["leavers"]),
-                        "train_rate": float(r["attrition_rate_pct"]) / 100.0,
-                        "train_ci_low": float(r["ci95_low_pct"]) / 100.0,
-                        "train_ci_high": float(r["ci95_high_pct"]) / 100.0,
+                        "train_n": tr_n,
+                        "train_leavers": tr_leavers,
+                        "train_rate": tr_rate,
+                        "train_ci_low": tr_low,
+                        "train_ci_high": tr_high,
                         "train_baseline": train_baseline,
                     }
                 )
