@@ -1,0 +1,8 @@
+Phase 6 Two-Run SHA-256 Determinism Audit
+Excluded metadata/timestamps: None (All outputs are byte-for-byte deterministic)
+
+| Artifact Relative Path | Run 1 SHA-256 | Run 2 SHA-256 | Match |
+| :--- | :--- | :--- | :--- |
+| kpi_report.md | 56c2a54d3ca25c668fbb9188844ff7fc72722ecfe388631e462d68c6b86a50ca | 56c2a54d3ca25c668fbb9188844ff7fc72722ecfe388631e462d68c6b86a50ca | True |
+| tables/kpi_baseline.csv | 04e5bd894bb0f81c2d83e4c75a1354674d3dc3eff35c2a3c3a1c27010821b8e6 | 04e5bd894bb0f81c2d83e4c75a1354674d3dc3eff35c2a3c3a1c27010821b8e6 | True |
+| tables/kpi_filter_cases.csv | 0f015cdaeee999769e71bda51117e11d12178bd0d3e836778a0d5fb2a4c50473 | 0f015cdaeee999769e71bda51117e11d12178bd0d3e836778a0d5fb2a4c50473 | True |

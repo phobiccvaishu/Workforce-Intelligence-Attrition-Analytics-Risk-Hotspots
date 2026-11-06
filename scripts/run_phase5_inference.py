@@ -477,6 +477,14 @@ def generate_inference_report_md(
     t1_segs = universe_df[universe_df["is_tier1"]].sort_values("hotspot_index", ascending=False)
     t2_segs = universe_df[universe_df["is_tier2"]].sort_values("hotspot_index", ascending=False)
 
+    step5_row = greedy_df[greedy_df["step"] == 5].iloc[0]
+    total_steps = len(greedy_df)
+    final_row = greedy_df.iloc[-1]
+    step5_lvs_pct = step5_row["share_of_leavers"] * 100
+    step5_wf_pct = step5_row["share_of_workforce"] * 100
+    final_lvs_pct = final_row["share_of_leavers"] * 100
+    final_wf_pct = final_row["share_of_workforce"] * 100
+
     report = f"""# Workforce Intelligence: Formal Statistical Inference, Stratified Adjustment & Hotspot Index Report
 
 ## 1. Executive Summary & Inferential Architecture
@@ -492,7 +500,7 @@ All reported metrics reflect observational associations. In accordance with orga
   - Stratified by Department: Mantel-Haenszel common OR = 3.81 [2.85, 5.08], Breslow-Day Tarone p = 0.730.
   - Stratified by TenureBand: Mantel-Haenszel common OR = 3.85 [2.86, 5.18], Breslow-Day Tarone p = 0.280.
 - **Multivariable Adjustment**: In unpenalised multivariable logistic regression (Model M1), OverTime exhibits an adjusted odds ratio of 4.81 [3.48, 6.65]. With demographic controls added (Model M2), the adjusted odds ratio is 5.27 [3.77, 7.35]. Collinearity audits confirm all variance inflation factors remain below 2.34.
-- **Overlap-Aware Hotspot Screening**: From a 104-segment universe, {len(t1_segs)} segments qualify for Tier 1 (n >= 30, Wilson lower bound > baseline, and BH q < 0.05). A 5-step greedy marginal coverage selects 5 non-redundant segments that encompass 50.14% of workforce leavers across 27.69% of total employees.
+- **Overlap-Aware Hotspot Screening**: From a 104-segment universe, {len(t1_segs)} segments qualify for Tier 1 (n >= 30, Wilson lower bound > baseline, and BH q < 0.05). An iterative greedy marginal coverage algorithm identifies {total_steps} non-redundant segments; step 5 encompasses {step5_lvs_pct:.1f}% of workforce leavers across {step5_wf_pct:.1f}% of total employees, reaching {final_lvs_pct:.1f}% of leavers across {final_wf_pct:.1f}% of employees at step {total_steps}.
 
 ---
 
@@ -517,13 +525,13 @@ Evaluated across contingency chi-square, Fisher exact (2x2 tables), permutation 
 
     report += f"""
 *Multiplicity and Family Membership Summary*:
-Across the 28 categorical and ordinal dimensions evaluated with Benjamini-Hochberg FDR control (family size m = 28, alpha = 0.05), 23 dimensions clear FDR control (q < 0.05). Exactly five dimensions do not meet FDR clearance:
-- `Gender` (primary p = 0.2783, BH q = 0.2987, FDR Not Met; null hypothesis of independence is retained)
-- `Education` (primary p = 0.5455, BH q = 0.5657, FDR Not Met)
-- `HasPriorExperience` (primary p = 0.0579, BH q = 0.0676, FDR Not Met)
-- `RelationshipSatisfaction` (primary p = 0.1549, BH q = 0.1735, FDR Not Met)
-- `PerformanceRating` (primary p = 0.9221, BH q = 0.9221, FDR Not Met)
+Across the 28 categorical and ordinal dimensions evaluated with Benjamini-Hochberg FDR control (family size m = 28, alpha = {ALPHA_LEVEL}), {int(cat_df["fdr_passes"].sum())} dimensions clear FDR control (q < 0.05). Exactly {int((~cat_df["fdr_passes"]).sum())} dimensions do not meet FDR clearance:
+"""
+    non_cleared_df = cat_df[~cat_df["fdr_passes"]].sort_values("primary_p")
+    for _, nr in non_cleared_df.iterrows():
+        report += f"- `{nr['dimension']}` (primary p = {nr['primary_p']:.4f}, BH q = {nr['q_bh']:.4f}, FDR Not Met)\n"
 
+    report += """
 ### 2.2 Continuous Measures (Family Size: 9)
 Evaluated using two-sided Mann-Whitney U tests and non-parametric probability of superiority (A = U / (n1 * n2)) with 2,000-resample percentile bootstrap confidence intervals.
 
@@ -732,6 +740,7 @@ def main() -> None:
     cat_df.to_csv(PHASE5_TABLES_DIR / "association_categorical.csv", index=False)
     bh_audit = cat_df[["dimension", "num_levels", "chi2_stat", "primary_p", "q_bh", "fdr_passes"]].copy()
     bh_audit.columns = ["dimension", "num_levels", "chi2_stat", "p_value", "q_value", "fdr_cleared"]
+    bh_audit["population"] = "pooled"
     bh_audit.to_csv(PHASE5_TABLES_DIR / "bh_family_audit.csv", index=False)
     print(f"Categorical tests complete: {int(cat_df['fdr_passes'].sum())}/28 clear BH q < 0.05")
 

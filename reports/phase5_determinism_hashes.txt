@@ -1,0 +1,21 @@
+Phase 5 Two-Run SHA-256 Determinism Audit
+Excluded metadata/timestamps: None (All outputs are byte-for-byte deterministic)
+
+| Artifact Relative Path | Run 1 SHA-256 | Run 2 SHA-256 | Match |
+| :--- | :--- | :--- | :--- |
+| inference_report.md | 6e812fd87cb2f0b300456e80a85d96506b4710a17f1d156d5dbb5f245085b13a | 6e812fd87cb2f0b300456e80a85d96506b4710a17f1d156d5dbb5f245085b13a | True |
+| inference_summary.json | afd5f1a428acf758c509c8a184ff3122df3e296b059a1a6c387fe7ff8f5bd6c4 | afd5f1a428acf758c509c8a184ff3122df3e296b059a1a6c387fe7ff8f5bd6c4 | True |
+| tables/association_categorical.csv | 78ab1613cd17cc6d07caa71e5cafa51cbb8bb74fb0830f81999996e913327de6 | 78ab1613cd17cc6d07caa71e5cafa51cbb8bb74fb0830f81999996e913327de6 | True |
+| tables/association_numeric.csv | 3ff64ee913092f62208c7662c885c8a8c2c5e6698f435dadb6c193ea7d32bfba | 3ff64ee913092f62208c7662c885c8a8c2c5e6698f435dadb6c193ea7d32bfba | True |
+| tables/bh_family_audit.csv | 6e3a2454d9c58c24c69eb89efa79f32e141484cf36b75a7fb8fabdc2c2df6733 | 6e3a2454d9c58c24c69eb89efa79f32e141484cf36b75a7fb8fabdc2c2df6733 | True |
+| tables/greedy_coverage.csv | b5b693aad2ad35d8c830c4eb5ad4baea6f16139edb3b792bd08b634ff196e2bc | b5b693aad2ad35d8c830c4eb5ad4baea6f16139edb3b792bd08b634ff196e2bc | True |
+| tables/hotspot_overlap_counts.csv | 3ee9d7fb4e4d3ecee510d219bc46eb13411290642cd82de9418b98b75e199f47 | 3ee9d7fb4e4d3ecee510d219bc46eb13411290642cd82de9418b98b75e199f47 | True |
+| tables/hotspot_overlap_jaccard.csv | 5ae9a0fb40d1142865656262834f44cf71f93a1d0b1b297028cf511b3faf40d0 | 5ae9a0fb40d1142865656262834f44cf71f93a1d0b1b297028cf511b3faf40d0 | True |
+| tables/hotspot_sensitivity.csv | 17f73a37204fb82a83a7f0c583ee43626e5b0c3a5f8dc965b06b7c8e48ae22fb | 17f73a37204fb82a83a7f0c583ee43626e5b0c3a5f8dc965b06b7c8e48ae22fb | True |
+| tables/hotspot_sensitivity_full.csv | 156ae0458c1c5f437ec5249894474cbc1b8544bce785f94ffabf32db184129ab | 156ae0458c1c5f437ec5249894474cbc1b8544bce785f94ffabf32db184129ab | True |
+| tables/hotspot_split_validation.csv | dd5afbe814aefedee267a386d05228ab8a059ad2ce55e52d3bca1b0014a625ee | dd5afbe814aefedee267a386d05228ab8a059ad2ce55e52d3bca1b0014a625ee | True |
+| tables/hotspot_universe.csv | de84d7e43344af0e99291560674d0e20b094e86f10d600f9f6ea07147d16316e | de84d7e43344af0e99291560674d0e20b094e86f10d600f9f6ea07147d16316e | True |
+| tables/logistic_m1_m2.csv | c261b0131811ca04bdfc218a5586ed787251db7464d238f36228336851352ee6 | c261b0131811ca04bdfc218a5586ed787251db7464d238f36228336851352ee6 | True |
+| tables/mantel_haenszel.csv | d8de6f876e6ad4fa4468a0f8fc1532db6b465bcf7e729e03f48559283424b5a6 | d8de6f876e6ad4fa4468a0f8fc1532db6b465bcf7e729e03f48559283424b5a6 | True |
+| tables/mantel_haenszel_strata.csv | 73b6da86705fff4fe50436611928acaf7b781e11900da49ce4bc077bc4b7060d | 73b6da86705fff4fe50436611928acaf7b781e11900da49ce4bc077bc4b7060d | True |
+| tables/overtime_comparison.csv | 6dcd5f089e2ffb8f43cb4be6f493c19f05e31318c859c512ef5d1cccbd19b9a1 | 6dcd5f089e2ffb8f43cb4be6f493c19f05e31318c859c512ef5d1cccbd19b9a1 | True |

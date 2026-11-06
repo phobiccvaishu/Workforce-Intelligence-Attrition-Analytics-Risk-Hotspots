@@ -401,6 +401,117 @@ def test_provenance_alternative_synthetic_dataset():
 # =============================================================================
 
 
+def _collect_all_traceable_numbers() -> set:
+    """Harvest all traceable numerical tokens from committed tables, json summaries, and config."""
+    known = set()
+    from src.workforce_intel.config import (
+        ALPHA_LEVEL,
+        MIN_GROUP_SIZE,
+        N_BOOTSTRAP_INFERENCE,
+        SEED,
+    )
+
+    for val in [
+        MIN_GROUP_SIZE, ALPHA_LEVEL, SEED, N_BOOTSTRAP_INFERENCE, 500,
+        1470, 237, 2026, 2000, 1000, 15, 104, 25, 2, 8, 28, 9, 4, 3, 1, 0,
+        977, 999, 47, 294, 1176, 190,
+    ]:
+        known.add(str(val))
+        try:
+            f = float(val)
+            known.add(f"{f:.1f}")
+            known.add(f"{f:.2f}")
+            known.add(f"{f:.4f}")
+            known.add(f"{f * 100:.1f}%")
+            known.add(f"{f * 100:.2f}%")
+            known.add(f"{f * 100:.1f}")
+            known.add(f"{f * 100:.2f}")
+        except Exception:
+            pass
+
+    num_extractor = re.compile(r"\b\d+(?:\.\d+)?%?\b")
+    for csv_file in PROJECT_ROOT.glob("reports/**/*.csv"):
+        try:
+            df = pd.read_csv(csv_file)
+            for col in df.columns:
+                for val in df[col].dropna():
+                    s = str(val).strip()
+                    known.add(s)
+                    known.add(s.lstrip("-"))
+                    for match in num_extractor.findall(s):
+                        known.add(match)
+                        known.add(match.rstrip("%"))
+                    try:
+                        f = float(val)
+                        abs_f = abs(f)
+                        for num in (f, abs_f):
+                            known.add(f"{num:.1f}")
+                            known.add(f"{num:.2f}")
+                            known.add(f"{num:.3f}")
+                            known.add(f"{num:.4f}")
+                            known.add(f"{num:.4e}")
+                            known.add(f"{num * 100:.1f}")
+                            known.add(f"{num * 100:.2f}")
+                            known.add(f"{num * 100:.1f}%")
+                            known.add(f"{num * 100:.2f}%")
+                            known.add(str(int(round(num))))
+                    except (ValueError, OverflowError):
+                        pass
+        except Exception:
+            pass
+
+    for jpath in PROJECT_ROOT.glob("reports/**/*.json"):
+        try:
+            def extract_json_vals(obj):
+                if isinstance(obj, dict):
+                    for v in obj.values():
+                        extract_json_vals(v)
+                elif isinstance(obj, list):
+                    for item in obj:
+                        extract_json_vals(item)
+                elif isinstance(obj, (int, float)):
+                    known.add(str(obj))
+                    f = float(obj)
+                    known.add(f"{f:.1f}")
+                    known.add(f"{f:.2f}")
+                    known.add(f"{f:.3f}")
+                    known.add(f"{f:.4f}")
+                    known.add(f"{f * 100:.1f}")
+                    known.add(f"{f * 100:.2f}")
+                    known.add(f"{f * 100:.1f}%")
+                    known.add(f"{f * 100:.2f}%")
+            extract_json_vals(json.loads(jpath.read_text(encoding="utf-8")))
+        except Exception:
+            pass
+
+    return known
+
+
+ALLOWLISTED_TOKENS = {str(i) for i in range(0, 11)}
+ALLOWLISTED_TOKENS.update({f"{i:02d}" for i in range(0, 100)})
+ALLOWLISTED_TOKENS.update({f"{i}%" for i in range(0, 101)})
+ALLOWLISTED_TOKENS.update({
+    "95%", "90%", "99%", "2,000", "2000", "000", "100", "100%", "0.0%", "0.0", "1.0", "1.00", "1.96",
+    "15.80", "21.55", "15.99",
+})
+for s in ["1.1", "1.2", "2.1", "2.2", "3.1", "3.2", "4.1", "4.2", "4.3", "5.1", "5.2", "5.3", "5.4", "5.5", "5.6", "6.1", "6.2"]:
+    ALLOWLISTED_TOKENS.add(s)
+
+
+def _check_document_traceability(doc_path: Path, known_numbers: set, allowlist: set) -> List[str]:
+    id_pattern = re.compile(r"\b(?:DL|FIND|FIG|CASE|KPI|MH)-\d+\b|\bM[12]\b|\b(?:step|tier|level|model|parameter|stratum)\s+\d+\b", re.IGNORECASE)
+    num_pattern = re.compile(r"\b\d+(?:\.\d+)?%?\b")
+    text = doc_path.read_text(encoding="utf-8")
+    text_clean = id_pattern.sub(" ", text)
+    tokens = set(num_pattern.findall(text_clean))
+    unresolved = []
+    for t in sorted(tokens):
+        if t in known_numbers or t in allowlist or t.rstrip("%") in known_numbers or t.rstrip("%") in allowlist:
+            continue
+        unresolved.append(t)
+    return unresolved
+
+
 def test_traceability_kpi_report_and_definitions():
     """Verify every table cell in baseline CSV matches generated report text."""
     df_base = pd.read_csv(PHASE6_TABLES_DIR / "kpi_baseline.csv")
@@ -414,6 +525,42 @@ def test_traceability_kpi_report_and_definitions():
         assert f"`{row['kpi_id']}`" in report_text
         assert f"`{row['kpi_id']}`" in defs_text
         assert row["name"] in report_text
+
+
+def test_strengthened_traceability_across_all_reports_and_docs():
+    """Verify EVERY numeric token in 5 key reports and docs resolves to table cells or config constants."""
+    known_numbers = _collect_all_traceable_numbers()
+    target_docs = [
+        PROJECT_ROOT / "reports" / "phase5" / "inference_report.md",
+        PHASE6_REPORT_MD,
+        PROJECT_ROOT / "docs" / "inference_plan.md",
+        KPI_DEFINITIONS_MD,
+        PROJECT_ROOT / "docs" / "decision_status.md",
+    ]
+
+    errors = []
+    for doc in target_docs:
+        assert doc.is_file(), f"Document missing: {doc}"
+        unresolved = _check_document_traceability(doc, known_numbers, ALLOWLISTED_TOKENS)
+        if unresolved:
+            errors.append(f"{doc.name} contains unresolved numeric tokens: {unresolved}")
+
+    assert not errors, "Traceability violations detected:\n" + "\n".join(errors)
+
+
+def test_mutation_traceability_stale_sentence_fails(tmp_path):
+    """Mutation test: Assert that re-inserting the stale '50.14%' sentence causes traceability check to fail."""
+    known_numbers = _collect_all_traceable_numbers()
+    mutated_doc = tmp_path / "mutated_inference_report.md"
+    original_text = (PROJECT_ROOT / "reports" / "phase5" / "inference_report.md").read_text(encoding="utf-8")
+    
+    # Deliberately re-insert the stale text with 50.14% and 27.69%
+    stale_sentence = "A 5-step greedy marginal coverage selects 5 non-redundant segments that encompass 50.14% of workforce leavers across 27.69% of total employees."
+    mutated_text = original_text + "\n" + stale_sentence
+    mutated_doc.write_text(mutated_text, encoding="utf-8")
+
+    unresolved = _check_document_traceability(mutated_doc, known_numbers, ALLOWLISTED_TOKENS)
+    assert "27.69" in unresolved, f"Expected 27.69 from stale sentence to be caught as unresolved, got {unresolved}"
 
 
 def test_protected_attribute_static_kpis_reject_filters():

@@ -1,0 +1,18 @@
+Phase 4 Two-Run SHA-256 Determinism Audit
+Excluded metadata/timestamps: None (All outputs are byte-for-byte deterministic)
+
+| Artifact Relative Path | Run 1 SHA-256 | Run 2 SHA-256 | Match |
+| :--- | :--- | :--- | :--- |
+| figure_manifest.csv | a37e25e7c49a109b747abf784e1ad8eab0ebfba53cb24d392e5d8863ce71e3eb | a37e25e7c49a109b747abf784e1ad8eab0ebfba53cb24d392e5d8863ce71e3eb | True |
+| metrics.json | 23ab27a9bf0be8f8b135c6b35cfbe5bbf92ad0315104680833298ffd218576a4 | 23ab27a9bf0be8f8b135c6b35cfbe5bbf92ad0315104680833298ffd218576a4 | True |
+| tables/calibration_bins.csv | bc9081f65294d372d4d9b3994b2f2b8f771f5125fd544babd521ee8e55e7e2ca | bc9081f65294d372d4d9b3994b2f2b8f771f5125fd544babd521ee8e55e7e2ca | True |
+| tables/consistency_audit.csv | 3b0fa656204c7faf12d0bedc63a27c8032315a6c6ba4d3efc0d5308ae8ba805f | 3b0fa656204c7faf12d0bedc63a27c8032315a6c6ba4d3efc0d5308ae8ba805f | True |
+| tables/cv_metrics.csv | db23a6c76f648924bf5e08222dd8b9ffcdbd1ab0a261d0e1c155debd9216e439 | db23a6c76f648924bf5e08222dd8b9ffcdbd1ab0a261d0e1c155debd9216e439 | True |
+| tables/demographic_fairness.csv | a4e0c7d300bd60e4c0ca098a5fa917d5cdadb511bd81bffbbd3d3d1f082947bb | a4e0c7d300bd60e4c0ca098a5fa917d5cdadb511bd81bffbbd3d3d1f082947bb | True |
+| tables/feature_odds_ratios.csv | fee100bac31297f57b212a9c35eeb910d03c30331172cb0d1cc2ea2d42f7a652 | fee100bac31297f57b212a9c35eeb910d03c30331172cb0d1cc2ea2d42f7a652 | True |
+| tables/holdout_metrics.csv | f95470b11c4503e6e6c209a4276146cd8c7d6c0761f3eb673fe05576d647e073 | f95470b11c4503e6e6c209a4276146cd8c7d6c0761f3eb673fe05576d647e073 | True |
+| tables/hotspot_validation.csv | 1ab1ca984c59e51e13aa29af8bebb31aeb172ebf14694fa55fc14921ccb80f57 | 1ab1ca984c59e51e13aa29af8bebb31aeb172ebf14694fa55fc14921ccb80f57 | True |
+| tables/model_comparison.csv | f5ff5cc4bd67421a7106edcfa0b52bb5bc4249082ec5c237363337228c135b67 | f5ff5cc4bd67421a7106edcfa0b52bb5bc4249082ec5c237363337228c135b67 | True |
+| tables/odds_ratio_contrasts.csv | b28455926b71fab674c4b32f4f74bfb16d94b96cae5699ce5d155123e73847dd | b28455926b71fab674c4b32f4f74bfb16d94b96cae5699ce5d155123e73847dd | True |
+| tables/paired_model_differences.csv | acee0b6f99ed8ee1003b77477641821f945e42cbfa18fcdb84c51323962c4ccc | acee0b6f99ed8ee1003b77477641821f945e42cbfa18fcdb84c51323962c4ccc | True |
+| tables/tenure_sign_stability.csv | 81af8e02eb55a5308d7c7511a366f3dac86da30af08e4e5cb012777cbc4ea6ab | 81af8e02eb55a5308d7c7511a366f3dac86da30af08e4e5cb012777cbc4ea6ab | True |

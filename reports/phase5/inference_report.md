@@ -13,7 +13,7 @@ All reported metrics reflect observational associations. In accordance with orga
   - Stratified by Department: Mantel-Haenszel common OR = 3.81 [2.85, 5.08], Breslow-Day Tarone p = 0.730.
   - Stratified by TenureBand: Mantel-Haenszel common OR = 3.85 [2.86, 5.18], Breslow-Day Tarone p = 0.280.
 - **Multivariable Adjustment**: In unpenalised multivariable logistic regression (Model M1), OverTime exhibits an adjusted odds ratio of 4.81 [3.48, 6.65]. With demographic controls added (Model M2), the adjusted odds ratio is 5.27 [3.77, 7.35]. Collinearity audits confirm all variance inflation factors remain below 2.34.
-- **Overlap-Aware Hotspot Screening**: From a 104-segment universe, 25 segments qualify for Tier 1 (n >= 30, Wilson lower bound > baseline, and BH q < 0.05). A 5-step greedy marginal coverage selects 5 non-redundant segments that encompass 50.14% of workforce leavers across 27.69% of total employees.
+- **Overlap-Aware Hotspot Screening**: From a 104-segment universe, 25 segments qualify for Tier 1 (n >= 30, Wilson lower bound > baseline, and BH q < 0.05). An iterative greedy marginal coverage algorithm identifies 8 non-redundant segments; step 5 encompasses 67.5% of workforce leavers across 30.7% of total employees, reaching 87.3% of leavers across 57.9% of employees at step 8.
 
 ---
 
@@ -54,12 +54,12 @@ Evaluated across contingency chi-square, Fisher exact (2x2 tables), permutation 
 | PerformanceRating | 2 | 0.01 | 9.2172e-01 | 9.2172e-01 | FDR Not Met | 0.003 [0.001, 0.058] | - | - | Agrees |
 
 *Multiplicity and Family Membership Summary*:
-Across the 28 categorical and ordinal dimensions evaluated with Benjamini-Hochberg FDR control (family size m = 28, alpha = 0.05), 23 dimensions clear FDR control (q < 0.05). Exactly five dimensions do not meet FDR clearance:
-- `Gender` (primary p = 0.2783, BH q = 0.2987, FDR Not Met; null hypothesis of independence is retained)
+Across the 28 categorical and ordinal dimensions evaluated with Benjamini-Hochberg FDR control (family size m = 28, alpha = 0.05), 23 dimensions clear FDR control (q < 0.05). Exactly 5 dimensions do not meet FDR clearance:
+- `HasPriorExperience` (primary p = 0.0582, BH q = 0.0679, FDR Not Met)
+- `RelationshipSatisfaction` (primary p = 0.1550, BH q = 0.1736, FDR Not Met)
+- `Gender` (primary p = 0.2778, BH q = 0.2992, FDR Not Met)
 - `Education` (primary p = 0.5455, BH q = 0.5657, FDR Not Met)
-- `HasPriorExperience` (primary p = 0.0579, BH q = 0.0676, FDR Not Met)
-- `RelationshipSatisfaction` (primary p = 0.1549, BH q = 0.1735, FDR Not Met)
-- `PerformanceRating` (primary p = 0.9221, BH q = 0.9221, FDR Not Met)
+- `PerformanceRating` (primary p = 0.9217, BH q = 0.9217, FDR Not Met)
 
 ### 2.2 Continuous Measures (Family Size: 9)
 Evaluated using two-sided Mann-Whitney U tests and non-parametric probability of superiority (A = U / (n1 * n2)) with 2,000-resample percentile bootstrap confidence intervals.
