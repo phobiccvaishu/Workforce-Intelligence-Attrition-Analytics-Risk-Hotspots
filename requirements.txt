@@ -13,7 +13,10 @@ pytest==9.2.0
 # Phase 4 Modeling Dependencies
 scikit-learn==1.9.1
 
-# Later-Phase Dependencies (Phase 5+ Presentation, Dashboard)
+# Phase 5 Inference Dependencies
+statsmodels==0.14.6
+patsy==1.0.3
+
+# Later-Phase Dependencies (Phase 6+ Presentation, Dashboard)
 # plotly==7.1.0
-# statsmodels==0.14.6
 # streamlit==1.66.1

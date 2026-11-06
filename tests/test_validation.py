@@ -544,6 +544,11 @@ def _build_expected_decision_log_tokens() -> Dict[str, List[str]]:
         "DL-31": [str(bucket_table.loc[("PromotionAnalysisCohort", "1"), "count"]), total_rows, "4"],
         "DL-32": ["16", "120", "599", "171"],
         "DL-33": ["28", "30", "26", "26", "4", "10.79", "96", "890"],
+        "DL-34": [total_rows, "1", "11", "21.55", "2", "15", "15.80"],
+        "DL-35": ["104", "29.55", "1", "8.65", "2"],
+        "DL-36": ["104"],
+        "DL-37": ["28", "23", "9", "8", "0.05"],
+        "DL-38": ["4", "4.05", "3.01", "5.46", "3.81", "2.85", "5.08", "3.85", "2.86", "5.18", "2.38", "1.44", "3.92"],
     }
 
 
@@ -624,6 +629,11 @@ def test_documentation_evidence_matches_validation_summary():
         "DL-31": "PROPOSED",
         "DL-32": "PROPOSED",
         "DL-33": "PROPOSED",
+        "DL-34": "PROPOSED",
+        "DL-35": "PROPOSED",
+        "DL-36": "PROPOSED",
+        "DL-37": "PROPOSED",
+        "DL-38": "PROPOSED",
     }
     for dl_id, expected_status in expected_statuses.items():
         pattern = rf"`{dl_id}`.*?`{expected_status}`"

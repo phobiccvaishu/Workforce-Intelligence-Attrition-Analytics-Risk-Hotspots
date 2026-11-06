@@ -1,0 +1,68 @@
+{
+  "metadata": {
+    "phase": "phase_5_inference",
+    "seed": 42,
+    "total_headcount": 1470,
+    "total_leavers": 237,
+    "baseline_rate": 0.16122448979591836
+  },
+  "multiplicity_counts": {
+    "categorical_ordinal_family_size": 28,
+    "categorical_ordinal_fdr_cleared": 23,
+    "numeric_measures_family_size": 9,
+    "numeric_measures_fdr_cleared": 8
+  },
+  "mantel_haenszel_checkpoints": {
+    "overtime_by_joblevel": {
+      "crude_or": 3.7712488203837684,
+      "mh_or": 4.053707475100652,
+      "mh_ci_low": 3.0119460462226493,
+      "mh_ci_high": 5.45578972581376,
+      "breslow_day_tarone_p": 0.08384961065432561
+    },
+    "overtime_by_department": {
+      "crude_or": 3.7712488203837684,
+      "mh_or": 3.8072918693013613,
+      "mh_ci_low": 2.8517258823202667,
+      "mh_ci_high": 5.0830521502488235,
+      "breslow_day_tarone_p": 0.7296403344332132
+    },
+    "overtime_by_tenureband": {
+      "crude_or": 3.7712488203837684,
+      "mh_or": 3.851882791871408,
+      "mh_ci_low": 2.8629721901196286,
+      "mh_ci_high": 5.182376934543368,
+      "breslow_day_tarone_p": 0.2803681557707127
+    },
+    "cohort_promotion_gap": {
+      "crude_or": 1.9571948998178506,
+      "mh_or": 2.378438519236936,
+      "mh_ci_low": 1.4445132498324291,
+      "mh_ci_high": 3.9161771554855784,
+      "breslow_day_tarone_p": 0.6133897837315083
+    }
+  },
+  "logistic_regression": {
+    "m1_overtime_or": 4.808580932512579,
+    "m1_overtime_ci": [
+      3.4765672907242466,
+      6.650942913205234
+    ],
+    "m1_max_vif": 2.3233428869886263,
+    "m2_overtime_or": 5.266277871636606,
+    "m2_overtime_ci": [
+      3.772987177748208,
+      7.350590212671061
+    ],
+    "m2_max_vif": 2.3367104802823127
+  },
+  "hotspot_universe": {
+    "total_universe_size": 104,
+    "segments_n_ge_30": 98,
+    "tier1_count": 25,
+    "tier2_count": 2,
+    "fitted_prior_m_1way": 29.553471954595164,
+    "fitted_prior_m_2way": 8.653098550238532,
+    "greedy_coverage_steps": 8
+  }
+}

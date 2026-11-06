@@ -959,3 +959,127 @@ ANALYSIS_DIMENSIONS = [
     {"dimension": "PerformanceRating", "table": "performancerating_attrition.csv", "protected": False},
 ]
 
+PHASE4_REPORTS_DIR = REPORTS_DIR / "phase4"
+PHASE4_TABLES_DIR = PHASE4_REPORTS_DIR / "tables"
+
+# -----------------------------------------------------------------------------
+# Phase 5: Inferential Analysis Configuration & Parameters
+# -----------------------------------------------------------------------------
+PHASE5_REPORTS_DIR = REPORTS_DIR / "phase5"
+PHASE5_TABLES_DIR = PHASE5_REPORTS_DIR / "tables"
+PHASE5_REPORT_MD = PHASE5_REPORTS_DIR / "inference_report.md"
+PHASE5_SUMMARY_JSON = PHASE5_REPORTS_DIR / "inference_summary.json"
+INFERENCE_PLAN_MD = DOCS_DIR / "inference_plan.md"
+
+# Pre-specified analysis families
+CATEGORICAL_ORDINAL_DIMENSIONS: List[str] = [d["dimension"] for d in ANALYSIS_DIMENSIONS]
+
+ORDERED_DIMENSIONS_SCORES: Dict[str, Dict[any, int]] = {
+    "AgeGroup": {"18-25": 1, "26-35": 2, "36-45": 3, "46-60": 4},
+    "TenureBand": {"0-1": 1, "2-3": 2, "4-5": 3, "6-10": 4, "11+": 5},
+    "CareerStage": {"0-5": 1, "6-10": 2, "11-20": 3, "21+": 4},
+    "RoleTenureBand": {"0-1": 1, "2-3": 2, "4-7": 3, "8+": 4},
+    "ManagerTenureBand": {"0-1": 1, "2-3": 2, "4-7": 3, "8+": 4},
+    "PromotionGapBand": {"0": 1, "1-2": 2, "3-5": 3, "6+": 4},
+    "DistanceBand": {"1-5": 1, "6-10": 2, "11-20": 3, "21-29": 4},
+    "JobLevel": {1: 1, 2: 2, 3: 3, 4: 4, 5: 5},
+    "Education": {1: 1, 2: 2, 3: 3, 4: 4, 5: 5},
+    "EnvironmentSatisfaction": {1: 1, 2: 2, 3: 3, 4: 4},
+    "JobSatisfaction": {1: 1, 2: 2, 3: 3, 4: 4},
+    "RelationshipSatisfaction": {1: 1, 2: 2, 3: 3, 4: 4},
+    "WorkLifeBalance": {1: 1, 2: 2, 3: 3, 4: 4},
+    "JobInvolvement": {1: 1, 2: 2, 3: 3, 4: 4},
+    "StockOptionLevel": {0: 0, 1: 1, 2: 2, 3: 3},
+    "TrainingTimesLastYear": {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6},
+}
+
+ORDERED_DIMENSIONS: List[str] = list(ORDERED_DIMENSIONS_SCORES.keys())
+
+NUMERIC_MEASURES: List[str] = [
+    "Age",
+    "MonthlyIncome",
+    "DistanceFromHome",
+    "PercentSalaryHike",
+    "TotalWorkingYears",
+    "YearsAtCompany",
+    "YearsInCurrentRole",
+    "YearsSinceLastPromotion",
+    "YearsWithCurrManager",
+]
+
+# Adjusted logistic regression covariate sets
+M1_FEATURES: List[str] = [
+    "OverTime",
+    "BusinessTravel",
+    "JobLevel",
+    "StockOptionLevel",
+    "DistanceFromHome",
+    "YearsAtCompany",
+    "EnvironmentSatisfaction",
+    "JobSatisfaction",
+    "WorkLifeBalance",
+    "JobInvolvement",
+]
+
+M2_CONTROLS: List[str] = ["Age", "Gender", "MaritalStatus"]
+M2_FEATURES: List[str] = M1_FEATURES + M2_CONTROLS
+
+LOGISTIC_EXCLUDED_COVARIATES: List[str] = [
+    "MonthlyIncome",
+    "DailyRate",
+    "HourlyRate",
+    "MonthlyRate",
+    "TotalWorkingYears",
+    "YearsInCurrentRole",
+    "YearsSinceLastPromotion",
+    "YearsWithCurrManager",
+]
+LOGISTIC_EXCLUSION_REASON: str = (
+    "Excluded due to severe collinearity with included tenure, compensation tier (JobLevel), and baseline pay structures."
+)
+
+# Hotspot index universe definition
+HOTSPOT_ONE_WAY_COLS: List[str] = [
+    "Department",
+    "JobRole",
+    "JobLevel",
+    "TenureBand",
+    "OverTime",
+    "BusinessTravel",
+    "DistanceBand",
+    "StockOptionLevel",
+    "WorkLifeBalance",
+    "JobSatisfaction",
+    "EnvironmentSatisfaction",
+    "TrainingTimesLastYear",
+]
+
+HOTSPOT_TWO_WAY_PAIRS: List[Tuple[str, str]] = [
+    ("OverTime", "Department"),
+    ("OverTime", "JobRole"),
+    ("OverTime", "JobLevel"),
+    ("OverTime", "TenureBand"),
+    ("OverTime", "BusinessTravel"),
+]
+
+HOTSPOT_EXCLUDED_DIMENSIONS: List[str] = [
+    "Age",
+    "AgeGroup",
+    "Gender",
+    "MaritalStatus",
+    "Education",
+    "EducationField",
+    "PromotionGapBand",
+]
+
+# Statistical thresholds and hyperparameters
+SEED: int = 42
+RANDOM_SEED: int = SEED
+MIN_GROUP_SIZE: int = 30
+ALPHA_LEVEL: float = 0.05
+N_BOOTSTRAP_INFERENCE: int = 2000
+N_PERMUTATIONS_INFERENCE: int = 10000
+PRIOR_STRENGTH_SENSITIVITY: List[int] = [10, 30, 100]
+MAX_GREEDY_STEPS: int = 10
+
+

@@ -1,0 +1,6 @@
+method,model_type,odds_ratio,ci_low,ci_high,adjustment_controls,notes
+Unadjusted Crude OR,Bivariate 2x2 contingency,3.7712488203837684,2.829566628164067,5.026323651008692,None,Workforce baseline unstratified cross-tabulation
+Stratified Mantel-Haenszel OR,Stratified non-parametric pooling,4.053707475100652,3.0119460462226493,5.45578972581376,JobLevel (5 strata),Robins-Breslow-Greenland 95% CI; Breslow-Day Tarone p=0.084
+Adjusted Logistic Regression (M1),Unpenalised multivariable Logit,4.808580932512579,3.4765672907242466,6.650942913205234,"JobLevel, Travel, Satisfaction, StockOptions, Tenure",Wald 95% CI; all VIF < 2.33; 21.5 events/parameter
+Adjusted Logistic Regression (M2),Unpenalised multivariable Logit,5.266277871636606,3.772987177748208,7.350590212671061,"M1 + Age, Gender, MaritalStatus (controls only)",Wald 95% CI; all VIF < 2.34; 15.8 events/parameter
+Phase 4 Regularised Contrast,"L2 Logistic Regression (C=0.10, symmetric)",4.0,2.97,5.51,30 operational/work features,Contrast beta_Yes - beta_No with 2000-bootstrap percentile CI

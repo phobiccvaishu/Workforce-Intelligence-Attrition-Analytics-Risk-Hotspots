@@ -1,0 +1,28 @@
+,Department=Sales,JobRole=Laboratory Technician,JobRole=Sales Representative,JobLevel=1,TenureBand=0-1,OverTime=Yes,BusinessTravel=Travel_Frequently,DistanceBand=21-29,StockOptionLevel=0,WorkLifeBalance=1,JobSatisfaction=1,EnvironmentSatisfaction=1,TrainingTimesLastYear=0,OverTime=Yes & Department=Research & Development,OverTime=Yes & Department=Sales,OverTime=No & JobRole=Sales Representative,OverTime=Yes & JobRole=Laboratory Technician,OverTime=Yes & JobRole=Research Scientist,OverTime=Yes & JobRole=Sales Executive,OverTime=Yes & JobLevel=1,OverTime=No & TenureBand=0-1,OverTime=Yes & TenureBand=0-1,OverTime=Yes & TenureBand=2-3,OverTime=Yes & TenureBand=4-5,OverTime=Yes & TenureBand=6-10,OverTime=Yes & BusinessTravel=Travel_Frequently,OverTime=Yes & BusinessTravel=Travel_Rarely
+Department=Sales,446,0,83,76,61,128,84,63,197,16,86,86,13,0,128,59,0,0,94,22,43,18,23,28,38,21,96
+JobRole=Laboratory Technician,0,259,0,200,61,62,51,36,108,20,56,53,6,62,0,0,62,0,0,48,41,20,13,9,17,13,45
+JobRole=Sales Representative,83,0,83,76,30,24,23,11,44,1,12,11,1,0,24,59,0,0,0,22,22,8,9,3,3,7,17
+JobLevel=1,76,200,76,543,136,156,104,65,257,35,106,107,24,126,22,54,48,78,0,156,92,44,42,34,32,39,109
+TenureBand=0-1,61,61,30,136,215,69,36,31,113,14,43,42,8,51,18,22,20,20,7,44,146,69,0,0,0,16,48
+OverTime=Yes,128,62,24,156,69,416,86,61,182,22,84,62,18,271,128,0,62,97,94,156,0,69,75,87,120,86,295
+BusinessTravel=Travel_Frequently,84,51,23,104,36,86,277,42,121,13,51,59,8,61,21,16,13,26,12,39,20,16,15,12,27,86,0
+DistanceBand=21-29,63,36,11,65,31,61,42,204,82,13,37,45,8,37,20,8,9,12,15,18,16,15,10,9,15,15,39
+StockOptionLevel=0,197,108,44,257,113,182,121,82,631,37,123,133,25,115,60,29,23,46,42,75,75,38,36,38,46,43,125
+WorkLifeBalance=1,16,20,1,35,14,22,13,13,37,80,17,20,3,17,4,0,9,4,2,11,9,5,4,4,6,4,18
+JobSatisfaction=1,86,56,12,106,43,84,51,37,123,17,289,53,5,65,16,11,18,22,15,34,28,15,19,17,24,14,64
+EnvironmentSatisfaction=1,86,53,11,107,42,62,59,45,133,20,53,284,10,39,21,8,10,17,16,26,35,7,15,14,19,18,35
+TrainingTimesLastYear=0,13,6,1,24,8,18,8,8,25,3,5,10,54,11,6,1,1,6,6,7,5,3,3,3,8,2,13
+OverTime=Yes & Department=Research & Development,0,62,0,126,51,271,61,37,115,17,65,39,11,271,0,0,62,97,0,126,0,51,47,55,77,61,187
+OverTime=Yes & Department=Sales,128,0,24,22,18,128,21,20,60,4,16,21,6,0,128,0,0,0,94,22,0,18,23,28,38,21,96
+OverTime=No & JobRole=Sales Representative,59,0,59,54,22,0,16,8,29,0,11,8,1,0,0,59,0,0,0,0,22,0,0,0,0,0,0
+OverTime=Yes & JobRole=Laboratory Technician,0,62,0,48,20,62,13,9,23,9,18,10,1,62,0,0,62,0,0,48,0,20,13,9,17,13,45
+OverTime=Yes & JobRole=Research Scientist,0,0,0,78,20,97,26,12,46,4,22,17,6,97,0,0,0,97,0,78,0,20,19,25,26,26,63
+OverTime=Yes & JobRole=Sales Executive,94,0,0,0,7,94,12,15,42,2,15,16,6,0,94,0,0,0,94,0,0,7,14,25,33,12,72
+OverTime=Yes & JobLevel=1,22,48,22,156,44,156,39,18,75,11,34,26,7,126,22,0,48,78,0,156,0,44,42,34,32,39,109
+OverTime=No & TenureBand=0-1,43,41,22,92,146,0,20,16,75,9,28,35,5,0,0,22,0,0,0,0,146,0,0,0,0,0,0
+OverTime=Yes & TenureBand=0-1,18,20,8,44,69,69,16,15,38,5,15,7,3,51,18,0,20,20,7,44,0,69,0,0,0,16,48
+OverTime=Yes & TenureBand=2-3,23,13,9,42,0,75,15,10,36,4,19,15,3,47,23,0,13,19,14,42,0,0,75,0,0,15,56
+OverTime=Yes & TenureBand=4-5,28,9,3,34,0,87,12,9,38,4,17,14,3,55,28,0,9,25,25,34,0,0,0,87,0,12,65
+OverTime=Yes & TenureBand=6-10,38,17,3,32,0,120,27,15,46,6,24,19,8,77,38,0,17,26,33,32,0,0,0,0,120,27,84
+OverTime=Yes & BusinessTravel=Travel_Frequently,21,13,7,39,16,86,86,15,43,4,14,18,2,61,21,0,13,26,12,39,0,16,15,12,27,86,0
+OverTime=Yes & BusinessTravel=Travel_Rarely,96,45,17,109,48,295,0,39,125,18,64,35,13,187,96,0,45,63,72,109,0,48,56,65,84,0,295

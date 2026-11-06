@@ -409,3 +409,80 @@ def test_phase3b_section_6_checkpoints():
     assert out_lvs == 66
     assert round((out_lvs / out_n) * 100, 1) == 7.6
 
+
+def test_phase5_section_6_reference_checkpoints():
+    """Verify Phase 5 Section 6 and owner-supplied reference checkpoints computed independently."""
+    df = load_processed(PROCESSED_DATA_FILE, PROCESSED_SCHEMA_FILE)
+
+    # 1. OverTime crude 2x2
+    # 127 leavers / 289 stayers (Yes) vs 110 / 944 (No); crude OR about 3.77
+    ot_yes = df[df["OverTime"] == "Yes"]
+    ot_no = df[df["OverTime"] == "No"]
+    a = int(ot_yes["Attrition"].sum())
+    b = len(ot_yes) - a
+    c = int(ot_no["Attrition"].sum())
+    d = len(ot_no) - c
+
+    assert a == 127
+    assert b == 289
+    assert c == 110
+    assert d == 944
+    crude_or = (a * d) / (b * c)
+    assert crude_or == pytest.approx(3.7712, abs=0.02)
+
+    # 2. Stratum ORs by JobLevel
+    # L1 82/74 | 61/326 -> 5.92
+    # L2 26/120 | 26/362 -> 3.02
+    # L3 13/50 | 19/136 -> 1.86
+    # L4 3/30 | 2/71 -> 3.55
+    # L5 3/15 | 2/49 -> 4.90
+    expected_jl_counts = {
+        1: (82, 74, 61, 326, 5.9220),
+        2: (26, 120, 26, 362, 3.0167),
+        3: (13, 50, 19, 136, 1.8611),
+        4: (3, 30, 2, 71, 3.5500),
+        5: (3, 15, 2, 49, 4.9000),
+    }
+    for jl, (exp_a, exp_b, exp_c, exp_d, exp_or) in expected_jl_counts.items():
+        s = df[df["JobLevel"] == jl]
+        sa = int(((s["OverTime"] == "Yes") & (s["Attrition"] == 1)).sum())
+        sb = int(((s["OverTime"] == "Yes") & (s["Attrition"] == 0)).sum())
+        sc = int(((s["OverTime"] == "No") & (s["Attrition"] == 1)).sum())
+        sd = int(((s["OverTime"] == "No") & (s["Attrition"] == 0)).sum())
+        assert (sa, sb, sc, sd) == (exp_a, exp_b, exp_c, exp_d)
+        s_or = (sa * sd) / (sb * sc)
+        assert s_or == pytest.approx(exp_or, abs=0.02)
+
+    # Read committed Phase 5 tables
+    mh_summary = pd.read_csv("reports/phase5/tables/mantel_haenszel.csv")
+
+    # OverTime by JobLevel: MH OR 4.05 [3.01, 5.46], Breslow-Day (Tarone) p 0.084
+    mh_jl = mh_summary[mh_summary["stratifier"] == "JobLevel"].iloc[0]
+    assert mh_jl["mh_or"] == pytest.approx(4.05, abs=0.02)
+    assert mh_jl["mh_ci_low"] == pytest.approx(3.01, abs=0.05)
+    assert mh_jl["mh_ci_high"] == pytest.approx(5.46, abs=0.05)
+    assert mh_jl["breslow_day_p"] == pytest.approx(0.084, abs=0.02)
+
+    # OverTime by Department: MH OR 3.81 [2.85, 5.08], p 0.73
+    mh_dept = mh_summary[mh_summary["stratifier"] == "Department"].iloc[0]
+    assert mh_dept["mh_or"] == pytest.approx(3.81, abs=0.02)
+    assert mh_dept["mh_ci_low"] == pytest.approx(2.85, abs=0.05)
+    assert mh_dept["mh_ci_high"] == pytest.approx(5.08, abs=0.05)
+    assert mh_dept["breslow_day_p"] == pytest.approx(0.73, abs=0.02)
+
+    # OverTime by TenureBand: MH OR 3.85 [2.86, 5.18], p 0.28
+    mh_tb = mh_summary[(mh_summary["stratifier"] == "TenureBand") & (mh_summary["analysis_id"] == "MH-03")].iloc[0]
+    assert mh_tb["mh_or"] == pytest.approx(3.85, abs=0.02)
+    assert mh_tb["mh_ci_low"] == pytest.approx(2.86, abs=0.05)
+    assert mh_tb["mh_ci_high"] == pytest.approx(5.18, abs=0.05)
+    assert mh_tb["breslow_day_p"] == pytest.approx(0.28, abs=0.02)
+
+    # Cohort promotion gap 6+ vs 0-5 by TenureBand: crude 1.96, MH 2.38 [1.44, 3.92], p 0.61
+    mh_c = mh_summary[mh_summary["analysis_id"] == "MH-04"].iloc[0]
+    assert mh_c["crude_or"] == pytest.approx(1.96, abs=0.02)
+    assert mh_c["mh_or"] == pytest.approx(2.38, abs=0.02)
+    assert mh_c["mh_ci_low"] == pytest.approx(1.44, abs=0.05)
+    assert mh_c["mh_ci_high"] == pytest.approx(3.92, abs=0.05)
+    assert mh_c["breslow_day_p"] == pytest.approx(0.61, abs=0.02)
+
+
