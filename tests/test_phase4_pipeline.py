@@ -321,7 +321,15 @@ def test_materiality_threshold_governance(pipeline_metrics):
     paired_path = PROJECT_ROOT / "reports" / "phase4" / "tables" / "paired_model_differences.csv"
     assert paired_path.exists(), "paired_model_differences.csv missing"
     df_paired = pd.read_csv(paired_path)
-    assert len(df_paired) >= 4
+    assert len(df_paired) >= 7
+
+    # Check exact point differences matching user verification
+    lr_hgb_pr = df_paired[(df_paired["comparison"].str.contains("Holdout: LR (Uncalibrated) - HGB", regex=False)) & (df_paired["metric"] == "PR-AUC")].iloc[0]
+    assert np.isclose(lr_hgb_pr["point_diff"], 0.0652, atol=0.001), f"Expected PR-AUC point diff ~0.0652, got {lr_hgb_pr['point_diff']}"
+    lr_hgb_roc = df_paired[(df_paired["comparison"].str.contains("Holdout: LR (Uncalibrated) - HGB", regex=False)) & (df_paired["metric"] == "ROC-AUC")].iloc[0]
+    assert np.isclose(lr_hgb_roc["point_diff"], 0.0388, atol=0.001), f"Expected ROC-AUC point diff ~0.0388, got {lr_hgb_roc['point_diff']}"
+    lr_hgb_br = df_paired[(df_paired["comparison"].str.contains("Holdout: LR (Uncalibrated) - HGB", regex=False)) & (df_paired["metric"] == "Brier Score")].iloc[0]
+    assert np.isclose(lr_hgb_br["point_diff"], -0.0115, atol=0.001), f"Expected Brier point diff ~-0.0115, got {lr_hgb_br['point_diff']}"
 
 
 def test_hotspot_candidate_screening_and_holdout_provenance(processed_df):
@@ -347,6 +355,20 @@ def test_hotspot_candidate_screening_and_holdout_provenance(processed_df):
     assert (df_val["selection_provenance"] == "Train-Screened Candidate").sum() == 24
     assert (df_val["selection_provenance"].str.contains("Optimistic")).sum() == 3
 
+    # Check separate denominators
+    train_sc = df_val[df_val["selection_provenance"] == "Train-Screened Candidate"]
+    train_n30 = train_sc[~train_sc["low_n_flag"]]
+    assert len(train_n30) == 13, f"Expected 13 train-screened candidates with holdout n>=30, got {len(train_n30)}"
+    train_above_lower = train_n30[train_n30["above_baseline_ci_lower"]]
+    assert len(train_above_lower) == 8, f"Expected 8 train-screened candidates above baseline by lower bound, got {len(train_above_lower)}"
+
+    opt = df_val[df_val["selection_provenance"].str.contains("Optimistic")]
+    opt_n30 = opt[~opt["low_n_flag"]]
+    assert len(opt_n30) == 1, f"Expected 1 optimistic candidate with holdout n>=30, got {len(opt_n30)}"
+    opt_above_lower = opt_n30[opt_n30["above_baseline_ci_lower"]]
+    assert len(opt_above_lower) == 1, f"Expected 1 optimistic candidate above baseline by lower bound, got {len(opt_above_lower)}"
+
+    # Total unique candidates
     n_ge_30 = df_val[~df_val["low_n_flag"]]
     assert len(n_ge_30) == 14
     above_lower = n_ge_30[n_ge_30["above_baseline_ci_lower"]]

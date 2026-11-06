@@ -72,13 +72,28 @@ Both calibrated and uncalibrated performance are presented to evaluate ranking a
 - **Recall @ Top 20%**: 0.5745 ($95\% \text{ CI } [0.4375, 0.6977]$)
 - **Lift @ Top 20%**: 2.8626 ($95\% \text{ CI } [2.1801, 3.4768]$)
 
-*Calibration Evaluation Note*: Applying 5-fold Sigmoid (Platt) calibration shifted the probability distribution spread but did not improve the Brier score (0.0995 uncalibrated vs 0.1006 calibrated) and made no measurable difference to ranking or true positive capture at the operational 20% triage cutoff (TP = 27 under both). While 10-bin Expected Calibration Error decreased from 0.0378 to 0.0310, 6 of 10 bins contain fewer than 10 observations, indicating that claims of fine-grained probability calibration are unsupported by sample size.
+*Calibration Evaluation Note*: Applying 5-fold Sigmoid (Platt) calibration shifted the probability distribution spread but did not improve the Brier score (0.0995 uncalibrated vs 0.1006 calibrated) and made no measurable difference to ranking or true positive capture at the operational 20% triage cutoff (TP = 27 under both).
+- **10-Bin Evaluation**: 6 of 10 bins in the uncalibrated model (bins 5, 6, 7, 8, 9, 10 with counts 8, 9, 9, 2, 2, 1) and 5 of 10 bins in the calibrated model (bins 6, 7, 8, 9, 10 with counts 8, 8, 0, 2, 1) contain fewer than 10 holdout cases.
+- **5-Bin Evaluation**: 1 of 5 bins in the uncalibrated model (bin 5 has $n=3$) and 2 of 5 bins in the calibrated model (bin 4 has $n=8$, bin 5 has $n=3$) contain fewer than 10 holdout cases.
+Claims of fine-grained probability calibration are unsupported by holdout sample sizes.
 
 ### 3.3 Feature Set Selection & Materiality Governance
 - **Feature Set A**: Full set including demographic attributes (`Age`, `Gender`, `MaritalStatus`, `AgeGroup`).
 - **Feature Set B**: Demographic attributes excluded.
 - **Materiality Threshold & Timing Audit**: Feature Set A was specified to be adopted only if its CV PR-AUC exceeded Set B by $> 0.0300$ with non-overlapping bootstrap CIs. However, the 0.03 threshold first appeared in commit `111db00` alongside the initial modeling code and results, meaning its pre-flight timing cannot be independently verified from git history.
 - **Audit Outcome**: In 15-fold cross-validation on the training set, Set A achieved mean CV PR-AUC of 0.6555 vs Set B at 0.6304 (gain of $+0.0251 \le 0.0300$, SD 0.0263). Set B was selected and locked on primary governance and ethical grounds (preventing disparate treatment). On the holdout split, Set A PR-AUC (0.5960, 95% CI: [0.4503, 0.7185]) and Set B PR-AUC (0.5736, 95% CI: [0.4315, 0.7037]) exhibit overlapping 95% bootstrap confidence intervals, and the paired holdout difference (+0.0224, 95% CI: [-0.0182, +0.0684]) spans zero, confirming that demographic inclusion yields no statistically distinguishable out-of-sample benefit.
+
+### 3.4 Paired Model Differences Table
+
+| Comparison | Metric | Point Diff | Bootstrap Mean Diff | 95% Bootstrap CI | Zero Included? | Notes |
+| :--- | :--- | :---: | :---: | :---: | :---: | :--- |
+| **Holdout: LR (Uncal) - HGB** | PR-AUC | **+0.0652** | +0.0638 | $[-0.0344, +0.1647]$ | Yes | Point diff = 0.5736 - 0.5084 |
+| **Holdout: LR (Uncal) - HGB** | ROC-AUC | **+0.0388** | +0.0386 | $[-0.0112, +0.0911]$ | Yes | Point diff = 0.8130 - 0.7742 |
+| **Holdout: LR (Uncal) - HGB** | Brier Score | **-0.0115** | -0.0115 | $[-0.0261, +0.0020]$ | Yes | Point diff = 0.0995 - 0.1110 |
+| **Holdout: LR (Set A - Set B)** | PR-AUC | **+0.0224** | +0.0220 | $[-0.0182, +0.0684]$ | Yes | Set A (0.5960) vs Set B (0.5736) |
+| **Holdout: LR (Set A - Set B)** | ROC-AUC | **+0.0097** | +0.0096 | $[-0.0115, +0.0315]$ | Yes | Set A (0.8227) vs Set B (0.8130) |
+| **Holdout: LR (Set A - Set B)** | Brier Score | **-0.0031** | -0.0031 | $[-0.0098, +0.0034]$ | Yes | Set A (0.0964) vs Set B (0.0995) |
+| **15-Fold CV: LR (Set A - Set B)** | PR-AUC | **+0.0251** | +0.0251 | $[-0.0076, +0.0578]$ | Yes | Nadeau-Bengio interval; fold spread: $[-0.0265, +0.0766]$ (SD=0.0263, not a CI) |
 
 ---
 
@@ -118,6 +133,20 @@ Coefficients are estimated from L2-regularised logistic regression ($C=0.10$) fi
 | **BusinessTravel (`Non-Travel`)** | Binary Indicator | Presence vs Absence (1 vs 0) | -0.4451 | 0.250 | **0.64** | $[0.48, 0.86]$ | $[0.39, 1.05]$ |
 | **StockOptionLevel** | Ordinal (0-3) | Per 1 SD (0.85 grant tiers) | -0.4497 | 0.102 | **0.64** | $[0.53, 0.77]$ | $[0.52, 0.78]$ |
 
+### 4.3 Out-of-Sample Risk Hotspot Generalisation Audit
+
+Risk hotspots are evaluated by strictly separating train-screened candidates from optimistic candidates:
+
+| Candidate Group | Screened ($n$) | Holdout $n \ge 30$ | Above Baseline Point Estimate ($n \ge 30$) | Above Baseline CI Lower Bound ($n \ge 30$) | Headline Generalisation Rate |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Train-Screened Candidates** | **24** | **13** | **11** | **8** | **8 / 13 (61.5%)** |
+| *Optimistic Candidates (Full Data)* | 3 | 1 | 1 | 1 | 1 / 1 (100.0%) |
+| **Total Candidates Evaluated** | 27 | 14 | 12 | 9 | 9 / 14 (64.3%) |
+
+> [!NOTE]
+> **Screening Rule Consistency & Governance**: In code, candidate screening strictly excluded protected demographic attributes `AgeGroup` and `Gender` (and interactions with age). However, `MaritalStatus=Single` was retained in the candidate pool because it was an established bivariate finding from Phase 3, even though `MaritalStatus` is designated as a protected demographic in `schema.json`. This inconsistency is documented here: `MaritalStatus=Single` generalises out-of-sample (holdout rate 25.8% [18.1%, 35.3%] vs 16.0% baseline), but its operational use as an intervention target is prohibited under governance rules.
+> Optimistic rows (`OverTime=Yes & AgeGroup=18-25`, `OverTime=Yes & AgeGroup=26-35`, `OverTime=Yes & TenureBand=4-5`) used holdout data during Phase 3 selection and are strictly excluded from headline train-screened generalisation metrics.
+
 ---
 
 ## 5. Demographic Fairness & Disparate Impact Audit
@@ -141,7 +170,7 @@ Even though demographic features were excluded from model training (Set B), the 
 ### 5.2 Fairness Findings & Governance Controls
 Selection-rate ratios differ markedly across demographic groups: for MaritalStatus, Single employees are selected at 2.19x the rate of Married employees (the largest group), and Divorced employees at 0.73x; for AgeGroup, employees aged 18-25 are selected at 3.58x the rate of employees aged 26-35 (the largest group). Observed historical attrition rates also differ substantially across these same groups: Single employees exhibit an observed attrition rate of 25.77% [18.1%, 35.3%] versus 13.53% [8.7%, 20.4%] for Married employees, and employees aged 18-25 exhibit 25.93% [13.2%, 44.7%] versus 11.22% [6.4%, 18.9%] for employees aged 36-45. 
 
-While Feature Set B intentionally excludes protected demographic attributes to prevent explicit disparate treatment, the multivariable model may still reflect demographic correlations through correlated operational proxies (such as overtime hours, entry-level job assignments, and lower company tenure). These disparities are actively monitored and governed through recurring audit reviews, rather than assumed to be resolved simply by omitting demographic variables. No legal conclusions regarding employment compliance or statutory standards are asserted.
+While Feature Set B intentionally excludes protected demographic attributes to prevent explicit disparate treatment, the multivariable model may use correlated features (such as job level, compensation levels, and tenure) that act as empirical proxies. For example, `MonthlyIncome` is present in Set B ($|\beta| = 0.1052$ per SD) and is strongly associated with Age ($r = +0.498, p < 10^{-15}$) and MaritalStatus (Single mean $\$5,889$ vs Married mean $\$6,794$). Similarly, `JobLevel=1` and `StockOptionLevel=0` correlate with younger single workers. These operational features act as partial statistical proxies for demographic groups. These disparities are actively monitored and governed through recurring audit reviews, rather than assumed to be resolved simply by omitting demographic variables. No legal conclusions regarding employment compliance or statutory standards are asserted.
 - **Disparate Impact Notice**: Because operational factors (overtime, entry-level job role, lower tenure) correlate in practice with younger age and single marital status, the demographic-free model selects younger and single employees at higher rates.
 - **Four-Fifths Rule Context**: Under EEOC guidelines, a selection rate below 80% of the highest group constitutes disparate impact in selection/hiring. However, for a **proactive retention triage program**, higher selection rates translate to **greater retention outreach and support**, not adverse selection.
 - **Fairness Recommendations**:

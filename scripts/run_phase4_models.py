@@ -336,56 +336,138 @@ def main() -> None:
     ]
     df_model_comp = pd.DataFrame(model_comp_records)
 
-    # 12. Paired Model Differences (LR vs HGB Holdout, and Set A vs Set B CV)
+    # 12. Paired Model Differences (LR vs HGB Holdout, and Set A vs Set B CV and Holdout)
     print("\nComputing paired model differences and single-loop marginal bootstrap CIs...")
     from sklearn.metrics import average_precision_score, roc_auc_score, brier_score_loss
+    from scipy import stats
     rng_paired = np.random.default_rng(SEED)
     n_paired_boot = 2000
     n_ho_samples = len(y_ho_arr)
     ho_indices = np.arange(n_ho_samples)
 
+    # Fit Set A on train, score on holdout
+    pipe_lr_a = Pipeline(
+        [
+            ("prep", build_preprocessor("A")),
+            ("clf", LogisticRegression(C=best_c_a, solver="lbfgs", max_iter=1000, random_state=SEED)),
+        ]
+    ).fit(X_train, y_train)
+    probs_lr_a = pipe_lr_a.predict_proba(X_holdout)[:, 1]
+    boot_lr_a = compute_bootstrap_metrics(y_ho_arr, probs_lr_a, n_bootstrap=n_paired_boot, seed=SEED)
+
+    # Point estimates on holdout
+    pr_lr_pt = float(boot_lr_uncal["pr_auc"]["point"])
+    roc_lr_pt = float(boot_lr_uncal["roc_auc"]["point"])
+    br_lr_pt = float(boot_lr_uncal["brier_score"]["point"])
+
+    pr_hgb_pt = float(boot_hgb["pr_auc"]["point"])
+    roc_hgb_pt = float(boot_hgb["roc_auc"]["point"])
+    br_hgb_pt = float(boot_hgb["brier_score"]["point"])
+
+    pr_lr_a_pt = float(boot_lr_a["pr_auc"]["point"])
+    roc_lr_a_pt = float(boot_lr_a["roc_auc"]["point"])
+    br_lr_a_pt = float(boot_lr_a["brier_score"]["point"])
+
     diff_pr_list, diff_roc_list, diff_br_list = [], [], []
+    diff_pr_ab_list, diff_roc_ab_list, diff_br_ab_list = [], [], []
     for _ in range(n_paired_boot):
         b_idx = rng_paired.choice(ho_indices, size=n_ho_samples, replace=True)
         y_b = y_ho_arr[b_idx]
         if np.sum(y_b) == 0 or np.sum(y_b) == n_ho_samples:
             continue
+        # LR uncal vs HGB
         diff_pr_list.append(average_precision_score(y_b, probs_lr_uncal[b_idx]) - average_precision_score(y_b, probs_hgb[b_idx]))
         diff_roc_list.append(roc_auc_score(y_b, probs_lr_uncal[b_idx]) - roc_auc_score(y_b, probs_hgb[b_idx]))
         diff_br_list.append(brier_score_loss(y_b, probs_lr_uncal[b_idx]) - brier_score_loss(y_b, probs_hgb[b_idx]))
+        # Set A vs Set B
+        diff_pr_ab_list.append(average_precision_score(y_b, probs_lr_a[b_idx]) - average_precision_score(y_b, probs_lr_uncal[b_idx]))
+        diff_roc_ab_list.append(roc_auc_score(y_b, probs_lr_a[b_idx]) - roc_auc_score(y_b, probs_lr_uncal[b_idx]))
+        diff_br_ab_list.append(brier_score_loss(y_b, probs_lr_a[b_idx]) - brier_score_loss(y_b, probs_lr_uncal[b_idx]))
+
+    # CV diffs for Set A vs Set B across the 15 folds
+    cv_diffs = [
+        ra["pr_auc"] - rb["pr_auc"]
+        for ra, rb in zip(lr_a_cv["fold_records"], lr_b_cv["fold_records"])
+    ]
+    mean_cv_diff = float(np.mean(cv_diffs))
+    sd_cv_diff = float(np.std(cv_diffs, ddof=1))
+    se_nb = sd_cv_diff * np.sqrt(1.0 / 15.0 + 1.0 / 4.0)
+    t_crit = float(stats.t.ppf(0.975, df=14))
+    nb_ci_low = mean_cv_diff - t_crit * se_nb
+    nb_ci_high = mean_cv_diff + t_crit * se_nb
+    fold_spread_low = mean_cv_diff - 1.96 * sd_cv_diff
+    fold_spread_high = mean_cv_diff + 1.96 * sd_cv_diff
 
     paired_records = [
         {
             "comparison": "Holdout: LR (Uncalibrated) - HGB",
             "metric": "PR-AUC",
-            "point_diff": float(np.mean(diff_pr_list)),
+            "point_diff": float(pr_lr_pt - pr_hgb_pt),
+            "bootstrap_mean_diff": float(np.mean(diff_pr_list)),
             "ci95_low": float(np.percentile(diff_pr_list, 2.5)),
             "ci95_high": float(np.percentile(diff_pr_list, 97.5)),
-            "ci_includes_zero": float(np.percentile(diff_pr_list, 2.5)) <= 0.0 <= float(np.percentile(diff_pr_list, 97.5)),
+            "ci_includes_zero": bool(float(np.percentile(diff_pr_list, 2.5)) <= 0.0 <= float(np.percentile(diff_pr_list, 97.5))),
+            "notes": "Point diff = 0.5736 - 0.5084 = +0.0652",
         },
         {
             "comparison": "Holdout: LR (Uncalibrated) - HGB",
             "metric": "ROC-AUC",
-            "point_diff": float(np.mean(diff_roc_list)),
+            "point_diff": float(roc_lr_pt - roc_hgb_pt),
+            "bootstrap_mean_diff": float(np.mean(diff_roc_list)),
             "ci95_low": float(np.percentile(diff_roc_list, 2.5)),
             "ci95_high": float(np.percentile(diff_roc_list, 97.5)),
-            "ci_includes_zero": float(np.percentile(diff_roc_list, 2.5)) <= 0.0 <= float(np.percentile(diff_roc_list, 97.5)),
+            "ci_includes_zero": bool(float(np.percentile(diff_roc_list, 2.5)) <= 0.0 <= float(np.percentile(diff_roc_list, 97.5))),
+            "notes": "Point diff = 0.8130 - 0.7742 = +0.0388",
         },
         {
             "comparison": "Holdout: LR (Uncalibrated) - HGB",
             "metric": "Brier Score",
-            "point_diff": float(np.mean(diff_br_list)),
+            "point_diff": float(br_lr_pt - br_hgb_pt),
+            "bootstrap_mean_diff": float(np.mean(diff_br_list)),
             "ci95_low": float(np.percentile(diff_br_list, 2.5)),
             "ci95_high": float(np.percentile(diff_br_list, 97.5)),
-            "ci_includes_zero": float(np.percentile(diff_br_list, 2.5)) <= 0.0 <= float(np.percentile(diff_br_list, 97.5)),
+            "ci_includes_zero": bool(float(np.percentile(diff_br_list, 2.5)) <= 0.0 <= float(np.percentile(diff_br_list, 97.5))),
+            "notes": "Point diff = 0.0995 - 0.1110 = -0.0115",
+        },
+        {
+            "comparison": "Holdout: LR (Set A - Set B)",
+            "metric": "PR-AUC",
+            "point_diff": float(pr_lr_a_pt - pr_lr_pt),
+            "bootstrap_mean_diff": float(np.mean(diff_pr_ab_list)),
+            "ci95_low": float(np.percentile(diff_pr_ab_list, 2.5)),
+            "ci95_high": float(np.percentile(diff_pr_ab_list, 97.5)),
+            "ci_includes_zero": bool(float(np.percentile(diff_pr_ab_list, 2.5)) <= 0.0 <= float(np.percentile(diff_pr_ab_list, 97.5))),
+            "notes": f"Set A ({pr_lr_a_pt:.4f}) vs Set B ({pr_lr_pt:.4f})",
+        },
+        {
+            "comparison": "Holdout: LR (Set A - Set B)",
+            "metric": "ROC-AUC",
+            "point_diff": float(roc_lr_a_pt - roc_lr_pt),
+            "bootstrap_mean_diff": float(np.mean(diff_roc_ab_list)),
+            "ci95_low": float(np.percentile(diff_roc_ab_list, 2.5)),
+            "ci95_high": float(np.percentile(diff_roc_ab_list, 97.5)),
+            "ci_includes_zero": bool(float(np.percentile(diff_roc_ab_list, 2.5)) <= 0.0 <= float(np.percentile(diff_roc_ab_list, 97.5))),
+            "notes": f"Set A ({roc_lr_a_pt:.4f}) vs Set B ({roc_lr_pt:.4f})",
+        },
+        {
+            "comparison": "Holdout: LR (Set A - Set B)",
+            "metric": "Brier Score",
+            "point_diff": float(br_lr_a_pt - br_lr_pt),
+            "bootstrap_mean_diff": float(np.mean(diff_br_ab_list)),
+            "ci95_low": float(np.percentile(diff_br_ab_list, 2.5)),
+            "ci95_high": float(np.percentile(diff_br_ab_list, 97.5)),
+            "ci_includes_zero": bool(float(np.percentile(diff_br_ab_list, 2.5)) <= 0.0 <= float(np.percentile(diff_br_ab_list, 97.5))),
+            "notes": f"Set A ({br_lr_a_pt:.4f}) vs Set B ({br_lr_pt:.4f})",
         },
         {
             "comparison": "15-Fold CV: LR (Set A - Set B)",
             "metric": "PR-AUC",
-            "point_diff": float(lr_a_cv["metrics_mean"]["pr_auc"] - lr_b_cv["metrics_mean"]["pr_auc"]),
-            "ci95_low": float(lr_a_cv["metrics_mean"]["pr_auc"] - lr_b_cv["metrics_mean"]["pr_auc"] - 1.96 * 0.0263),
-            "ci95_high": float(lr_a_cv["metrics_mean"]["pr_auc"] - lr_b_cv["metrics_mean"]["pr_auc"] + 1.96 * 0.0263),
-            "ci_includes_zero": False,
+            "point_diff": float(mean_cv_diff),
+            "bootstrap_mean_diff": float(mean_cv_diff),
+            "ci95_low": float(nb_ci_low),
+            "ci95_high": float(nb_ci_high),
+            "ci_includes_zero": bool(nb_ci_low <= 0.0 <= nb_ci_high),
+            "notes": f"Nadeau-Bengio interval; fold spread: [{fold_spread_low:.4f}, {fold_spread_high:.4f}] (SD={sd_cv_diff:.4f}, not a CI)",
         },
     ]
     df_paired_diffs = pd.DataFrame(paired_records)
@@ -422,6 +504,7 @@ def main() -> None:
         format_boot(boot_hgb, "HistGradientBoosting"),
         format_boot(boot_lr_uncal, "Logistic Regression (Uncalibrated)"),
         format_boot(boot_lr_cal, "Logistic Regression (Calibrated - Sigmoid)"),
+        format_boot(boot_lr_a, "Logistic Regression (Set A - Demographics Included)"),
     ]
     df_holdout_metrics = pd.DataFrame(holdout_records)
 
