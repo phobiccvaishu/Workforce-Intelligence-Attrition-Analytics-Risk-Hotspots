@@ -1,0 +1,6 @@
+attribute,subgroup,sample_size,leavers,selected_count,selection_rate,recall,disparate_impact_ratio
+Gender,Female,116,16,26,0.22413793103448276,0.625,1.0
+Gender,Male,178,31,33,0.1853932584269663,0.5483870967741935,0.8271391529818496
+MaritalStatus,Single,97,25,32,0.32989690721649484,0.64,1.0
+MaritalStatus,Married,133,18,20,0.15037593984962405,0.5,0.4558270676691729
+MaritalStatus,Divorced,64,4,7,0.109375,0.5,0.33154296875

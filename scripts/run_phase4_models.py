@@ -1,0 +1,372 @@
+"""Phase 4: Attrition Risk Modelling and Out-of-Sample Validation Pipeline.
+
+Executes all modelling, probability calibration, bootstrap evaluation,
+hotspot validation, fairness auditing, figure generation, and manifest creation.
+Fully headless, deterministic (SEED=42), and leakage-safe.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Any, Dict, List
+
+import numpy as np
+import pandas as pd
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.dummy import DummyClassifier
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+
+# Ensure project root is on sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
+
+from workforce_intel.config import (
+    FIGURE_DPI,
+    PROCESSED_DATA_FILE,
+    PROCESSED_SCHEMA_FILE,
+)
+from workforce_intel.io import load_processed
+from workforce_intel.modeling import (
+    SEED,
+    build_preprocessor,
+    compute_bootstrap_metrics,
+    compute_logistic_odds_ratios,
+    cross_validate_model,
+    evaluate_demographic_fairness,
+    evaluate_hotspots_on_holdout,
+    evaluate_predictions,
+    get_feature_sets,
+    screen_hotspots_on_train,
+    train_test_split_data,
+    tune_hist_gradient_boosting,
+    tune_logistic_regression,
+)
+from workforce_intel.viz_phase4 import (
+    plot_fig15_pr_curves,
+    plot_fig16_calibration,
+    plot_fig17_risk_bands,
+    plot_fig18_odds_ratios,
+    plot_fig19_hotspot_validation,
+    plot_fig20_demographic_fairness,
+)
+
+
+def compute_df_sha256(df: pd.DataFrame) -> str:
+    """Compute deterministic SHA-256 hash of a DataFrame's CSV representation."""
+    csv_bytes = df.to_csv(index=False, lineterminator="\n", float_format="%.6f").encode("utf-8")
+    return hashlib.sha256(csv_bytes).hexdigest()
+
+
+def main() -> None:
+    print("=" * 70)
+    print("PHASE 4: ATTRITION RISK MODELLING & VALIDATION PIPELINE")
+    print("=" * 70)
+
+    # 1. Output directories setup
+    reports_phase4_dir = PROJECT_ROOT / "reports" / "phase4"
+    tables_dir = reports_phase4_dir / "tables"
+    figures_dir = reports_phase4_dir / "figures"
+    tables_dir.mkdir(parents=True, exist_ok=True)
+    figures_dir.mkdir(parents=True, exist_ok=True)
+
+    # 2. Load Processed Data
+    print(f"Loading processed dataset from {PROCESSED_DATA_FILE}...")
+    df = load_processed(PROCESSED_DATA_FILE, PROCESSED_SCHEMA_FILE)
+    n_total = len(df)
+    leavers_total = int((df["Attrition"] == 1).sum()) if pd.api.types.is_numeric_dtype(df["Attrition"]) else int((df["Attrition"].astype(str).str.strip().isin(["1", "Yes"])).sum())
+    overall_baseline = leavers_total / n_total
+    print(f"Dataset loaded: n={n_total:,}, total leavers={leavers_total:,} ({overall_baseline * 100:.2f}%)")
+
+    # 3. Stratified 80/20 Train/Holdout Split
+    print("\nExecuting stratified 80/20 train/holdout split (SEED=42)...")
+    X_train, y_train, X_holdout, y_holdout, train_df, holdout_df = train_test_split_data(df, test_size=0.20, seed=SEED)
+    n_train = len(train_df)
+    n_holdout = len(holdout_df)
+    train_leavers = int((y_train == 1).sum())
+    holdout_leavers = int((y_holdout == 1).sum())
+    train_baseline = train_leavers / n_train
+    holdout_baseline = holdout_leavers / n_holdout
+
+    print(f"Training split: n={n_train:,}, leavers={train_leavers} ({train_baseline * 100:.2f}%)")
+    print(f"Holdout split:  n={n_holdout:,}, leavers={holdout_leavers} ({holdout_baseline * 100:.2f}%)")
+
+    # Verify zero data overlap
+    assert len(set(train_df.index).intersection(set(holdout_df.index))) == 0, "Split index overlap detected!"
+
+    # 4. Cross-Validation Model Development on Training Set
+    print("\nRunning repeated stratified 5-fold CV (3 repeats = 15 folds) on Training Split...")
+
+    # Dummy Baseline
+    print("Evaluating Dummy Classifier (Prior)...")
+    dummy_cv = cross_validate_model(
+        lambda: DummyClassifier(strategy="prior"),
+        X_train,
+        y_train,
+        feature_set="B",
+        seed=SEED,
+    )
+
+    # Logistic Regression Tuning (Set B)
+    print("Tuning Logistic Regression (Set B - Demographics Excluded)...")
+    best_c_b, lr_b_cv = tune_logistic_regression(X_train, y_train, feature_set="B", seed=SEED)
+    print(f"  Best C (Set B): {best_c_b}, Mean CV PR-AUC: {lr_b_cv['metrics_mean']['pr_auc']:.4f}")
+
+    # Logistic Regression Tuning (Set A - Full Demographics for Materiality Check)
+    print("Tuning Logistic Regression (Set A - Demographics Included)...")
+    best_c_a, lr_a_cv = tune_logistic_regression(X_train, y_train, feature_set="A", seed=SEED)
+    print(f"  Best C (Set A): {best_c_a}, Mean CV PR-AUC: {lr_a_cv['metrics_mean']['pr_auc']:.4f}")
+
+    # Materiality rule evaluation
+    delta_pr_auc = lr_a_cv["metrics_mean"]["pr_auc"] - lr_b_cv["metrics_mean"]["pr_auc"]
+    print(f"  PR-AUC Gain from Set A: {delta_pr_auc:+.4f} (Materiality threshold: > +0.0300)")
+    if delta_pr_auc > 0.03:
+        recommended_set = "A"
+        print("  -> Set A exceeds materiality threshold; recommended for operations.")
+    else:
+        recommended_set = "B"
+        print("  -> Set A gain <= 0.0300; Governance-recommended Set B SELECTED.")
+
+    # HistGradientBoosting Tuning (Set B)
+    print("Tuning HistGradientBoosting Classifier (Set B)...")
+    best_hgb_params, hgb_cv = tune_hist_gradient_boosting(X_train, y_train, feature_set="B", seed=SEED)
+    print(f"  Best HGB params: {best_hgb_params}, Mean CV PR-AUC: {hgb_cv['metrics_mean']['pr_auc']:.4f}")
+
+    # 5. Fit Pipelines on Training Set & Calibrate
+    print("\nFitting full pipelines on training split...")
+    pipe_dummy = Pipeline([("clf", DummyClassifier(strategy="prior"))]).fit(X_train, y_train)
+
+    pipe_lr = Pipeline(
+        [
+            ("prep", build_preprocessor("B")),
+            ("clf", LogisticRegression(C=best_c_b, solver="lbfgs", max_iter=1000, random_state=SEED)),
+        ]
+    ).fit(X_train, y_train)
+
+    pipe_hgb = Pipeline(
+        [
+            ("prep", build_preprocessor("B")),
+            (
+                "clf",
+                HistGradientBoostingClassifier(
+                    learning_rate=best_hgb_params["learning_rate"],
+                    max_iter=best_hgb_params["max_iter"],
+                    max_leaf_nodes=best_hgb_params["max_leaf_nodes"],
+                    random_state=SEED,
+                ),
+            ),
+        ]
+    ).fit(X_train, y_train)
+
+    # Sigmoid calibration inside CV
+    print("Fitting CalibratedClassifierCV (Sigmoid / Platt scaling, 5-fold CV)...")
+    cal_lr = CalibratedClassifierCV(estimator=pipe_lr, method="sigmoid", cv=5).fit(X_train, y_train)
+
+    # 6. Final Holdout Evaluation (Locked and Evaluated Once)
+    print("\nScoring Holdout Split (Unseen Evaluation)...")
+    probs_dummy = pipe_dummy.predict_proba(X_holdout)[:, 1]
+    probs_lr_uncal = pipe_lr.predict_proba(X_holdout)[:, 1]
+    probs_hgb = pipe_hgb.predict_proba(X_holdout)[:, 1]
+    probs_lr_cal = cal_lr.predict_proba(X_holdout)[:, 1]
+
+    y_ho_arr = y_holdout.to_numpy()
+
+    print("Computing 2,000-sample percentile bootstrap 95% CIs on holdout...")
+    boot_dummy = compute_bootstrap_metrics(y_ho_arr, probs_dummy, n_bootstrap=2000, seed=SEED)
+    boot_lr_uncal = compute_bootstrap_metrics(y_ho_arr, probs_lr_uncal, n_bootstrap=2000, seed=SEED)
+    boot_hgb = compute_bootstrap_metrics(y_ho_arr, probs_hgb, n_bootstrap=2000, seed=SEED)
+    boot_lr_cal = compute_bootstrap_metrics(y_ho_arr, probs_lr_cal, n_bootstrap=2000, seed=SEED)
+
+    print("\nHOLDOUT RESULTS (Calibrated Logistic Regression - Set B):")
+    for m_name, vals in boot_lr_cal.items():
+        print(f"  {m_name:15}: {vals['point']:.4f} (95% CI: [{vals['ci_lower']:.4f}, {vals['ci_upper']:.4f}])")
+
+    # 7. Hotspot Candidate Out-of-Sample Validation
+    print("\nExecuting candidate hotspot screening and holdout validation...")
+    screened_train_hotspots = screen_hotspots_on_train(train_df, min_n=30)
+    print(f"Screened {len(screened_train_hotspots)} candidate hotspot segments on Training Split.")
+
+    # Also load Phase 3 candidates
+    phase3_cand_path = PROJECT_ROOT / "reports" / "phase3" / "tables" / "hotspot_candidates.csv"
+    if phase3_cand_path.exists():
+        df_p3_cand = pd.read_csv(phase3_cand_path)
+        for _, r in df_p3_cand.iterrows():
+            seg_str = r["subgroup"]
+            # Avoid duplicate if already screened
+            if not any(h["segment"] == seg_str for h in screened_train_hotspots):
+                screened_train_hotspots.append(
+                    {
+                        "segment": seg_str,
+                        "source": "Phase 3 Scan",
+                        "train_n": int(r["n"]),
+                        "train_leavers": int(r["leavers"]),
+                        "train_rate": float(r["attrition_rate_pct"]) / 100.0,
+                        "train_ci_low": float(r["ci95_low_pct"]) / 100.0,
+                        "train_ci_high": float(r["ci95_high_pct"]) / 100.0,
+                        "train_baseline": train_baseline,
+                    }
+                )
+
+    df_hotspot_val = evaluate_hotspots_on_holdout(screened_train_hotspots, holdout_df)
+    print(f"Validated {len(df_hotspot_val)} candidate segments against Holdout Split.")
+
+    # 8. Demographic Fairness Audit
+    print("\nAuditing demographic fairness on holdout predictions (20% triage threshold)...")
+    df_fairness = evaluate_demographic_fairness(holdout_df, probs_lr_cal, percentile=0.20)
+
+    # 9. Feature Importance / Odds Ratios
+    print("\nExtracting feature odds ratios from regularised Logistic Regression...")
+    df_odds_ratios = compute_logistic_odds_ratios(pipe_lr)
+
+    # 10. Save Tables
+    print("\nSaving reporting tables to reports/phase4/tables/...")
+
+    # CV Metrics Table
+    cv_records = [
+        {"model": "Dummy (Prior)", "feature_set": "B", **{f"cv_{k}_mean": v for k, v in dummy_cv["metrics_mean"].items()}, **{f"cv_{k}_std": v for k, v in dummy_cv["metrics_std"].items()}},
+        {"model": "HistGradientBoosting", "feature_set": "B", **{f"cv_{k}_mean": v for k, v in hgb_cv["metrics_mean"].items()}, **{f"cv_{k}_std": v for k, v in hgb_cv["metrics_std"].items()}},
+        {"model": "Logistic Regression", "feature_set": "A", **{f"cv_{k}_mean": v for k, v in lr_a_cv["metrics_mean"].items()}, **{f"cv_{k}_std": v for k, v in lr_a_cv["metrics_std"].items()}},
+        {"model": "Logistic Regression", "feature_set": "B", **{f"cv_{k}_mean": v for k, v in lr_b_cv["metrics_mean"].items()}, **{f"cv_{k}_std": v for k, v in lr_b_cv["metrics_std"].items()}},
+    ]
+    df_cv_metrics = pd.DataFrame(cv_records)
+    df_cv_metrics.to_csv(tables_dir / "cv_metrics.csv", index=False)
+
+    # Holdout Metrics Table
+    def format_boot(b_dict: Dict[str, Dict[str, float]], model_name: str) -> Dict[str, Any]:
+        row: Dict[str, Any] = {"model": model_name}
+        for m, vals in b_dict.items():
+            row[f"{m}_point"] = vals["point"]
+            row[f"{m}_ci95_low"] = vals["ci_lower"]
+            row[f"{m}_ci95_high"] = vals["ci_upper"]
+        return row
+
+    holdout_records = [
+        format_boot(boot_dummy, "Dummy (Prior)"),
+        format_boot(boot_hgb, "HistGradientBoosting"),
+        format_boot(boot_lr_uncal, "Logistic Regression (Uncalibrated)"),
+        format_boot(boot_lr_cal, "Logistic Regression (Calibrated - Sigmoid)"),
+    ]
+    df_holdout_metrics = pd.DataFrame(holdout_records)
+    df_holdout_metrics.to_csv(tables_dir / "holdout_metrics.csv", index=False)
+
+    # Other tables
+    df_odds_ratios.to_csv(tables_dir / "feature_odds_ratios.csv", index=False)
+    df_hotspot_val.to_csv(tables_dir / "hotspot_validation.csv", index=False)
+    df_fairness.to_csv(tables_dir / "demographic_fairness.csv", index=False)
+
+    # 11. Save Full Metrics JSON
+    metrics_summary = {
+        "metadata": {
+            "n_total": n_total,
+            "n_train": n_train,
+            "n_holdout": n_holdout,
+            "seed": SEED,
+            "train_baseline_rate": float(train_baseline),
+            "holdout_baseline_rate": float(holdout_baseline),
+            "materiality_gain_set_a_vs_b": float(delta_pr_auc),
+            "selected_feature_set": recommended_set,
+        },
+        "cv_evaluation": {
+            "dummy_prior": dummy_cv["metrics_mean"],
+            "hist_gradient_boosting": hgb_cv["metrics_mean"],
+            "logistic_regression_set_a": lr_a_cv["metrics_mean"],
+            "logistic_regression_set_b": lr_b_cv["metrics_mean"],
+        },
+        "holdout_evaluation": {
+            "dummy_prior": boot_dummy,
+            "hist_gradient_boosting": boot_hgb,
+            "logistic_regression_uncalibrated": boot_lr_uncal,
+            "logistic_regression_calibrated": boot_lr_cal,
+        },
+    }
+    with open(reports_phase4_dir / "metrics.json", "w", encoding="utf-8") as f:
+        json.dump(metrics_summary, f, indent=2)
+    print("Metrics written to reports/phase4/metrics.json")
+
+    # 12. Generate Figures FIG-15 through FIG-20
+    print("\nGenerating figures FIG-15 through FIG-20...")
+    model_preds = {
+        "Dummy (Prior)": probs_dummy,
+        "HistGradientBoosting": probs_hgb,
+        "Logistic Regression (Uncalibrated)": probs_lr_uncal,
+        "Logistic Regression (Calibrated)": probs_lr_cal,
+    }
+
+    fig_generators = [
+        (
+            "FIG-15",
+            "fig15_precision_recall_curves.png",
+            "FIG-15: Precision-Recall Curves across Attrition Risk Models",
+            lambda: plot_fig15_pr_curves(model_preds, y_ho_arr, holdout_baseline),
+        ),
+        (
+            "FIG-16",
+            "fig16_calibration_curves.png",
+            "FIG-16: Probability Reliability Diagram (Calibration Curve)",
+            lambda: plot_fig16_calibration(y_ho_arr, probs_lr_uncal, probs_lr_cal),
+        ),
+        (
+            "FIG-17",
+            "fig17_risk_tier_attrition.png",
+            "FIG-17: Holdout Attrition Yield Across Model-Prioritized Risk Tiers",
+            lambda: plot_fig17_risk_bands(y_ho_arr, probs_lr_cal, holdout_baseline),
+        ),
+        (
+            "FIG-18",
+            "fig18_feature_odds_ratios.png",
+            "FIG-18: Top Predictors in Regularised Logistic Regression",
+            lambda: plot_fig18_odds_ratios(df_odds_ratios),
+        ),
+        (
+            "FIG-19",
+            "fig19_hotspot_validation.png",
+            "FIG-19: Out-of-Sample Validation of Candidate Attrition Hotspots",
+            lambda: plot_fig19_hotspot_validation(df_hotspot_val),
+        ),
+        (
+            "FIG-20",
+            "fig20_demographic_fairness.png",
+            "FIG-20: Demographic Fairness Audit at Operational 20% Triage Threshold",
+            lambda: plot_fig20_demographic_fairness(df_fairness),
+        ),
+    ]
+
+    manifest_records: List[Dict[str, Any]] = []
+
+    for fid, fname, title, gen_fn in fig_generators:
+        fig, plotted_df = gen_fn()
+        fig_path = figures_dir / fname
+        fig.savefig(fig_path, dpi=FIGURE_DPI)
+
+        file_size = fig_path.stat().st_size
+        width_in, height_in = fig.get_size_inches()
+        plotted_sha = compute_df_sha256(plotted_df)
+
+        manifest_records.append(
+            {
+                "figure_id": fid,
+                "filename": fname,
+                "title": title,
+                "width_in": round(float(width_in), 2),
+                "height_in": round(float(height_in), 2),
+                "dpi": FIGURE_DPI,
+                "file_size_bytes": file_size,
+                "plotted_data_sha256": plotted_sha,
+            }
+        )
+        print(f"  {fid} -> {fname} ({file_size:,} bytes, sha256={plotted_sha[:12]}...)")
+
+    df_manifest = pd.DataFrame(manifest_records)
+    df_manifest.to_csv(reports_phase4_dir / "figure_manifest.csv", index=False)
+    print("Figure manifest written to reports/phase4/figure_manifest.csv")
+
+    print("\nPhase 4 pipeline completed successfully.")
+
+
+if __name__ == "__main__":
+    main()

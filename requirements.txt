@@ -10,8 +10,10 @@ nbformat==5.10.4
 nbconvert==7.17.1
 pytest==9.2.0
 
-# Later-Phase Dependencies (Phase 2+ EDA, Modeling, Presentation, Dashboard)
+# Phase 4 Modeling Dependencies
+scikit-learn==1.9.1
+
+# Later-Phase Dependencies (Phase 5+ Presentation, Dashboard)
 # plotly==7.1.0
 # statsmodels==0.14.6
-# scikit-learn==1.9.0
 # streamlit==1.66.1
