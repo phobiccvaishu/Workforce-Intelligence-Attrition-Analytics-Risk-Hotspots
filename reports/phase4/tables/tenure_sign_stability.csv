@@ -1,0 +1,7 @@
+feature,raw_feature_name,scale_unit,mean_coef,ci95_low,ci95_high,predominant_sign,sign_stability_pct,positive_refits_pct,negative_refits_pct
+YearsAtCompany,YearsAtCompany,Continuous (1 SD = 6.13 yrs),-0.016332430939171087,-0.23402503491656398,0.20261301737068738,Negative (-),55.2,44.800000000000004,55.2
+YearsInCurrentRole,YearsInCurrentRole,Continuous (1 SD = 3.63 yrs),0.04372201232297876,-0.19364083870016055,0.24950338916055037,Positive (+),64.60000000000001,64.60000000000001,35.4
+YearsWithCurrManager,YearsWithCurrManager,Continuous (1 SD = 3.57 yrs),-0.13877152606886414,-0.3694894966848393,0.09307830444036624,Negative (-),88.2,11.799999999999999,88.2
+YearsSinceLastPromotion,YearsSinceLastPromotion,Continuous (1 SD = 3.22 yrs),0.19443470301095633,-0.02096844019424599,0.41734449295665,Positive (+),94.6,94.6,5.4
+TenureBand_0-1,TenureBand_0-1,Binary Indicator,0.08344141772261934,0.025355352443244755,0.14601544088955815,Positive (+),99.6,99.6,0.4
+TenureBand_11+,TenureBand_11+,Binary Indicator,-0.12707357181888643,-0.31360098380495627,0.06424866299287761,Negative (-),89.60000000000001,10.4,89.60000000000001

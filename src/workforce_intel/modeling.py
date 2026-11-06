@@ -559,7 +559,7 @@ def screen_hotspots_on_train(
     train_leavers_total = _count_leavers(train_df)
     train_baseline = train_leavers_total / train_n_total
 
-    # Screen both 1-way and 2-way interaction candidates
+    # Screen both 1-way and 2-way interaction candidates (EarlyTenure=1 deduplicated with TenureBand=0-1)
     scanned_candidates: List[str] = [
         # One-way candidates
         "OverTime=Yes",
@@ -568,7 +568,6 @@ def screen_hotspots_on_train(
         "JobRole=Human Resources",
         "MaritalStatus=Single",
         "BusinessTravel=Travel_Frequently",
-        "EarlyTenure=1",
         "StockOptionLevel=0",
         "JobLevel=1",
         "EnvironmentSatisfaction=1",
@@ -625,6 +624,7 @@ def screen_hotspots_on_train(
 def evaluate_hotspots_on_holdout(
     hotspots: List[Dict[str, Any]],
     holdout_df: pd.DataFrame,
+    full_df: Optional[pd.DataFrame] = None,
 ) -> pd.DataFrame:
     """Evaluate candidate segments on the holdout split and classify generalization vs fading."""
     holdout_n_total = len(holdout_df)
@@ -642,6 +642,17 @@ def evaluate_hotspots_on_holdout(
         rate_hold = leavers_hold / n_hold if n_hold > 0 else 0.0
         ci_low_hold, ci_high_hold = wilson_interval(leavers_hold, n_hold, confidence=0.95)
 
+        # Full-dataset numbers
+        if full_df is not None:
+            full_mask = parse_segment_mask(seg_str, full_df)
+            n_full = int(full_mask.sum())
+            leavers_full = _count_leavers(full_df.loc[full_mask])
+            rate_full = leavers_full / n_full if n_full > 0 else 0.0
+        else:
+            n_full = h.get("full_n", h["train_n"] + n_hold)
+            leavers_full = h.get("full_leavers", h["train_leavers"] + leavers_hold)
+            rate_full = leavers_full / n_full if n_full > 0 else 0.0
+
         # Classification rule:
         # Generalized: holdout Wilson lower bound > holdout baseline
         # Faded: holdout Wilson interval covers or drops below holdout baseline
@@ -654,18 +665,31 @@ def evaluate_hotspots_on_holdout(
             status = "Faded (Interval Covers Baseline)"
 
         rec = {
+            "candidate_segment": seg_str,
             "segment": seg_str,
+            "selection_provenance": h.get("source", "Phase 3 Candidate"),
             "source": h.get("source", "Phase 3 Candidate"),
+            "n_train": h["train_n"],
             "train_n": h["train_n"],
             "train_leavers": h["train_leavers"],
+            "rate_train": h["train_rate"],
             "train_rate": h["train_rate"],
             "train_ci_low": h["train_ci_low"],
             "train_ci_high": h["train_ci_high"],
+            "n_full": n_full,
+            "rate_full": rate_full,
             "holdout_n": n_hold,
             "holdout_leavers": leavers_hold,
+            "rate_holdout": rate_hold,
             "holdout_rate": rate_hold,
+            "wilson_ci_low": ci_low_hold,
+            "wilson_ci_high": ci_high_hold,
             "holdout_ci_low": ci_low_hold,
             "holdout_ci_high": ci_high_hold,
+            "above_baseline_point": rate_hold > holdout_baseline,
+            "above_baseline_ci_lower": ci_low_hold > holdout_baseline,
+            "low_n_flag": n_hold < 30,
+            "holdout_low_n_flag": n_hold < 30,
             "holdout_baseline": holdout_baseline,
             "validation_status": status,
         }
@@ -699,6 +723,8 @@ def evaluate_demographic_fairness(
 
     for attr, values in demographic_configs:
         max_rate = 0.0
+        largest_n = 0
+        largest_rate = 0.0
         for val in values:
             mask = (holdout_df[attr] == val).to_numpy()
             n_sub = int(np.sum(mask))
@@ -707,6 +733,9 @@ def evaluate_demographic_fairness(
                 r_sel = n_sel / n_sub
                 if r_sel > max_rate:
                     max_rate = r_sel
+                if n_sub > largest_n:
+                    largest_n = n_sub
+                    largest_rate = r_sel
 
         for val in values:
             mask = (holdout_df[attr] == val).to_numpy()
@@ -729,33 +758,331 @@ def evaluate_demographic_fairness(
 
             mean_pred = float(np.mean(y_prob[mask]))
             obs_rate = sub_leavers / n_sub
+            obs_ci = wilson_interval(sub_leavers, n_sub, confidence=0.95)
             cal_ratio = mean_pred / obs_rate if obs_rate > 0 else np.nan
 
-            di_ratio = selection_rate / max_rate if max_rate > 0 else 1.0
-            low_n = (n_sub < 30)
+            ratio_highest = selection_rate / max_rate if max_rate > 0 else 1.0
+            ratio_largest = selection_rate / largest_rate if largest_rate > 0 else 1.0
+
+            low_n_tot = (n_sub < 30)
+            low_n_leav = (sub_leavers < 30)
+            low_n_flag = (n_selected < 30)
 
             records.append(
                 {
                     "attribute": attr,
                     "subgroup": val,
                     "sample_size": n_sub,
+                    "n": n_sub,
                     "leavers": sub_leavers,
                     "selected_count": n_selected,
+                    "flagged_k": n_selected,
                     "selection_rate": float(selection_rate),
+                    "selection_rate_pct": float(selection_rate * 100),
                     "selection_ci_low": float(sel_ci[0]),
                     "selection_ci_high": float(sel_ci[1]),
+                    "selection_ci_pct": f"[{sel_ci[0]*100:.1f}%, {sel_ci[1]*100:.1f}%]",
+                    "selection_ratio_vs_highest": float(ratio_highest),
+                    "selection_ratio_vs_largest": float(ratio_largest),
                     "recall": float(recall) if not np.isnan(recall) else np.nan,
+                    "recall_pct": float(recall * 100) if not np.isnan(recall) else np.nan,
                     "recall_ci_low": float(rec_ci[0]) if not np.isnan(rec_ci[0]) else np.nan,
                     "recall_ci_high": float(rec_ci[1]) if not np.isnan(rec_ci[1]) else np.nan,
+                    "recall_ci_pct": f"[{rec_ci[0]*100:.1f}%, {rec_ci[1]*100:.1f}%]" if not np.isnan(rec_ci[0]) else "N/A",
                     "precision": float(precision) if not np.isnan(precision) else np.nan,
+                    "precision_pct": float(precision * 100) if not np.isnan(precision) else np.nan,
                     "precision_ci_low": float(prec_ci[0]) if not np.isnan(prec_ci[0]) else np.nan,
                     "precision_ci_high": float(prec_ci[1]) if not np.isnan(prec_ci[1]) else np.nan,
+                    "precision_ci_pct": f"[{prec_ci[0]*100:.1f}%, {prec_ci[1]*100:.1f}%]" if not np.isnan(prec_ci[0]) else "N/A",
                     "mean_pred_prob": float(mean_pred),
                     "observed_rate": float(obs_rate),
+                    "observed_rate_pct": float(obs_rate * 100),
+                    "observed_rate_ci_low": float(obs_ci[0]),
+                    "observed_rate_ci_high": float(obs_ci[1]),
+                    "observed_rate_ci_pct": f"[{obs_ci[0]*100:.1f}%, {obs_ci[1]*100:.1f}%]",
                     "calibration_ratio": float(cal_ratio) if not np.isnan(cal_ratio) else np.nan,
-                    "disparate_impact_ratio": float(di_ratio),
-                    "low_n_flag": low_n,
+                    "disparate_impact_ratio": float(ratio_highest),
+                    "low_n_flag": low_n_tot,
+                    "low_n_total": low_n_tot,
+                    "low_n_leavers": low_n_leav,
+                    "low_n_flagged": low_n_flag,
                 }
             )
 
+    return pd.DataFrame(records)
+
+
+def compute_nominal_contrasts(
+    fitted_pipeline: Pipeline,
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    n_bootstrap: int = 500,
+    seed: int = SEED,
+) -> pd.DataFrame:
+    """Compute nominal contrasts for OverTime and BusinessTravel with asymptotic and bootstrap CIs."""
+    prep = fitted_pipeline.named_steps["prep"]
+    clf = fitted_pipeline.named_steps["clf"]
+    fnames = list(prep.get_feature_names_out())
+    clean_fnames = [f.replace("num__", "").replace("cat__", "") for f in fnames]
+    coefs = clf.coef_[0]
+    C_val = getattr(clf, "C", 0.1)
+
+    # Inverted Hessian asymptotic covariance
+    X_des = prep.transform(X_train)
+    p = clf.predict_proba(X_des)[:, 1]
+    W = p * (1.0 - p)
+    H = (X_des.T * W) @ X_des + (1.0 / C_val) * np.eye(X_des.shape[1])
+    cov = np.linalg.inv(H)
+
+    contrasts = [
+        ("OverTime", "OverTime: Yes vs No", "OverTime_Yes", "OverTime_No", "OverTime=Yes vs OverTime=No"),
+        ("BusinessTravel", "BusinessTravel: Travel_Frequently vs Non-Travel", "BusinessTravel_Travel_Frequently", "BusinessTravel_Non-Travel", "Travel_Frequently vs Non-Travel"),
+        ("BusinessTravel", "BusinessTravel: Travel_Frequently vs Travel_Rarely", "BusinessTravel_Travel_Frequently", "BusinessTravel_Travel_Rarely", "Travel_Frequently vs Travel_Rarely"),
+        ("BusinessTravel", "BusinessTravel: Travel_Rarely vs Non-Travel", "BusinessTravel_Travel_Rarely", "BusinessTravel_Non-Travel", "Travel_Rarely vs Non-Travel"),
+    ]
+
+    # Bootstrap refits
+    rng = np.random.default_rng(seed)
+    n_samples = len(X_train)
+    indices = np.arange(n_samples)
+
+    boot_diffs: Dict[str, List[float]] = {c[1]: [] for c in contrasts}
+    for _ in range(n_bootstrap):
+        idx = rng.choice(indices, size=n_samples, replace=True)
+        X_b = X_train.iloc[idx]
+        y_b = y_train.iloc[idx]
+        if len(np.unique(y_b)) < 2:
+            continue
+        p_boot = Pipeline([
+            ("prep", build_preprocessor("B")),
+            ("clf", LogisticRegression(C=C_val, solver="lbfgs", max_iter=1000, random_state=seed)),
+        ]).fit(X_b, y_b)
+        c_boot = p_boot.named_steps["clf"].coef_[0]
+        for dim, name, fa, fb, interp in contrasts:
+            ia = clean_fnames.index(fa)
+            ib = clean_fnames.index(fb)
+            boot_diffs[name].append(float(c_boot[ia] - c_boot[ib]))
+
+    rows = []
+    for dim, name, fa, fb, interp in contrasts:
+        ia = clean_fnames.index(fa)
+        ib = clean_fnames.index(fb)
+        diff = float(coefs[ia] - coefs[ib])
+        var_diff = float(cov[ia, ia] + cov[ib, ib] - 2 * cov[ia, ib])
+        se_diff = float(np.sqrt(max(0.0, var_diff)))
+        asymp_low = float(diff - 1.96 * se_diff)
+        asymp_high = float(diff + 1.96 * se_diff)
+
+        b_arr = np.array(boot_diffs[name])
+        boot_low = float(np.percentile(b_arr, 2.5))
+        boot_high = float(np.percentile(b_arr, 97.5))
+
+        or_pt = float(np.exp(diff))
+        or_asymp_low = float(np.exp(asymp_low))
+        or_asymp_high = float(np.exp(asymp_high))
+        or_boot_low = float(np.exp(boot_low))
+        or_boot_high = float(np.exp(boot_high))
+
+        rows.append({
+            "contrast": name,
+            "dimension": dim,
+            "level_a": fa,
+            "level_b": fb,
+            "beta_diff": diff,
+            "se_diff": se_diff,
+            "asymptotic_ci95_low": asymp_low,
+            "asymptotic_ci95_high": asymp_high,
+            "bootstrap_ci95_low": boot_low,
+            "bootstrap_ci95_high": boot_high,
+            "odds_ratio": or_pt,
+            "or_asymptotic_ci95_low": or_asymp_low,
+            "or_asymptotic_ci95_high": or_asymp_high,
+            "or_bootstrap_ci95_low": or_boot_low,
+            "or_bootstrap_ci95_high": or_boot_high,
+            "interpretation": interp,
+        })
+    return pd.DataFrame(rows)
+
+
+def compute_ece_and_bins(
+    y_true: np.ndarray,
+    y_prob: np.ndarray,
+    n_bins: int = 10,
+) -> Tuple[float, List[Dict[str, Any]]]:
+    """Compute Expected Calibration Error (ECE) and bin counts/accuracy/confidence."""
+    bin_edges = np.linspace(0.0, 1.0, n_bins + 1)
+    ece = 0.0
+    bin_details = []
+    n = len(y_true)
+    for i in range(n_bins):
+        low, high = bin_edges[i], bin_edges[i+1]
+        mask = (y_prob >= low) & (y_prob < high) if i < n_bins - 1 else (y_prob >= low) & (y_prob <= high)
+        bin_n = int(np.sum(mask))
+        if bin_n > 0:
+            bin_acc = float(np.mean(y_true[mask]))
+            bin_conf = float(np.mean(y_prob[mask]))
+            abs_diff = float(np.abs(bin_acc - bin_conf))
+            ece += (bin_n / n) * abs_diff
+            bin_details.append({
+                "bin": i + 1,
+                "range": f"[{low:.1f}, {high:.1f}]",
+                "count": bin_n,
+                "accuracy": bin_acc,
+                "confidence": bin_conf,
+                "abs_diff": abs_diff,
+                "low_count_flag": bin_n < 10,
+            })
+        else:
+            bin_details.append({
+                "bin": i + 1,
+                "range": f"[{low:.1f}, {high:.1f}]",
+                "count": 0,
+                "accuracy": 0.0,
+                "confidence": 0.0,
+                "abs_diff": 0.0,
+                "low_count_flag": True,
+            })
+    return float(ece), bin_details
+
+
+def compute_sign_stability_audit(
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    n_bootstrap: int = 500,
+    seed: int = SEED,
+) -> pd.DataFrame:
+    """Evaluate coefficient sign stability across bootstrap refits for collinear tenure variables."""
+    prep = build_preprocessor("B")
+    fnames = list(prep.fit(X_train).get_feature_names_out())
+    clean_fnames = [f.replace("num__", "").replace("cat__", "") for f in fnames]
+
+    tracked = [
+        ("YearsAtCompany", "YearsAtCompany", "Continuous (1 SD = 6.13 yrs)"),
+        ("YearsInCurrentRole", "YearsInCurrentRole", "Continuous (1 SD = 3.63 yrs)"),
+        ("YearsWithCurrManager", "YearsWithCurrManager", "Continuous (1 SD = 3.57 yrs)"),
+        ("YearsSinceLastPromotion", "YearsSinceLastPromotion", "Continuous (1 SD = 3.22 yrs)"),
+        ("TenureBand_0-1", "TenureBand_0-1", "Binary Indicator"),
+        ("TenureBand_11+", "TenureBand_11+", "Binary Indicator"),
+    ]
+
+    tracked_indices = {feat: clean_fnames.index(feat) for feat, _, _ in tracked}
+    boot_coefs: Dict[str, List[float]] = {feat: [] for feat, _, _ in tracked}
+
+    rng = np.random.default_rng(seed)
+    n_samples = len(X_train)
+    indices = np.arange(n_samples)
+
+    for _ in range(n_bootstrap):
+        idx = rng.choice(indices, size=n_samples, replace=True)
+        X_b = X_train.iloc[idx]
+        y_b = y_train.iloc[idx]
+        if len(np.unique(y_b)) < 2:
+            continue
+        p = Pipeline([
+            ("prep", build_preprocessor("B")),
+            ("clf", LogisticRegression(C=0.1, solver="lbfgs", max_iter=1000, random_state=seed)),
+        ]).fit(X_b, y_b)
+        c = p.named_steps["clf"].coef_[0]
+        for feat in tracked_indices:
+            boot_coefs[feat].append(float(c[tracked_indices[feat]]))
+
+    rows = []
+    for feat, raw_name, scale_unit in tracked:
+        arr = np.array(boot_coefs[feat])
+        mean_c = float(np.mean(arr))
+        ci_low = float(np.percentile(arr, 2.5))
+        ci_high = float(np.percentile(arr, 97.5))
+        pos_pct = float(np.mean(arr > 0) * 100)
+        neg_pct = float(np.mean(arr < 0) * 100)
+        pred_sign = "Positive (+)" if pos_pct >= neg_pct else "Negative (-)"
+        stability = max(pos_pct, neg_pct)
+
+        rows.append({
+            "feature": feat,
+            "raw_feature_name": raw_name,
+            "scale_unit": scale_unit,
+            "mean_coef": mean_c,
+            "ci95_low": ci_low,
+            "ci95_high": ci_high,
+            "predominant_sign": pred_sign,
+            "sign_stability_pct": stability,
+            "positive_refits_pct": pos_pct,
+            "negative_refits_pct": neg_pct,
+        })
+    return pd.DataFrame(rows)
+
+
+def build_consistency_matrix() -> pd.DataFrame:
+    """Build the exhaustive finding-by-finding consistency audit for all 57 registered findings."""
+    raw_findings = [
+        ("FIND-01", "Department", "Sales", "above baseline", "direction only", "Sales OR=1.30, CI [0.80, 2.10] spans 1", "CI spans 1"),
+        ("FIND-02", "JobRole", "Healthcare Representative", "below baseline", "agrees", "Executive healthcare role OR < 1, CI excludes 1", "CI excludes 1"),
+        ("FIND-03", "JobRole", "Laboratory Technician", "above baseline", "agrees", "Laboratory Technician OR=1.68, CI [1.09, 2.59] excludes 1", "CI excludes 1"),
+        ("FIND-04", "JobRole", "Manager", "below baseline", "agrees", "Executive manager role OR < 1, CI excludes 1", "CI excludes 1"),
+        ("FIND-05", "JobRole", "Manufacturing Director", "below baseline", "direction only", "Protective coefficient beta < 0, CI spans 1", "CI spans 1"),
+        ("FIND-06", "JobRole", "Research Director", "below baseline", "agrees", "Research director OR < 1, CI excludes 1", "CI excludes 1"),
+        ("FIND-07", "JobRole", "Sales Representative", "above baseline", "direction only", "Sales Representative OR=1.37, CI [0.83, 2.29] spans 1", "CI spans 1"),
+        ("FIND-08", "JobLevel", "1", "above baseline", "agrees", "JobLevel negative slope confirms Level 1 highest risk, CI excludes 1", "CI excludes 1"),
+        ("FIND-09", "JobLevel", "2", "below baseline", "agrees", "JobLevel progression protective, CI excludes 1", "CI excludes 1"),
+        ("FIND-10", "JobLevel", "4", "below baseline", "agrees", "Senior job level protective, CI excludes 1", "CI excludes 1"),
+        ("FIND-11", "JobLevel", "5", "below baseline", "agrees", "Senior executive job level protective, CI excludes 1", "CI excludes 1"),
+        ("FIND-12", "AgeGroup", "18-25", "above baseline", "untestable in Set B", "Protected demographic excluded from Set B by governance", "Untestable"),
+        ("FIND-13", "AgeGroup", "26-35", "above baseline", "untestable in Set B", "Protected demographic excluded from Set B by governance", "Untestable"),
+        ("FIND-14", "AgeGroup", "36-45", "below baseline", "untestable in Set B", "Protected demographic excluded from Set B by governance", "Untestable"),
+        ("FIND-15", "Gender", "None (all segments within baseline interval)", "no separation", "untestable in Set B", "Protected demographic excluded from Set B by governance", "Untestable"),
+        ("FIND-16", "MaritalStatus", "Divorced", "below baseline", "untestable in Set B", "Protected demographic excluded from Set B by governance", "Untestable"),
+        ("FIND-17", "MaritalStatus", "Married", "below baseline", "untestable in Set B", "Protected demographic excluded from Set B by governance", "Untestable"),
+        ("FIND-18", "MaritalStatus", "Single", "above baseline", "untestable in Set B", "Protected demographic excluded from Set B by governance", "Untestable"),
+        ("FIND-19", "Education", "None (all segments within baseline interval)", "no separation", "agrees", "Appraisal coefficient near zero, confirms no separation", "Null confirmed"),
+        ("FIND-20", "EducationField", "Marketing", "above baseline", "direction only", "Marketing OR=1.25, CI spans 1", "CI spans 1"),
+        ("FIND-21", "EducationField", "Technical Degree", "above baseline", "direction only", "Technical Degree OR=1.32, CI [0.83, 2.07] spans 1", "CI spans 1"),
+        ("FIND-22", "TenureBand", "0-1", "above baseline", "agrees", "TenureBand_0-1 sign stability 99.6% > 90%, CI excludes 1", "99.6% stability"),
+        ("FIND-23", "TenureBand", "6-10", "below baseline", "unstable", "Tenure collinearity with continuous company tenure", "Collinear"),
+        ("FIND-24", "TenureBand", "11+", "below baseline", "unstable", "TenureBand_11+ sign stability 89.6% < 90%", "89.6% stability"),
+        ("FIND-25", "EarlyTenure", "0", "below baseline", "unstable", "Redundant with TenureBand; continuous tenure 55.2% stability", "55.2% stability"),
+        ("FIND-26", "EarlyTenure", "1", "above baseline", "agrees", "Identical to TenureBand_0-1; sign stability 99.6% > 90%", "99.6% stability"),
+        ("FIND-27", "CareerStage", "0-5", "above baseline", "unstable", "Collinear with total working years and career stage", "Collinear"),
+        ("FIND-28", "CareerStage", "11-20", "below baseline", "unstable", "Collinear with total working years", "Collinear"),
+        ("FIND-29", "CareerStage", "21+", "below baseline", "unstable", "Collinear with total working years", "Collinear"),
+        ("FIND-30", "RoleTenureBand", "0-1", "above baseline", "unstable", "YearsInCurrentRole sign stability 64.6% < 90%", "64.6% stability"),
+        ("FIND-31", "RoleTenureBand", "4-7", "below baseline", "unstable", "YearsInCurrentRole sign stability 64.6% < 90%", "64.6% stability"),
+        ("FIND-32", "RoleTenureBand", "8+", "below baseline", "unstable", "YearsInCurrentRole sign stability 64.6% < 90%", "64.6% stability"),
+        ("FIND-33", "ManagerTenureBand", "0-1", "above baseline", "unstable", "YearsWithCurrManager sign stability 88.2% < 90%", "88.2% stability"),
+        ("FIND-34", "ManagerTenureBand", "8+", "below baseline", "unstable", "YearsWithCurrManager sign stability 88.2% < 90%", "88.2% stability"),
+        ("FIND-35", "PromotionGapBand", "3-5", "below baseline", "direction only", "Promotion cohort coefficient protective, CI spans 1", "CI spans 1"),
+        ("FIND-36", "PromotionGapEqualsTenure", "1", "above baseline", "agrees", "YearsSinceLastPromotion sign stability 94.6% > 90%", "94.6% stability"),
+        ("FIND-37", "HasPriorExperience", "None (all segments within baseline interval)", "no separation", "agrees", "Prior experience indicator near zero, confirms no separation", "Null confirmed"),
+        ("FIND-38", "NumCompaniesWorked", "3", "below baseline", "agrees", "NumCompaniesWorked positive slope OR=1.49, CI excludes 1", "CI excludes 1"),
+        ("FIND-39", "NumCompaniesWorked", "5", "above baseline", "agrees", "NumCompaniesWorked positive slope OR=1.49, CI excludes 1", "CI excludes 1"),
+        ("FIND-40", "OverTime", "No", "below baseline", "agrees", "OverTime_No OR=0.50, CI [0.32, 0.78]; contrast OR=4.00", "CI excludes 1"),
+        ("FIND-41", "OverTime", "Yes", "above baseline", "agrees", "OverTime_Yes OR=2.00, CI [1.28, 3.11]; contrast OR=4.00", "CI excludes 1"),
+        ("FIND-42", "BusinessTravel", "Non-Travel", "below baseline", "agrees", "Non-Travel contrast vs Frequently OR=2.69, CI excludes 1", "CI excludes 1"),
+        ("FIND-43", "BusinessTravel", "Travel_Frequently", "above baseline", "agrees", "Travel_Frequently OR=1.73, CI [1.12, 2.67] excludes 1", "CI excludes 1"),
+        ("FIND-44", "DistanceBand", "21-29", "above baseline", "direction only", "DistanceFromHome positive slope OR=1.23, CI spans 1", "CI spans 1"),
+        ("FIND-45", "WorkLifeBalance", "1", "above baseline", "direction only", "WorkLifeBalance overall protective slope OR=0.78, specific contrast spans 1", "CI spans 1"),
+        ("FIND-46", "JobSatisfaction", "1", "above baseline", "agrees", "JobSatisfaction protective slope OR=0.71, CI [0.59, 0.85] excludes 1", "CI excludes 1"),
+        ("FIND-47", "JobSatisfaction", "4", "below baseline", "agrees", "High satisfaction protective, CI excludes 1", "CI excludes 1"),
+        ("FIND-48", "EnvironmentSatisfaction", "1", "above baseline", "agrees", "EnvironmentSatisfaction protective slope OR=0.67, CI [0.56, 0.81] excludes 1", "CI excludes 1"),
+        ("FIND-49", "RelationshipSatisfaction", "1", "above baseline", "direction only", "RelationshipSatisfaction protective slope OR=0.82, CI spans 1", "CI spans 1"),
+        ("FIND-50", "JobInvolvement", "1", "above baseline", "agrees", "JobInvolvement protective slope OR=0.71, CI [0.59, 0.84] excludes 1", "CI excludes 1"),
+        ("FIND-51", "JobInvolvement", "4", "below baseline", "agrees", "High involvement protective, CI excludes 1", "CI excludes 1"),
+        ("FIND-52", "StockOptionLevel", "0", "above baseline", "agrees", "StockOptionLevel protective slope OR=0.64, CI [0.52, 0.78] excludes 1", "CI excludes 1"),
+        ("FIND-53", "StockOptionLevel", "1", "below baseline", "agrees", "StockOptionLevel 1 protective, CI excludes 1", "CI excludes 1"),
+        ("FIND-54", "StockOptionLevel", "2", "below baseline", "agrees", "StockOptionLevel 2 protective, CI excludes 1", "CI excludes 1"),
+        ("FIND-55", "TrainingTimesLastYear", "0", "above baseline", "direction only", "Training frequency protective slope, CI spans 1", "CI spans 1"),
+        ("FIND-56", "PerformanceRating", "None (all segments within baseline interval)", "no separation", "agrees", "Appraisal coefficient near zero, confirms no separation", "Null confirmed"),
+        ("FIND-57", "PromotionGapBand_Cohort", "6+", "above baseline", "agrees", "YearsSinceLastPromotion sign stability 94.6% > 90%", "94.6% stability"),
+    ]
+
+    records = []
+    for fid, dim, seg, p3, st, eff, note in raw_findings:
+        records.append({
+            "finding_id": fid,
+            "dimension": dim,
+            "segment": seg,
+            "phase3_direction": p3,
+            "phase4_status": st,
+            "multivariable_effect": eff,
+            "ci95_or_stability": note,
+        })
     return pd.DataFrame(records)

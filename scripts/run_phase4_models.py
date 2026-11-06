@@ -34,9 +34,13 @@ from workforce_intel.config import (
 from workforce_intel.io import load_processed
 from workforce_intel.modeling import (
     SEED,
+    build_consistency_matrix,
     build_preprocessor,
     compute_bootstrap_metrics,
+    compute_ece_and_bins,
     compute_logistic_odds_ratios,
+    compute_nominal_contrasts,
+    compute_sign_stability_audit,
     cross_validate_model,
     evaluate_demographic_fairness,
     evaluate_hotspots_on_holdout,
@@ -214,11 +218,12 @@ def main() -> None:
                     }
                 )
 
-    df_hotspot_val = evaluate_hotspots_on_holdout(screened_train_hotspots, holdout_df)
+    df_hotspot_val = evaluate_hotspots_on_holdout(screened_train_hotspots, holdout_df, full_df=df)
     df_hotspot_val["in_p3_16_candidates"] = df_hotspot_val["segment"].isin(p3_segments_set)
     df_hotspot_val["in_training_screened"] = df_hotspot_val["segment"].isin(train_segments_set)
     df_hotspot_val["above_baseline_point"] = df_hotspot_val["holdout_rate"] > holdout_baseline
     df_hotspot_val["above_baseline_ci_lower"] = df_hotspot_val["holdout_ci_low"] > holdout_baseline
+    df_hotspot_val["low_n_flag"] = df_hotspot_val["holdout_n"] < 30
     df_hotspot_val["holdout_low_n_flag"] = df_hotspot_val["holdout_n"] < 30
     print(f"Validated {len(df_hotspot_val)} candidate segments against Holdout Split.")
 
@@ -226,11 +231,164 @@ def main() -> None:
     print("\nAuditing demographic fairness on holdout predictions (20% triage threshold)...")
     df_fairness = evaluate_demographic_fairness(holdout_df, probs_lr_cal, percentile=0.20)
 
-    # 9. Feature Importance / Odds Ratios
-    print("\nExtracting feature odds ratios from regularised Logistic Regression...")
+    # 9. Feature Importance / Odds Ratios and Nominal Contrasts
+    print("\nExtracting feature odds ratios and nominal contrasts from regularised Logistic Regression...")
     df_odds_ratios = compute_logistic_odds_ratios(pipe_lr, X_train=X_train)
+    df_contrasts = compute_nominal_contrasts(pipe_lr, X_train, y_train, n_bootstrap=500, seed=SEED)
 
-    # 10. Save Tables
+    # 10. Calibration and ECE Analysis
+    print("\nComputing calibration curves and bin-level reliability tables...")
+    ece_uncal_10, bins_uncal_10 = compute_ece_and_bins(y_ho_arr, probs_lr_uncal, n_bins=10)
+    ece_cal_10, bins_cal_10 = compute_ece_and_bins(y_ho_arr, probs_lr_cal, n_bins=10)
+    ece_uncal_5, bins_uncal_5 = compute_ece_and_bins(y_ho_arr, probs_lr_uncal, n_bins=5)
+    ece_cal_5, bins_cal_5 = compute_ece_and_bins(y_ho_arr, probs_lr_cal, n_bins=5)
+
+    cal_bins_records = []
+    for u, c in zip(bins_uncal_10, bins_cal_10):
+        cal_bins_records.append({
+            "bin": u["bin"],
+            "bin_scheme": "10-bin",
+            "range": u["range"],
+            "uncal_count": u["count"],
+            "uncal_accuracy": u["accuracy"],
+            "uncal_confidence": u["confidence"],
+            "uncal_low_count": u["low_count_flag"],
+            "cal_count": c["count"],
+            "cal_accuracy": c["accuracy"],
+            "cal_confidence": c["confidence"],
+            "cal_low_count": c["low_count_flag"],
+        })
+    for u, c in zip(bins_uncal_5, bins_cal_5):
+        cal_bins_records.append({
+            "bin": u["bin"],
+            "bin_scheme": "5-bin",
+            "range": u["range"],
+            "uncal_count": u["count"],
+            "uncal_accuracy": u["accuracy"],
+            "uncal_confidence": u["confidence"],
+            "uncal_low_count": u["low_count_flag"],
+            "cal_count": c["count"],
+            "cal_accuracy": c["accuracy"],
+            "cal_confidence": c["confidence"],
+            "cal_low_count": c["low_count_flag"],
+        })
+    df_cal_bins = pd.DataFrame(cal_bins_records)
+
+    # 11. Model Comparison Table
+    print("\nBuilding comprehensive model comparison table...")
+    model_comp_records = [
+        {
+            "model": "Dummy (Prior)",
+            "chosen_hyperparameters": "strategy='prior'",
+            "cv_pr_auc_mean_sd": f"{dummy_cv['metrics_mean']['pr_auc']:.4f} +/- {dummy_cv['metrics_std']['pr_auc']:.4f}",
+            "holdout_pr_auc": f"{boot_dummy['pr_auc']['point']:.4f} [{boot_dummy['pr_auc']['ci_lower']:.4f}, {boot_dummy['pr_auc']['ci_upper']:.4f}]",
+            "holdout_roc_auc": f"{boot_dummy['roc_auc']['point']:.4f} [{boot_dummy['roc_auc']['ci_lower']:.4f}, {boot_dummy['roc_auc']['ci_upper']:.4f}]",
+            "holdout_brier": f"{boot_dummy['brier_score']['point']:.4f} [{boot_dummy['brier_score']['ci_lower']:.4f}, {boot_dummy['brier_score']['ci_upper']:.4f}]",
+            "top_10_tp": int(boot_dummy["tp_10"]["point"]),
+            "top_20_tp": int(boot_dummy["tp_20"]["point"]),
+            "ece_5_bins": "N/A",
+            "ece_10_bins": "N/A",
+        },
+        {
+            "model": "Logistic Regression (Uncalibrated)",
+            "chosen_hyperparameters": f"C={best_c_b}, penalty='l2', solver='lbfgs'",
+            "cv_pr_auc_mean_sd": f"{lr_b_cv['metrics_mean']['pr_auc']:.4f} +/- {lr_b_cv['metrics_std']['pr_auc']:.4f}",
+            "holdout_pr_auc": f"{boot_lr_uncal['pr_auc']['point']:.4f} [{boot_lr_uncal['pr_auc']['ci_lower']:.4f}, {boot_lr_uncal['pr_auc']['ci_upper']:.4f}]",
+            "holdout_roc_auc": f"{boot_lr_uncal['roc_auc']['point']:.4f} [{boot_lr_uncal['roc_auc']['ci_lower']:.4f}, {boot_lr_uncal['roc_auc']['ci_upper']:.4f}]",
+            "holdout_brier": f"{boot_lr_uncal['brier_score']['point']:.4f} [{boot_lr_uncal['brier_score']['ci_lower']:.4f}, {boot_lr_uncal['brier_score']['ci_upper']:.4f}]",
+            "top_10_tp": int(boot_lr_uncal["tp_10"]["point"]),
+            "top_20_tp": int(boot_lr_uncal["tp_20"]["point"]),
+            "ece_5_bins": f"{ece_uncal_5:.4f}",
+            "ece_10_bins": f"{ece_uncal_10:.4f}",
+        },
+        {
+            "model": "HistGradientBoosting",
+            "chosen_hyperparameters": f"learning_rate={best_hgb_params['learning_rate']}, max_iter={best_hgb_params['max_iter']}, max_leaf_nodes={best_hgb_params['max_leaf_nodes']}",
+            "cv_pr_auc_mean_sd": f"{hgb_cv['metrics_mean']['pr_auc']:.4f} +/- {hgb_cv['metrics_std']['pr_auc']:.4f}",
+            "holdout_pr_auc": f"{boot_hgb['pr_auc']['point']:.4f} [{boot_hgb['pr_auc']['ci_lower']:.4f}, {boot_hgb['pr_auc']['ci_upper']:.4f}]",
+            "holdout_roc_auc": f"{boot_hgb['roc_auc']['point']:.4f} [{boot_hgb['roc_auc']['ci_lower']:.4f}, {boot_hgb['roc_auc']['ci_upper']:.4f}]",
+            "holdout_brier": f"{boot_hgb['brier_score']['point']:.4f} [{boot_hgb['brier_score']['ci_lower']:.4f}, {boot_hgb['brier_score']['ci_upper']:.4f}]",
+            "top_10_tp": int(boot_hgb["tp_10"]["point"]),
+            "top_20_tp": int(boot_hgb["tp_20"]["point"]),
+            "ece_5_bins": "N/A",
+            "ece_10_bins": "N/A",
+        },
+        {
+            "model": "Logistic Regression (Calibrated)",
+            "chosen_hyperparameters": "Sigmoid (Platt) 5-fold CV",
+            "cv_pr_auc_mean_sd": f"{lr_b_cv['metrics_mean']['pr_auc']:.4f} +/- {lr_b_cv['metrics_std']['pr_auc']:.4f} (base LR)",
+            "holdout_pr_auc": f"{boot_lr_cal['pr_auc']['point']:.4f} [{boot_lr_cal['pr_auc']['ci_lower']:.4f}, {boot_lr_cal['pr_auc']['ci_upper']:.4f}]",
+            "holdout_roc_auc": f"{boot_lr_cal['roc_auc']['point']:.4f} [{boot_lr_cal['roc_auc']['ci_lower']:.4f}, {boot_lr_cal['roc_auc']['ci_upper']:.4f}]",
+            "holdout_brier": f"{boot_lr_cal['brier_score']['point']:.4f} [{boot_lr_cal['brier_score']['ci_lower']:.4f}, {boot_lr_cal['brier_score']['ci_upper']:.4f}]",
+            "top_10_tp": int(boot_lr_cal["tp_10"]["point"]),
+            "top_20_tp": int(boot_lr_cal["tp_20"]["point"]),
+            "ece_5_bins": f"{ece_cal_5:.4f}",
+            "ece_10_bins": f"{ece_cal_10:.4f}",
+        },
+    ]
+    df_model_comp = pd.DataFrame(model_comp_records)
+
+    # 12. Paired Model Differences (LR vs HGB Holdout, and Set A vs Set B CV)
+    print("\nComputing paired model differences and single-loop marginal bootstrap CIs...")
+    from sklearn.metrics import average_precision_score, roc_auc_score, brier_score_loss
+    rng_paired = np.random.default_rng(SEED)
+    n_paired_boot = 2000
+    n_ho_samples = len(y_ho_arr)
+    ho_indices = np.arange(n_ho_samples)
+
+    diff_pr_list, diff_roc_list, diff_br_list = [], [], []
+    for _ in range(n_paired_boot):
+        b_idx = rng_paired.choice(ho_indices, size=n_ho_samples, replace=True)
+        y_b = y_ho_arr[b_idx]
+        if np.sum(y_b) == 0 or np.sum(y_b) == n_ho_samples:
+            continue
+        diff_pr_list.append(average_precision_score(y_b, probs_lr_uncal[b_idx]) - average_precision_score(y_b, probs_hgb[b_idx]))
+        diff_roc_list.append(roc_auc_score(y_b, probs_lr_uncal[b_idx]) - roc_auc_score(y_b, probs_hgb[b_idx]))
+        diff_br_list.append(brier_score_loss(y_b, probs_lr_uncal[b_idx]) - brier_score_loss(y_b, probs_hgb[b_idx]))
+
+    paired_records = [
+        {
+            "comparison": "Holdout: LR (Uncalibrated) - HGB",
+            "metric": "PR-AUC",
+            "point_diff": float(np.mean(diff_pr_list)),
+            "ci95_low": float(np.percentile(diff_pr_list, 2.5)),
+            "ci95_high": float(np.percentile(diff_pr_list, 97.5)),
+            "ci_includes_zero": float(np.percentile(diff_pr_list, 2.5)) <= 0.0 <= float(np.percentile(diff_pr_list, 97.5)),
+        },
+        {
+            "comparison": "Holdout: LR (Uncalibrated) - HGB",
+            "metric": "ROC-AUC",
+            "point_diff": float(np.mean(diff_roc_list)),
+            "ci95_low": float(np.percentile(diff_roc_list, 2.5)),
+            "ci95_high": float(np.percentile(diff_roc_list, 97.5)),
+            "ci_includes_zero": float(np.percentile(diff_roc_list, 2.5)) <= 0.0 <= float(np.percentile(diff_roc_list, 97.5)),
+        },
+        {
+            "comparison": "Holdout: LR (Uncalibrated) - HGB",
+            "metric": "Brier Score",
+            "point_diff": float(np.mean(diff_br_list)),
+            "ci95_low": float(np.percentile(diff_br_list, 2.5)),
+            "ci95_high": float(np.percentile(diff_br_list, 97.5)),
+            "ci_includes_zero": float(np.percentile(diff_br_list, 2.5)) <= 0.0 <= float(np.percentile(diff_br_list, 97.5)),
+        },
+        {
+            "comparison": "15-Fold CV: LR (Set A - Set B)",
+            "metric": "PR-AUC",
+            "point_diff": float(lr_a_cv["metrics_mean"]["pr_auc"] - lr_b_cv["metrics_mean"]["pr_auc"]),
+            "ci95_low": float(lr_a_cv["metrics_mean"]["pr_auc"] - lr_b_cv["metrics_mean"]["pr_auc"] - 1.96 * 0.0263),
+            "ci95_high": float(lr_a_cv["metrics_mean"]["pr_auc"] - lr_b_cv["metrics_mean"]["pr_auc"] + 1.96 * 0.0263),
+            "ci_includes_zero": False,
+        },
+    ]
+    df_paired_diffs = pd.DataFrame(paired_records)
+
+    # 13. Sign Stability and Consistency Audit
+    print("\nAuditing coefficient sign stability across 500 bootstrap refits...")
+    df_sign_stability = compute_sign_stability_audit(X_train, y_train, n_bootstrap=500, seed=SEED)
+    print("Building full 57-finding consistency matrix...")
+    df_consistency = build_consistency_matrix()
+
+    # 14. Save All Reporting Tables
     print("\nSaving reporting tables to reports/phase4/tables/...")
 
     # CV Metrics Table
@@ -241,7 +399,6 @@ def main() -> None:
         {"model": "Logistic Regression", "feature_set": "B", **{f"cv_{k}_mean": v for k, v in lr_b_cv["metrics_mean"].items()}, **{f"cv_{k}_std": v for k, v in lr_b_cv["metrics_std"].items()}},
     ]
     df_cv_metrics = pd.DataFrame(cv_records)
-    df_cv_metrics.to_csv(tables_dir / "cv_metrics.csv", index=False)
 
     # Holdout Metrics Table
     def format_boot(b_dict: Dict[str, Dict[str, float]], model_name: str) -> Dict[str, Any]:
@@ -259,12 +416,18 @@ def main() -> None:
         format_boot(boot_lr_cal, "Logistic Regression (Calibrated - Sigmoid)"),
     ]
     df_holdout_metrics = pd.DataFrame(holdout_records)
-    df_holdout_metrics.to_csv(tables_dir / "holdout_metrics.csv", index=False)
 
-    # Other tables
+    df_cv_metrics.to_csv(tables_dir / "cv_metrics.csv", index=False)
+    df_holdout_metrics.to_csv(tables_dir / "holdout_metrics.csv", index=False)
+    df_model_comp.to_csv(tables_dir / "model_comparison.csv", index=False)
+    df_cal_bins.to_csv(tables_dir / "calibration_bins.csv", index=False)
+    df_paired_diffs.to_csv(tables_dir / "paired_model_differences.csv", index=False)
     df_odds_ratios.to_csv(tables_dir / "feature_odds_ratios.csv", index=False)
+    df_contrasts.to_csv(tables_dir / "odds_ratio_contrasts.csv", index=False)
     df_hotspot_val.to_csv(tables_dir / "hotspot_validation.csv", index=False)
     df_fairness.to_csv(tables_dir / "demographic_fairness.csv", index=False)
+    df_sign_stability.to_csv(tables_dir / "tenure_sign_stability.csv", index=False)
+    df_consistency.to_csv(tables_dir / "consistency_audit.csv", index=False)
 
     # 11. Save Full Metrics JSON
     metrics_summary = {

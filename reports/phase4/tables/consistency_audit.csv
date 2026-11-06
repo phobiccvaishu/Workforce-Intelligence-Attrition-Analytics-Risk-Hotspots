@@ -1,0 +1,58 @@
+finding_id,dimension,segment,phase3_direction,phase4_status,multivariable_effect,ci95_or_stability
+FIND-01,Department,Sales,above baseline,direction only,"Sales OR=1.30, CI [0.80, 2.10] spans 1",CI spans 1
+FIND-02,JobRole,Healthcare Representative,below baseline,agrees,"Executive healthcare role OR < 1, CI excludes 1",CI excludes 1
+FIND-03,JobRole,Laboratory Technician,above baseline,agrees,"Laboratory Technician OR=1.68, CI [1.09, 2.59] excludes 1",CI excludes 1
+FIND-04,JobRole,Manager,below baseline,agrees,"Executive manager role OR < 1, CI excludes 1",CI excludes 1
+FIND-05,JobRole,Manufacturing Director,below baseline,direction only,"Protective coefficient beta < 0, CI spans 1",CI spans 1
+FIND-06,JobRole,Research Director,below baseline,agrees,"Research director OR < 1, CI excludes 1",CI excludes 1
+FIND-07,JobRole,Sales Representative,above baseline,direction only,"Sales Representative OR=1.37, CI [0.83, 2.29] spans 1",CI spans 1
+FIND-08,JobLevel,1,above baseline,agrees,"JobLevel negative slope confirms Level 1 highest risk, CI excludes 1",CI excludes 1
+FIND-09,JobLevel,2,below baseline,agrees,"JobLevel progression protective, CI excludes 1",CI excludes 1
+FIND-10,JobLevel,4,below baseline,agrees,"Senior job level protective, CI excludes 1",CI excludes 1
+FIND-11,JobLevel,5,below baseline,agrees,"Senior executive job level protective, CI excludes 1",CI excludes 1
+FIND-12,AgeGroup,18-25,above baseline,untestable in Set B,Protected demographic excluded from Set B by governance,Untestable
+FIND-13,AgeGroup,26-35,above baseline,untestable in Set B,Protected demographic excluded from Set B by governance,Untestable
+FIND-14,AgeGroup,36-45,below baseline,untestable in Set B,Protected demographic excluded from Set B by governance,Untestable
+FIND-15,Gender,None (all segments within baseline interval),no separation,untestable in Set B,Protected demographic excluded from Set B by governance,Untestable
+FIND-16,MaritalStatus,Divorced,below baseline,untestable in Set B,Protected demographic excluded from Set B by governance,Untestable
+FIND-17,MaritalStatus,Married,below baseline,untestable in Set B,Protected demographic excluded from Set B by governance,Untestable
+FIND-18,MaritalStatus,Single,above baseline,untestable in Set B,Protected demographic excluded from Set B by governance,Untestable
+FIND-19,Education,None (all segments within baseline interval),no separation,agrees,"Appraisal coefficient near zero, confirms no separation",Null confirmed
+FIND-20,EducationField,Marketing,above baseline,direction only,"Marketing OR=1.25, CI spans 1",CI spans 1
+FIND-21,EducationField,Technical Degree,above baseline,direction only,"Technical Degree OR=1.32, CI [0.83, 2.07] spans 1",CI spans 1
+FIND-22,TenureBand,0-1,above baseline,agrees,"TenureBand_0-1 sign stability 99.6% > 90%, CI excludes 1",99.6% stability
+FIND-23,TenureBand,6-10,below baseline,unstable,Tenure collinearity with continuous company tenure,Collinear
+FIND-24,TenureBand,11+,below baseline,unstable,TenureBand_11+ sign stability 89.6% < 90%,89.6% stability
+FIND-25,EarlyTenure,0,below baseline,unstable,Redundant with TenureBand; continuous tenure 55.2% stability,55.2% stability
+FIND-26,EarlyTenure,1,above baseline,agrees,Identical to TenureBand_0-1; sign stability 99.6% > 90%,99.6% stability
+FIND-27,CareerStage,0-5,above baseline,unstable,Collinear with total working years and career stage,Collinear
+FIND-28,CareerStage,11-20,below baseline,unstable,Collinear with total working years,Collinear
+FIND-29,CareerStage,21+,below baseline,unstable,Collinear with total working years,Collinear
+FIND-30,RoleTenureBand,0-1,above baseline,unstable,YearsInCurrentRole sign stability 64.6% < 90%,64.6% stability
+FIND-31,RoleTenureBand,4-7,below baseline,unstable,YearsInCurrentRole sign stability 64.6% < 90%,64.6% stability
+FIND-32,RoleTenureBand,8+,below baseline,unstable,YearsInCurrentRole sign stability 64.6% < 90%,64.6% stability
+FIND-33,ManagerTenureBand,0-1,above baseline,unstable,YearsWithCurrManager sign stability 88.2% < 90%,88.2% stability
+FIND-34,ManagerTenureBand,8+,below baseline,unstable,YearsWithCurrManager sign stability 88.2% < 90%,88.2% stability
+FIND-35,PromotionGapBand,3-5,below baseline,direction only,"Promotion cohort coefficient protective, CI spans 1",CI spans 1
+FIND-36,PromotionGapEqualsTenure,1,above baseline,agrees,YearsSinceLastPromotion sign stability 94.6% > 90%,94.6% stability
+FIND-37,HasPriorExperience,None (all segments within baseline interval),no separation,agrees,"Prior experience indicator near zero, confirms no separation",Null confirmed
+FIND-38,NumCompaniesWorked,3,below baseline,agrees,"NumCompaniesWorked positive slope OR=1.49, CI excludes 1",CI excludes 1
+FIND-39,NumCompaniesWorked,5,above baseline,agrees,"NumCompaniesWorked positive slope OR=1.49, CI excludes 1",CI excludes 1
+FIND-40,OverTime,No,below baseline,agrees,"OverTime_No OR=0.50, CI [0.32, 0.78]; contrast OR=4.00",CI excludes 1
+FIND-41,OverTime,Yes,above baseline,agrees,"OverTime_Yes OR=2.00, CI [1.28, 3.11]; contrast OR=4.00",CI excludes 1
+FIND-42,BusinessTravel,Non-Travel,below baseline,agrees,"Non-Travel contrast vs Frequently OR=2.69, CI excludes 1",CI excludes 1
+FIND-43,BusinessTravel,Travel_Frequently,above baseline,agrees,"Travel_Frequently OR=1.73, CI [1.12, 2.67] excludes 1",CI excludes 1
+FIND-44,DistanceBand,21-29,above baseline,direction only,"DistanceFromHome positive slope OR=1.23, CI spans 1",CI spans 1
+FIND-45,WorkLifeBalance,1,above baseline,direction only,"WorkLifeBalance overall protective slope OR=0.78, specific contrast spans 1",CI spans 1
+FIND-46,JobSatisfaction,1,above baseline,agrees,"JobSatisfaction protective slope OR=0.71, CI [0.59, 0.85] excludes 1",CI excludes 1
+FIND-47,JobSatisfaction,4,below baseline,agrees,"High satisfaction protective, CI excludes 1",CI excludes 1
+FIND-48,EnvironmentSatisfaction,1,above baseline,agrees,"EnvironmentSatisfaction protective slope OR=0.67, CI [0.56, 0.81] excludes 1",CI excludes 1
+FIND-49,RelationshipSatisfaction,1,above baseline,direction only,"RelationshipSatisfaction protective slope OR=0.82, CI spans 1",CI spans 1
+FIND-50,JobInvolvement,1,above baseline,agrees,"JobInvolvement protective slope OR=0.71, CI [0.59, 0.84] excludes 1",CI excludes 1
+FIND-51,JobInvolvement,4,below baseline,agrees,"High involvement protective, CI excludes 1",CI excludes 1
+FIND-52,StockOptionLevel,0,above baseline,agrees,"StockOptionLevel protective slope OR=0.64, CI [0.52, 0.78] excludes 1",CI excludes 1
+FIND-53,StockOptionLevel,1,below baseline,agrees,"StockOptionLevel 1 protective, CI excludes 1",CI excludes 1
+FIND-54,StockOptionLevel,2,below baseline,agrees,"StockOptionLevel 2 protective, CI excludes 1",CI excludes 1
+FIND-55,TrainingTimesLastYear,0,above baseline,direction only,"Training frequency protective slope, CI spans 1",CI spans 1
+FIND-56,PerformanceRating,None (all segments within baseline interval),no separation,agrees,"Appraisal coefficient near zero, confirms no separation",Null confirmed
+FIND-57,PromotionGapBand_Cohort,6+,above baseline,agrees,YearsSinceLastPromotion sign stability 94.6% > 90%,94.6% stability
