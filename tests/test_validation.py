@@ -552,6 +552,9 @@ def _build_expected_decision_log_tokens() -> Dict[str, List[str]]:
         "DL-39": ["10", "5", "5", "12"],
         "DL-40": ["5"],
         "DL-41": ["0", "27"],
+        "DL-42": ["5"],
+        "DL-43": ["1470"],
+        "DL-44": ["36"],
     }
 
 
@@ -640,6 +643,9 @@ def test_documentation_evidence_matches_validation_summary():
         "DL-39": "PROPOSED",
         "DL-40": "PROPOSED",
         "DL-41": "PROPOSED",
+        "DL-42": "PROPOSED",
+        "DL-43": "PROPOSED",
+        "DL-44": "PROPOSED",
     }
     for dl_id, expected_status in expected_statuses.items():
         pattern = rf"`{dl_id}`.*?`{expected_status}`"

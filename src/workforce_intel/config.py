@@ -1122,13 +1122,27 @@ ALLOWED_FILTER_DIMENSIONS: List[str] = [
     "PromotionGapEqualsTenure",
 ]
 
-# Static source table checksums for integrity verification
+# Static source table and figure checksums for integrity verification
 STATIC_TABLE_CHECKSUMS: Dict[str, str] = {
     "reports/phase5/tables/overtime_comparison.csv": "6dcd5f089e2ffb8f43cb4be6f493c19f05e31318c859c512ef5d1cccbd19b9a1",
     "reports/phase5/tables/hotspot_universe.csv": "de84d7e43344af0e99291560674d0e20b094e86f10d600f9f6ea07147d16316e",
     "reports/phase5/tables/hotspot_split_validation.csv": "dd5afbe814aefedee267a386d05228ab8a059ad2ce55e52d3bca1b0014a625ee",
     "reports/phase5/tables/greedy_coverage.csv": "b5b693aad2ad35d8c830c4eb5ad4baea6f16139edb3b792bd08b634ff196e2bc",
     "reports/phase4/tables/holdout_metrics.csv": "f95470b11c4503e6e6c209a4276146cd8c7d6c0761f3eb673fe05576d647e073",
+    "reports/phase5/tables/logistic_m1_m2.csv": "c261b0131811ca04bdfc218a5586ed787251db7464d238f36228336851352ee6",
+    "reports/phase5/tables/bh_family_audit.csv": "6e3a2454d9c58c24c69eb89efa79f32e141484cf36b75a7fb8fabdc2c2df6733",
+    "reports/phase4/tables/model_comparison.csv": "f5ff5cc4bd67421a7106edcfa0b52bb5bc4249082ec5c237363337228c135b67",
+    "reports/phase4/tables/demographic_fairness.csv": "a4e0c7d300bd60e4c0ca098a5fa917d5cdadb511bd81bffbbd3d3d1f082947bb",
+    "reports/phase4/tables/calibration_bins.csv": "bc9081f65294d372d4d9b3994b2f2b8f771f5125fd544babd521ee8e55e7e2ca",
+    "reports/phase4/tables/consistency_audit.csv": "3b0fa656204c7faf12d0bedc63a27c8032315a6c6ba4d3efc0d5308ae8ba805f",
+    "reports/phase4/tables/paired_model_differences.csv": "acee0b6f99ed8ee1003b77477641821f945e42cbfa18fcdb84c51323962c4ccc",
+    "reports/phase6/tables/kpi_baseline.csv": "04e5bd894bb0f81c2d83e4c75a1354674d3dc3eff35c2a3c3a1c27010821b8e6",
+    "reports/phase4/figures/fig15_precision_recall_curves.png": "7d2ab2b3148a49c07ad1b1d743a439580f56622dcba357e19172e12432048866",
+    "reports/phase4/figures/fig16_calibration_curves.png": "a33f1f270cefda0e5a00c09bc3ccf26270310cdcdb0cf5753d2acd0cc6d6849c",
+    "reports/phase4/figures/fig17_risk_tier_attrition.png": "f0e17132f154a5d76c29c751c8c779d7c39831c26176010907c81ccfc395ec3b",
+    "reports/phase4/figures/fig18_feature_odds_ratios.png": "fc168bf6e2fa6572e66633ecb2d0201ad81294a1099aeabe8dbc0bd2500e6c5c",
+    "reports/phase4/figures/fig19_hotspot_validation.png": "9aff99803cccac13cb8c1cec9dd0dce86d4a8605e146ba1481b71aefbb318858",
+    "reports/phase4/figures/fig20_demographic_fairness.png": "50f49da2939fcaf63c42f7193c578df6897ed5bf34ddff1ccb7b13c559c71f4d",
 }
 
 # Master KPI Registry (10 KPIs: 5 LIVE, 5 STATIC)

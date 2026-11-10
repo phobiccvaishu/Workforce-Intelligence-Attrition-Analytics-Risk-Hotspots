@@ -640,12 +640,12 @@ def test_zero_dollar_signs_across_phase6():
 
 
 def test_decision_status_file_contents():
-    """Verify docs/decision_status.md is correctly structured and contains DL-01 through DL-41."""
+    """Verify docs/decision_status.md is correctly structured and contains all logged decisions."""
     status_file = PROJECT_ROOT / "docs" / "decision_status.md"
     assert status_file.is_file(), f"Missing decision status file: {status_file}"
     lines = status_file.read_text(encoding="utf-8").splitlines()
     data_rows = [l for l in lines if l.strip().startswith("| `DL-")]
-    assert len(data_rows) == 41, f"Expected 41 decision status rows, found {len(data_rows)}"
+    assert len(data_rows) == 44, f"Expected 44 decision status rows, found {len(data_rows)}"
     
     # Check DL-05 and DL-06 statuses are PROPOSED
     dl05_line = next(l for l in data_rows if "DL-05" in l)

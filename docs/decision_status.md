@@ -1,7 +1,7 @@
 # Workforce Intelligence: Decision Status Registry
 
 **Source**: `docs/decision_log.md` (Dynamically parsed by Phase 6 pipeline)  
-**Scope**: Complete register of architectural decisions (41 entries)  
+**Scope**: Complete register of architectural decisions (44 entries)  
 **Ingestion Target**: Streamlit governance and methodology dashboard
 
 | ID | Title | Status | Phase |
@@ -47,3 +47,6 @@
 | `DL-39` | Pure Function Architecture and Contract for Workforce KPI Engine | `PROPOSED` | Phase 6 (KPI Module Architecture) |
 | `DL-40` | Cryptographic SHA-256 Integrity Verification for Static Inferential Benchmarks | `PROPOSED` | Phase 6 (Static Benchmark Integrity) |
 | `DL-41` | Standardized Reliability Flagging and Empty-Set Handling Policy | `PROPOSED` | Phase 6 (Reliability & Boundary Safeguards) |
+| `DL-42` | Multipage Streamlit Application Architecture & Session State Persistence | `PROPOSED` | Phase 7 (Presentation Layer) |
+| `DL-43` | Strict Aggregation Invariant: No Individual Employee-Level Data Display or Export | `PROPOSED` | Phase 7 (Governance & Presentation Layer) |
+| `DL-44` | Segregated Descriptive Demographic Filter Scope | `PROPOSED` | Phase 7 (UI Governance & Filter Design) |
