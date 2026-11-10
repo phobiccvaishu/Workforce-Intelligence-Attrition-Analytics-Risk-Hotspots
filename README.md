@@ -1,149 +1,150 @@
-# Workforce Attrition Patterns and Risk Hotspot Analysis
+# Workforce Intelligence — Attrition Analytics & Risk Hotspots
 
-An enterprise-grade, reproducible HR analytics, statistical inference, and workforce intelligence platform.
+An enterprise-grade, reproducible HR analytics, statistical inference, and workforce intelligence platform evaluating employee turnover dynamics, risk hotspots, and predictive triage with publication-grade deliverables.
 
 > [!IMPORTANT]
 > **PROVENANCE DISCLAIMER:**  
-> The dataset provenance is **UNVERIFIED**. This data is analyzed strictly as an observational, synthetic-style HR benchmark dataset supplied under the file name "Palo Alto Networks.csv". Findings, models, and conclusions must never be described as real employee records or proprietary corporate data. Corporate logos are not used anywhere in this project. All findings represent statistical associations; individual employee scoring and flight-risk profiling are strictly prohibited.
+> The dataset provenance is **UNVERIFIED**. This data is analyzed strictly as an observational, synthetic-style HR benchmark dataset supplied under the file name "Palo Alto Networks.csv". Findings, models, and conclusions must never be described as real employee records or proprietary corporate data. Corporate logos are not used anywhere in this project. All findings represent statistical associations; individual employee scoring, risk ranking, and employment targeting are strictly prohibited.
 
 ---
 
-## 1. Project Overview & Current Status
+## Setup
 
-**Current Status:** All phases (Phases 1 through 7 + Final Submission) are fully completed, verified, and audited.
+Ensure Python 3.10+ is installed (tested on Python 3.14.0 Windows x64).
 
-1. **Phase 1: Validation & Integrity** — Raw data cryptographic write-lock, structural contract verification, and mathematical data validation.
-2. **Phase 2: Preprocessing & Baseline** — Reproducible data cleaning, deterministic feature derivation, and contract enforcement.
-3. **Phase 3: Exploratory Data Analysis & Hotspots** — 20 canonical publication-quality figures, bivariate analyses, Wilson score confidence intervals, and empirical Bayes hotspot indexing.
-4. **Phase 4: Predictive Triage & Consistency Audit** — Regularized logistic regression, gradient boosting, PR-AUC / ROC-AUC / Brier evaluation, demographic fairness audits, and 57-finding cross-split consistency verification.
-5. **Phase 5: Inferential Modeling** — Multiple testing controls (Benjamini-Hochberg FDR, family size 28), stratified Mantel-Haenszel odds ratios across JobLevel/Department/Tenure, multivariable logistic models (M1, M2), and greedy combinatorial hotspot coverage.
-6. **Phase 6: Executive KPIs** — 8 pre-registered core operational KPIs with exact binomial Wilson confidence intervals and audited reliability contracts.
-7. **Phase 7: Multipage Streamlit Dashboard** — Interactive presentation layer (Overview, Hotspots, Adjusted Associations, Model Triage, Decision Log) with strict AST-enforced statistical read-only boundaries and SHA-256 table integrity verification.
-8. **Final Submission: Academic Research Paper & Executive Summary** — Fully code-generated research paper (`reports/final/paper.*`), executive summary (`reports/final/executive_summary.*`), and copied canonical figures (`reports/final/figures/`).
-
----
-
-## 2. Directory Structure
-
-```text
-├── data/
-│   ├── raw/                        # Immutable raw dataset + cryptographic checksums
-│   │   ├── Palo Alto Networks.csv  (SHA-256: 389735e8..., 209,376 bytes, byte-exact)
-│   │   └── CHECKSUMS.txt           (Audited raw checksum)
-│   ├── interim/                    # Intermediate preprocessed artifacts
-│   └── processed/                  # Cleaned, engineered analysis datasets (1,470 x 39)
-├── docs/
-│   ├── data_dictionary.md          # 31-column data dictionary, assumed scales, notes
-│   ├── decision_log.md             # Detailed engineering decisions
-│   ├── decision_status.md          # Audited technical decision status (DL-01 to DL-44)
-│   ├── findings_register.md        # Audited register of all statistical findings
-│   ├── kpi_definitions.md          # Formal definitions and contracts for KPI-01 to KPI-08
-│   ├── model_card.md               # Model cards for supervised triage models
-│   └── final_submission_checklist.md # Deliverables manifest and validation checklist
-├── src/workforce_intel/            # Production Python package
-│   ├── config.py                   # Paths, constants, palette, table checksum registry
-│   ├── io.py                       # Safe UTF-8/BOM reader with data/raw write-lock
-│   ├── validation.py               # Data contract and validation functions
-│   ├── cleaning.py                 # Data cleaning and feature engineering
-│   ├── eda.py                      # Descriptive statistics and contingency analysis
-│   ├── viz.py                      # Figure rendering and publication layout
-│   ├── inference.py                # Wilson CIs, BH corrections, Mantel-Haenszel, M1/M2
-│   ├── hotspot_index.py            # Empirical Bayes shrinkage and greedy coverage
-│   ├── kpis.py                     # Hash-verified KPI computing and caching
-│   └── final_docs.py               # Document builder and Word COM export engine
-├── app/                            # Multipage Streamlit Application
-│   ├── Overview.py                 # Landing page & high-level workforce metrics
-│   ├── data_loader.py              # SHA-256 hash-verified tabular data loader
-│   ├── components.py               # Visual components and KPI display cards
-│   └── pages/
-│       ├── 1_Hotspots.py           # Hotspot universe, shrinkage, and greedy coverage
-│       ├── 2_Adjusted_Associations.py # OverTime, Mantel-Haenszel, and M1/M2 models
-│       ├── 3_Model_Triage.py       # Supervised triage, calibration, fairness audits
-│       └── 4_Decision_Log.py       # Audited decision ledger (DL-01 to DL-44)
-├── scripts/
-│   ├── run_phase1_validation.py    # Phase 1 runner
-│   ├── run_phase2_preprocessing.py # Phase 2 runner
-│   ├── run_phase3a_eda.py          # Phase 3a runner
-│   ├── run_phase3b_figures.py      # Phase 3b runner
-│   ├── run_phase4_models.py        # Phase 4 runner
-│   ├── run_phase5_inference.py     # Phase 5 runner
-│   ├── run_phase6_kpis.py          # Phase 6 runner
-│   ├── run_phase7_app_checks.py    # Headless Streamlit smoke verification
-│   ├── build_final_docs.py         # Final paper and executive summary builder
-│   └── verify_full_pipeline_determinism.py # End-to-end byte-reproducibility audit
-├── reports/
-│   ├── phase1/ .. phase6/          # Historical phase audit tables, JSON, and figures
-│   └── final/                      # Final submission deliverables
-│       ├── paper.md / .docx / .pdf # Comprehensive research paper
-│       ├── executive_summary.md / .docx / .pdf # Plain-language executive summary
-│       └── figures/                # 20 canonical figures from Phases 3 and 4
-└── tests/                          # 200+ unit and integration tests (100% pass)
-```
-
----
-
-## 3. Quickstart & Environment Setup
-
-### Prerequisites
-- Python 3.10+ (Developed and tested on Python 3.14.0 Windows x64)
-- Microsoft Word (Optional, required only for native `.docx` and `.pdf` COM compilation)
-
-### Virtual Environment Setup
-```powershell
-# Create and activate virtual environment
+```bash
+# 1. Create and activate a virtual environment
 python -m venv .venv
-.venv\Scripts\Activate.ps1
 
-# Install project dependencies
+# Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+# Windows (Command Prompt):
+.venv\Scripts\activate.bat
+# Linux / macOS:
+source .venv/bin/activate
+
+# 2. Install production dependencies
 pip install -r requirements.txt
 ```
 
 ---
 
-## 4. Running Tests & Pipeline Verification
+## Running the Application
 
-```powershell
-# Run the full test suite (all tests passing)
-.venv\Scripts\pytest -q
+Launch the interactive Streamlit executive dashboard:
 
-# Run end-to-end pipeline determinism audit
-.venv\Scripts\python scripts/verify_full_pipeline_determinism.py
-```
-
----
-
-## 5. Launching the Interactive Dashboard
-
-Launch the Streamlit executive dashboard locally:
-```powershell
-# Launch dashboard on http://localhost:8501
+```bash
+# Windows (PowerShell):
 $env:PYTHONPATH = "src;."
-.venv\Scripts\streamlit run app/Overview.py
+streamlit run app/Overview.py
+
+# Windows (CMD):
+set PYTHONPATH=src;.
+streamlit run app/Overview.py
+
+# Linux / macOS (bash):
+PYTHONPATH="src:." streamlit run app/Overview.py
 ```
+
+The application opens locally at **`http://localhost:8501`** and provides 5 multi-page modules:
+- 📊 **Overview**: Baseline headcount, departure rates, and dynamic KPI evaluation with exact binomial Wilson confidence intervals.
+- 🎯 **Risk Hotspots**: Empirical Bayes shrinkage, overlap-aware intersection graph, and greedy submodular coverage.
+- ⚖️ **Adjusted Associations**: Mantel-Haenszel stratified odds ratios and multivariable logistic regression (Models M1 and M2) controlling for job hierarchy.
+- 🤖 **Model Triage**: Precision-recall curves, risk tier triage yield, calibration assessments, and demographic fairness parity audits.
+- 📜 **Decision Log**: Audited ledger of 44 technical architecture decisions (DL-01 through DL-44).
 
 To run headless verification of all 5 dashboard pages and 12 pre-registered filter cases:
-```powershell
-.venv\Scripts\python scripts/run_phase7_app_checks.py
+```bash
+python scripts/run_phase7_app_checks.py
 ```
 
 ---
 
-## 6. Rebuilding Final Deliverables
+## Testing & Quality Assurance
 
-To re-generate the research paper and executive summary from committed pipeline tables:
-```powershell
-# Executes src/workforce_intel/final_docs.py
-.venv\Scripts\python scripts/build_final_docs.py
+The codebase includes an extensive automated test suite covering AST boundaries, data contracts, feature pipelines, statistical inference, figure geometries, and language hygiene.
+
+```bash
+# Run the full test suite (203 tests passing, 0 failures)
+pytest -q
+
+# Run end-to-end byte-reproducibility and determinism audit
+python scripts/verify_full_pipeline_determinism.py
 ```
-This command reads all statistics directly from `reports/phase1..6/tables/`, enforces zero causal language and zero dollar signs, copies the canonical figures into `reports/final/figures/`, and exports Markdown, DOCX, and PDF formats.
 
 ---
 
-## 7. Key Findings Summary
+## Code-Generated Final Deliverables
 
-- **Workforce Baseline**: 16.12% attrition rate (237 leavers out of 1,470 employees; 95% Wilson CI [14.33%, 18.09%]).
-- **Early-Tenure Risk**: Personnel with 0-1 years of tenure exhibit 34.88% attrition (75/215), compared to 11.56% for tenure 6-10 years.
-- **Role Concentration**: Sales Representatives experience 39.76% attrition (33/83), followed by Lab Technicians at 23.94% (62/259).
-- **Overtime Association**: Overtime employees exhibit 30.53% attrition (127/416) vs 10.44% (110/1,054) for non-overtime employees. The association remains strong after controlling for job level (Mantel-Haenszel OR = 4.05 [3.01, 5.46]; multivariable M2 OR = 5.27 [3.77, 7.35]).
-- **Promotion Gap**: Employees with 6+ years since their last promotion (within the career cohort n=890) exhibit 15.35% attrition vs 8.13% for 0-2 years (Tenure-adjusted Mantel-Haenszel OR = 2.38 [1.44, 3.92]).
-- **Hotspot Greedy Coverage**: A combination of 5 operational segments accounts for 67.51% of all leavers while surveying only 30.68% of the workforce.
+All deliverables are generated directly from committed pipeline tables by code (zero hand-typed numbers, zero dollar signs, and strict language hygiene):
+
+```bash
+# Rebuild research paper, executive summary, and canonical figures
+python scripts/build_final_docs.py
+```
+
+### Generated Artifacts (`reports/final/`)
+- 📄 **Research Paper**: `reports/final/paper.md` (also exported to `.docx` and `.pdf` via Word COM automation)
+- 📋 **Executive Summary**: `reports/final/executive_summary.md` (also exported to `.docx` and `.pdf`)
+- 📈 **Canonical Figures**: `reports/final/figures/` (20 publication-quality PNG figures from Phases 3 and 4)
+- 📑 **Submission Checklist**: `docs/final_submission_checklist.md` (deliverables manifest and governance checklist)
+
+---
+
+## Headline Findings
+
+- **Overall Baseline**: 16.12% attrition rate (237 leavers out of 1,470 employees; 95% Wilson CI [14.33%, 18.09%]).
+- **Early-Career Turnover Peak**: Personnel in their first year of tenure (0-1 years) exhibit an attrition rate of 34.88% (75/215, 95% CI [28.81%, 41.48%]), stabilizing to 11.56% by years 6-10.
+- **Role Concentration**: Sales Representatives display the highest observed attrition at 39.76% (33/83), followed by Laboratory Technicians at 23.94% (62/259).
+- **Overtime Association**: Overtime employees exhibit 30.53% attrition (127/416) vs 10.44% (110/1,054) for non-overtime staff. The association remains strong after controlling for job level (Mantel-Haenszel OR = 4.05 [3.01, 5.46]; multivariable M2 OR = 5.27 [3.77, 7.35]).
+- **Promotion Gap**: Personnel with 6+ years since their last promotion (within the career cohort n=890) exhibit 15.35% attrition vs 8.13% for 0-2 years (Tenure-adjusted Mantel-Haenszel OR = 2.38 [1.44, 3.92]).
+- **Combinatorial Hotspots**: A greedy combination of 5 non-redundant operational segments accounts for 67.51% of all departures while surveying only 30.68% of total workforce headcount.
+- **Model Triage & Fairness**: Supervised triage models achieve a holdout PR-AUC of 0.5736 (top-10% precision 62.07%, recall 38.30%, lift 3.88x) with confirmed demographic parity across gender, age, and marital status.
+
+---
+
+## Project Structure
+
+```text
+├── data/
+│   ├── raw/                        # Immutable raw dataset (SHA-256: 389735e8..., 209,376 bytes)
+│   └── processed/                  # Engineered analysis datasets (1,470 x 39)
+├── docs/
+│   ├── data_dictionary.md          # 31-column data dictionary and scales
+│   ├── decision_status.md          # Audited decision ledger (DL-01 to DL-44)
+│   ├── findings_register.md        # Register of all statistical findings
+│   ├── kpi_definitions.md          # Formal contracts for KPI-01 to KPI-08
+│   └── final_submission_checklist.md # Deliverables manifest and validation checklist
+├── src/workforce_intel/            # Core package modules
+│   ├── config.py                   # Configuration, palette, static table checksums
+│   ├── validation.py               # Data contract and validation checks
+│   ├── cleaning.py                 # Reproducible preprocessing and feature engineering
+│   ├── eda.py                      # Descriptive statistics and bivariate contingency tests
+│   ├── viz.py                      # Figure layout and styling
+│   ├── inference.py                # Wilson CIs, BH corrections, Mantel-Haenszel, M1/M2
+│   ├── hotspot_index.py            # Empirical Bayes shrinkage and greedy coverage
+│   ├── kpis.py                     # Hash-verified KPI computing engine
+│   └── final_docs.py               # Document builder and Word COM export engine
+├── app/                            # Multipage Streamlit Application
+│   ├── Overview.py                 # Application entrypoint
+│   ├── data_access.py              # Hash-verified static table loader
+│   ├── components.py               # UI components and KPI metric cards
+│   └── pages/                      # Hotspots, Adjusted Associations, Model Triage, Decision Log
+├── scripts/
+│   ├── build_final_docs.py         # Final paper and executive summary builder
+│   ├── run_phase7_app_checks.py    # Headless Streamlit smoke verification
+│   └── verify_full_pipeline_determinism.py # Determinism verification
+├── reports/
+│   ├── phase1/ .. phase6/          # Historical phase audit tables, figures, and JSON
+│   └── final/                      # Final research paper, executive summary, and figures
+└── tests/                          # 203 automated unit and integration tests (100% pass)
+```
+
+---
+
+## Ethical & Responsible Use
+
+This system is designed exclusively as an **aggregate organizational diagnostic** to guide company-wide workload balancing, onboarding support, and career progression frameworks.
+- **No Individual Scoring**: Scores, odds ratios, and risk tiers must never be applied to individual employees for appraisal, compensation, or adverse personnel action.
+- **No Demographic Targeting**: Age, gender, and marital status must never be utilized as operational targeting criteria or program eligibility factors.
+- **Human Review**: All statistical associations serve as hypotheses for organizational inquiry, requiring contextual human review before operational changes.
