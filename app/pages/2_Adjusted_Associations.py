@@ -6,6 +6,16 @@ multiplicity family controls across 28 organizational dimensions.
 Verified via SHA-256 integrity checksums. Active sidebar filters do not apply.
 """
 
+import sys
+from pathlib import Path
+
+# Ensure project root and src are on sys.path for cloud deployment
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+if str(_PROJECT_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT / "src"))
+
 import pandas as pd
 import streamlit as st
 

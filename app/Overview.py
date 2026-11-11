@@ -4,6 +4,16 @@ Multipage entry point. Provides interactive filtering across authorized dimensio
 and renders LIVE KPIs 1 through 5 evaluated dynamically via workforce_intel.kpis.
 """
 
+import sys
+from pathlib import Path
+
+# Ensure project root and src are on sys.path for cloud deployment (e.g. Streamlit Cloud)
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+if str(_PROJECT_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT / "src"))
+
 import streamlit as st
 import pandas as pd
 

@@ -4,6 +4,16 @@ Presents the formal decision status registry, findings consistency audits, datas
 provenance and structural limitations, master KPI definitions, and reliability classification policy.
 """
 
+import sys
+from pathlib import Path
+
+# Ensure project root and src are on sys.path for cloud deployment
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+if str(_PROJECT_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT / "src"))
+
 import streamlit as st
 import pandas as pd
 
