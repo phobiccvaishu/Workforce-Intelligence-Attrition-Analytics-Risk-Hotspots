@@ -36,6 +36,13 @@ def verify_file_checksum(file_path: Path, expected_hash: str) -> None:
     if actual_hash == expected_hash:
         return
 
+    # Direct check against pre-registered LF checksums (for Linux / Streamlit Cloud)
+    from workforce_intel.config import STATIC_TABLE_CHECKSUMS, STATIC_TABLE_CHECKSUMS_LF
+    for rel_key, exp_crlf in STATIC_TABLE_CHECKSUMS.items():
+        if exp_crlf == expected_hash and rel_key in STATIC_TABLE_CHECKSUMS_LF:
+            if actual_hash == STATIC_TABLE_CHECKSUMS_LF[rel_key]:
+                return
+
     # Normalize cross-platform git line endings (e.g. LF checkout on Linux vs CRLF on Windows)
     crlf_hash = hashlib.sha256(raw.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")).hexdigest()
     if crlf_hash == expected_hash:

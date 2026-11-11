@@ -1145,6 +1145,23 @@ STATIC_TABLE_CHECKSUMS: Dict[str, str] = {
     "reports/phase4/figures/fig20_demographic_fairness.png": "50f49da2939fcaf63c42f7193c578df6897ed5bf34ddff1ccb7b13c559c71f4d",
 }
 
+# Cross-platform LF (Unix/Linux git checkout) hashes for static CSV tables
+STATIC_TABLE_CHECKSUMS_LF: Dict[str, str] = {
+    "reports/phase5/tables/overtime_comparison.csv": "e3e487e9451db74331c523f334e12d187a0be7736be7f74850a458f6f111d089",
+    "reports/phase5/tables/hotspot_universe.csv": "edf8ccd43d6b885477dd348a1882b3f3939a3ec97cf84215180762ebea82bb37",
+    "reports/phase5/tables/hotspot_split_validation.csv": "d8c1face0a563c9cfcdb9e28ce3506c8981e099e9d1a9b72d2ef0536f5c262e1",
+    "reports/phase5/tables/greedy_coverage.csv": "02f41bf6b1a3758ecb5a6e9d2212f04c7b199f71ee098be7e1563af29061a694",
+    "reports/phase4/tables/holdout_metrics.csv": "470e2bd293729c1dde1ab4b8ae06be92aeebeb7fea2e11ea525435d907963078",
+    "reports/phase5/tables/logistic_m1_m2.csv": "73024fe70ecf5b575d599da07333a9ed0ec5e3878e9d71b97c2e7e8b66c82d9f",
+    "reports/phase5/tables/bh_family_audit.csv": "51196c29383bc205271c3e0d77e882a0e159979484febfc9641aaa05a50727da",
+    "reports/phase4/tables/model_comparison.csv": "4e05416bf01be03e71649fd21643cbae4daf1485e690b8a5b77ccabf868a5d26",
+    "reports/phase4/tables/demographic_fairness.csv": "7d0d718ff065b92ff16067d85848674d0b694e5c8834aa687e46ab63af29c506",
+    "reports/phase4/tables/calibration_bins.csv": "fd55d0fca727f4311e2a2c7851ad09a0c530269c36d9c4e1d6d5444849b75f94",
+    "reports/phase4/tables/consistency_audit.csv": "2cc778c7185aee0e2c26cc68ae333ac5dcfa2e2605e6abd09d72c20f71aa14f0",
+    "reports/phase4/tables/paired_model_differences.csv": "deb8cbf0a33eee2050d06fb980f271712217cd97cc91229049f10aa6448f256b",
+    "reports/phase6/tables/kpi_baseline.csv": "d0fcbe11939c978c1a23c67cc833dfc4003dacee593498921cf750a7fa2800cf",
+}
+
 # Master KPI Registry (10 KPIs: 5 LIVE, 5 STATIC)
 KPI_REGISTRY: List[Dict[str, str]] = [
     {
