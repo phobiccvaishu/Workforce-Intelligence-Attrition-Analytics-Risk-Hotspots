@@ -85,10 +85,11 @@ st.markdown(
 
 try:
     df_consistency = get_consistency_audit()
-    agrees_count = sum(1 for s in df_consistency["status"] if s == "agrees")
-    direction_count = sum(1 for s in df_consistency["status"] if s == "direction only")
-    unstable_count = sum(1 for s in df_consistency["status"] if s == "unstable")
-    set_b_count = sum(1 for s in df_consistency["status"] if s == "untestable in Set B")
+    status_col = "phase4_status" if "phase4_status" in df_consistency.columns else "status"
+    agrees_count = sum(1 for s in df_consistency[status_col] if s == "agrees")
+    direction_count = sum(1 for s in df_consistency[status_col] if s == "direction only")
+    unstable_count = sum(1 for s in df_consistency[status_col] if s == "unstable")
+    set_b_count = sum(1 for s in df_consistency[status_col] if s == "untestable in Set B")
 
     acol1, acol2, acol3, acol4 = st.columns(4)
     with acol1:
@@ -107,7 +108,10 @@ try:
         "- **Untestable in Set B (7 findings)**: Findings involving protected demographic features (Age, Gender, MaritalStatus) excluded under model governance."
     )
     
-    st.dataframe(df_consistency, width="stretch")
+    df_display = df_consistency.copy()
+    if "multivariable_effect" in df_display.columns:
+        df_display["multivariable_effect"] = df_display["multivariable_effect"].astype(str).str.replace("confirms", "indicates", regex=False)
+    st.dataframe(df_display, width="stretch")
     render_table_download_button(df_consistency, "findings_consistency_audit.csv", "reports/phase4/tables/consistency_audit.csv")
 except Exception as e:
     st.error(f"Error loading consistency audit: {e}")
