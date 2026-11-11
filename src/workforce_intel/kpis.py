@@ -44,12 +44,20 @@ def verify_static_source_integrity(filepath: Union[str, Path], expected_sha256: 
     if not path.is_file():
         raise FileNotFoundError(f"Static source file not found at: {path}")
 
-    actual_hash = hashlib.sha256(path.read_bytes()).hexdigest()
-    if actual_hash != expected_sha256:
-        raise ValueError(
-            f"Static source integrity failure for '{path.name}'. "
-            f"Expected SHA-256 {expected_sha256}, but computed {actual_hash}."
-        )
+    raw = path.read_bytes()
+    actual_hash = hashlib.sha256(raw).hexdigest()
+    if actual_hash == expected_sha256:
+        return
+
+    # Normalize cross-platform git line endings (e.g. LF checkout on Linux vs CRLF on Windows)
+    crlf_hash = hashlib.sha256(raw.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")).hexdigest()
+    if crlf_hash == expected_sha256:
+        return
+
+    raise ValueError(
+        f"Static source integrity failure for '{path.name}'. "
+        f"Expected SHA-256 {expected_sha256}, but computed {actual_hash}."
+    )
 
 
 def apply_kpi_filter(

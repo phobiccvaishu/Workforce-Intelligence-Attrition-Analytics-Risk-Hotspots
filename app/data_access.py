@@ -31,12 +31,20 @@ def verify_file_checksum(file_path: Path, expected_hash: str) -> None:
     """Verify that file on disk matches expected SHA-256 hex digest."""
     if not file_path.is_file():
         raise DataIntegrityError(f"Required static benchmark file missing: {file_path}")
-    actual_hash = hashlib.sha256(file_path.read_bytes()).hexdigest()
-    if actual_hash != expected_hash:
-        raise DataIntegrityError(
-            f"Integrity check failed for {file_path.name}. "
-            f"Expected SHA-256: {expected_hash}, actual: {actual_hash}"
-        )
+    raw = file_path.read_bytes()
+    actual_hash = hashlib.sha256(raw).hexdigest()
+    if actual_hash == expected_hash:
+        return
+
+    # Normalize cross-platform git line endings (e.g. LF checkout on Linux vs CRLF on Windows)
+    crlf_hash = hashlib.sha256(raw.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")).hexdigest()
+    if crlf_hash == expected_hash:
+        return
+
+    raise DataIntegrityError(
+        f"Integrity check failed for {file_path.name}. "
+        f"Expected SHA-256: {expected_hash}, actual: {actual_hash}"
+    )
 
 
 @st.cache_data
